@@ -6,18 +6,29 @@ import (
 )
 
 type authenticationManageService struct {
-	logger logger.ILogger
-	repo   authentication.AuthenticationManageRepository
+	logger logger.ILogger                                `aperture:""`
+	repo   authentication.AuthenticationManageRepository `aperture:""`
+}
+
+func (a *authenticationManageService) Setup() error {
+	a.logger = a.logger.WithPrefix(a.SrvImplName())
+	if err := a.repo.Status(); err != nil {
+		a.logger.Errorf("repo init failed: %v", err)
+	} else {
+		a.logger.Info("setup success")
+	}
+	return nil
+}
+
+func (a *authenticationManageService) SrvImplName() string {
+	return "authentication.service.AuthenticationManageService"
 }
 
 func NewAuthenticationService(
 	logger logger.ILogger, repo authentication.AuthenticationManageRepository) authentication.AuthenticationManageService {
 	s := &authenticationManageService{
-		logger: logger.WithPrefix("Service.authentication"),
+		logger: logger,
 		repo:   repo,
-	}
-	if err := s.repo.Status(); err != nil {
-		s.logger.Errorf("authenticationManageService repo init failed: %v", err)
 	}
 	return s
 }
@@ -48,8 +59,4 @@ func (a *authenticationManageService) DeleteUser(userId string) error {
 
 func (a *authenticationManageService) UpdateUser(user authentication.User) error {
 	return a.repo.UpdateUser(user)
-}
-
-func (a *authenticationManageService) SrvImplName() string {
-	return "authenticationManageService"
 }

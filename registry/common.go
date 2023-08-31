@@ -2,6 +2,7 @@ package registry
 
 import (
 	"fmt"
+	"reflect"
 	"sync"
 )
 
@@ -68,9 +69,14 @@ func (r *registry[I, T]) AcquireByEntry(entry I) T {
 
 func (r *registry[I, T]) AcquireAll() []T {
 	r.lock.RLock()
+	sets := make(map[uintptr]uint8, 0)
 	vals := make([]T, 0, len(r.registry))
 	for _, val := range r.registry {
+		if _, ok := sets[reflect.ValueOf(val).Pointer()]; ok {
+			continue
+		}
 		vals = append(vals, val)
+		sets[reflect.ValueOf(val).Pointer()] = 1
 	}
 	r.lock.RUnlock()
 	return vals
@@ -81,11 +87,19 @@ type orderedregistry[I comparable, T any] struct {
 	keys []I
 }
 
+func (r *orderedregistry[I, T]) Register(impl T) {
+	if r.naming == nil {
+		panic("naming function not set")
+	}
+	r.RegisterByEntry(r.naming(impl), impl)
+}
+
 func (r *orderedregistry[I, T]) RegisterByEntry(entry I, impl T) {
 	r.lock.Lock()
 	if _, ok := r.registry.registry[entry]; ok {
 		panic(fmt.Sprintf("duplicate registry entry %v in %s", entry, getInterfaceName[T]()))
 	}
+
 	r.registry.registry[entry] = impl
 	r.keys = append(r.keys, entry)
 	r.lock.Unlock()
@@ -93,9 +107,14 @@ func (r *orderedregistry[I, T]) RegisterByEntry(entry I, impl T) {
 
 func (r *orderedregistry[I, T]) AcquireAll() []T {
 	r.lock.RLock()
+	sets := make(map[uintptr]uint8, 0)
 	vals := make([]T, 0, len(r.keys))
 	for _, key := range r.keys {
+		if _, ok := sets[reflect.ValueOf(r.registry.registry[key]).Pointer()]; ok {
+			continue
+		}
 		vals = append(vals, r.registry.registry[key])
+		sets[reflect.ValueOf(r.registry.registry[key]).Pointer()] = 1
 	}
 	r.lock.RUnlock()
 	return vals

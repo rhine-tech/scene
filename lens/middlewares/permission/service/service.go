@@ -5,27 +5,25 @@ import (
 	"github.com/aynakeya/scene/lens/middlewares/permission"
 )
 
-type permissionManager struct {
-	logger logger.ILogger
-	repo   permission.PermissionRepository
+type PermissionManagerImpl struct {
+	logger logger.ILogger                  `aperture:""`
+	repo   permission.PermissionRepository `aperture:""`
 }
 
-func (p *permissionManager) SrvImplName() string {
-	return "permission.service.manage"
+func (p *PermissionManagerImpl) SrvImplName() string {
+	return "permission.service.PermissionService"
 }
 
-func NewPermissionManager(logger logger.ILogger, repo permission.PermissionRepository) permission.PermissionService {
-	pm := &permissionManager{
-		repo: repo,
+func (p *PermissionManagerImpl) Setup() error {
+	p.logger = p.logger.WithPrefix(p.SrvImplName())
+	if err := p.repo.Status(); err != nil {
+		p.logger.Errorf("Failed to reload permission repository: %s", err.Error())
 	}
-	pm.logger = logger.WithPrefix(pm.SrvImplName())
-	if err := pm.repo.Status(); err != nil {
-		pm.logger.Errorf("Failed to reload permission repository: %s", err.Error())
-	}
-	return pm
+	p.logger.Infof("Permission service is ready")
+	return nil
 }
 
-func (p *permissionManager) HasPermission(owner string, perm string) bool {
+func (p *PermissionManagerImpl) HasPermission(owner string, perm string) bool {
 	p1, err := permission.ParsePermission(perm)
 	if err != nil {
 		return false
@@ -39,7 +37,7 @@ func (p *permissionManager) HasPermission(owner string, perm string) bool {
 	return false
 }
 
-//func (p *permissionManager) ListOwners() []string {
+//func (p *PermissionManagerImpl) ListOwners() []string {
 //	owners := p.repo.GetOwners()
 //	names := make([]string, len(owners))
 //	for i, owner := range owners {
@@ -48,11 +46,11 @@ func (p *permissionManager) HasPermission(owner string, perm string) bool {
 //	return names
 //}
 
-func (p *permissionManager) ListPermissions(role string) permission.PermissionSet {
+func (p *PermissionManagerImpl) ListPermissions(role string) permission.PermissionSet {
 	return p.repo.GetPermissions(role)
 }
 
-func (p *permissionManager) AddPermission(role string, perm string) error {
+func (p *PermissionManagerImpl) AddPermission(role string, perm string) error {
 	_, err := p.repo.AddPermission(role, perm)
 	if err != nil {
 		p.logger.Errorf("failed to add permission %s: %s", perm, err)
@@ -61,7 +59,7 @@ func (p *permissionManager) AddPermission(role string, perm string) error {
 	return nil
 }
 
-func (p *permissionManager) RemovePermission(role string, perm string) error {
+func (p *PermissionManagerImpl) RemovePermission(role string, perm string) error {
 	err := p.repo.RemovePermission(role, perm)
 	if err != nil {
 		p.logger.Errorf("failed to remove permission %s: %s", perm, err)

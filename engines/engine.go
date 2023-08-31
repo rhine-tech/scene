@@ -9,6 +9,7 @@ import (
 	"github.com/aynakeya/scene/utils"
 	"os"
 	"os/signal"
+	"reflect"
 	"strings"
 )
 
@@ -43,19 +44,23 @@ func (eg *BasicEngine) Run() error {
 	eg.logger.Info("scene service initialized successfully")
 	eg.printContainersInfo()
 	eg.logger.Info("starting scene service...")
-	registry.SetupAll()
 	eg.Start()
 	quit := make(chan os.Signal)
 	signal.Notify(quit, os.Interrupt)
 	sig := <-quit
 	eg.logger.Infof("received %v signal, shutting down...", sig)
 	eg.Stop()
-	registry.DisposeAll()
 	eg.logger.Info("scene service stopped")
 	return nil
 }
 
 func (eg *BasicEngine) Start() {
+	for _, setupable := range registry.Setupable.AcquireAll() {
+		err := setupable.Setup()
+		if err != nil {
+			eg.logger.Warnf("setup %v error: %v", reflect.TypeOf(setupable), err)
+		}
+	}
 	for _, container := range eg.containers {
 		if err := container.Start(); err != nil {
 			eg.logger.Errorf("start container %s error: %s", container.Name(), err)
@@ -69,6 +74,12 @@ func (eg *BasicEngine) Stop() {
 	for _, container := range eg.containers {
 		if err := container.Stop(ctx); err != nil {
 			eg.logger.Errorf("stop container %s error: %s", container.Name(), err)
+		}
+	}
+	for _, disposable := range registry.Disposable.AcquireAll() {
+		err := disposable.Dispose()
+		if err != nil {
+			eg.logger.Warnf("dispose %v error: %v", reflect.TypeOf(disposable), err)
 		}
 	}
 	return

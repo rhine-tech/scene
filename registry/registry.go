@@ -5,6 +5,7 @@ func Register[T any](val T) T {
 		registrant(val)
 	}
 	RegisterSingleton[T](val)
+	TryInject(val)
 	return val
 }
 

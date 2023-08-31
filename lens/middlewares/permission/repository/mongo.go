@@ -26,7 +26,6 @@ func NewPermissionMongoRepo(cfg model.DatabaseConfig) permission.PermissionRepos
 		return repo
 	}
 	repo.collection = repo.Database().Collection("permissions")
-
 	return repo
 }
 

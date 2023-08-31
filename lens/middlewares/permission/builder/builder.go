@@ -15,8 +15,9 @@ import (
 // Init is instance of scene.LensInit
 func Init() {
 	cfg := registry.AcquireSingleton(&model.DatabaseConfig{})
-	permissionRepository := registry.Register(repository.NewPermissionMongoRepo(*cfg))
-	_ = registry.Register(service.NewPermissionManager(registry.AcquireSingleton(logger.ILogger(nil)), permissionRepository))
+	_ = registry.Register(repository.NewPermissionMongoRepo(*cfg))
+	_ = registry.Register(
+		permission.PermissionService(&service.PermissionManagerImpl{}))
 	return
 }
 

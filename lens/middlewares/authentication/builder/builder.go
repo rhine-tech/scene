@@ -34,7 +34,7 @@ func Init() {
 	cfg := *registry.AcquireSingleton(&model.DatabaseConfig{})
 	repo := registry.Register(repository.NewMongoAuthenticationRepository(cfg))
 	repo2 := registry.Register(repository.NewUserInfoRepository(cfg))
-	srv1 := registry.Register(service.NewAuthenticationService(registry.AcquireSingleton(logger.ILogger(nil)), repo))
+	srv1 := registry.Register(service.NewAuthenticationService(nil, nil))
 	registry.Register(service.NewUserInfoService(repo, repo2))
 	registry.Register(srv1.(authentication.AuthenticationService))
 	registry.Register(service.NewJWTLoginStatusService())
