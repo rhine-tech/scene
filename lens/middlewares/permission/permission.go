@@ -141,10 +141,74 @@ func (ps PermissionSet) Merge(other PermissionSet) PermissionSet {
 	return x.ToSlice()
 }
 
+func (ps PermissionSet) Cleanup() PermissionSet {
+	topPerm := make(map[string]*Permission)
+	childMap := make(map[string]PermissionSet)
+	for _, perm := range ps {
+		permName := perm.Name
+		if perm.SubPermission == nil {
+			topPerm[permName] = perm
+			continue
+		}
+		childMap[permName] = append(childMap[permName], perm.SubPermission)
+	}
+	var newPs PermissionSet
+	for _, perm := range topPerm {
+		newPs = append(newPs, &Permission{
+			Name: perm.Name,
+		})
+	}
+	for key, perms := range childMap {
+		if _, ok := topPerm[key]; ok {
+			continue
+		}
+		var subPerms PermissionSet
+		for _, perm := range perms.Cleanup() {
+			subPerms = append(subPerms, &Permission{
+				Name:          key,
+				SubPermission: perm,
+			})
+		}
+		newPs = append(newPs, subPerms...)
+	}
+	return newPs
+}
+
 func (ps PermissionSet) ToStrSlice() []string {
 	retval := make([]string, len(ps))
 	for i, p := range ps {
 		retval[i] = p.String()
 	}
 	return retval
+}
+
+type PermTree map[string]PermTree
+
+func BuildTreeFromSet(ps PermissionSet) PermTree { // Root node to hold everything
+	return buildChildren("", ps)
+}
+
+func buildChildren(parent string, ps PermissionSet) PermTree {
+	if len(ps) == 0 {
+		return nil
+	}
+	tree := make(PermTree)
+	childMap := make(map[string][]*Permission)
+
+	for _, perm := range ps {
+		permName := perm.Name
+		if _, ok := childMap[permName]; !ok {
+			childMap[permName] = nil
+		}
+		if perm.SubPermission == nil {
+			continue
+		}
+		childMap[permName] = append(childMap[permName], perm.SubPermission)
+	}
+
+	for key, childs := range childMap {
+		currentKey := parent + key
+		tree[currentKey] = buildChildren(currentKey+":", childs)
+	}
+	return tree
 }
