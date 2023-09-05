@@ -1,6 +1,6 @@
 package permission
 
-import "github.com/aynakeya/scene"
+import "github.com/rhine-tech/scene"
 
 type PermissionService interface {
 	scene.Service

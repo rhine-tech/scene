@@ -3,8 +3,8 @@ package repository
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/aynakeya/scene/lens/infrastructure/ingestion"
 	"github.com/go-resty/resty/v2"
+	"github.com/rhine-tech/scene/lens/infrastructure/ingestion"
 )
 
 type openobserve[T any] struct {

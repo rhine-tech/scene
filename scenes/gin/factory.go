@@ -1,8 +1,8 @@
 package gin
 
 import (
-	"github.com/aynakeya/scene"
 	"github.com/gin-gonic/gin"
+	"github.com/rhine-tech/scene"
 )
 
 type ginAppFactory struct {

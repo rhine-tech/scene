@@ -1,11 +1,11 @@
 package middleware
 
 import (
-	"github.com/aynakeya/scene/lens/middlewares/authentication"
-	"github.com/aynakeya/scene/lens/middlewares/permission"
-	"github.com/aynakeya/scene/model"
-	"github.com/aynakeya/scene/registry"
 	"github.com/gin-gonic/gin"
+	"github.com/rhine-tech/scene/lens/middlewares/authentication"
+	"github.com/rhine-tech/scene/lens/middlewares/permission"
+	"github.com/rhine-tech/scene/model"
+	"github.com/rhine-tech/scene/registry"
 	"net/http"
 )
 

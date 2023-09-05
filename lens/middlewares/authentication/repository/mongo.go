@@ -2,10 +2,10 @@ package repository
 
 import (
 	"context"
-	"github.com/aynakeya/scene/drivers/repos"
-	"github.com/aynakeya/scene/lens/middlewares/authentication"
-	"github.com/aynakeya/scene/model"
 	"github.com/google/uuid"
+	"github.com/rhine-tech/scene/drivers/repos"
+	"github.com/rhine-tech/scene/lens/middlewares/authentication"
+	"github.com/rhine-tech/scene/model"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )

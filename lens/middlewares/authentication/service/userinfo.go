@@ -1,6 +1,6 @@
 package service
 
-import "github.com/aynakeya/scene/lens/middlewares/authentication"
+import "github.com/rhine-tech/scene/lens/middlewares/authentication"
 
 type userInfoServiceImpl struct {
 	authRepo authentication.AuthenticationRepository

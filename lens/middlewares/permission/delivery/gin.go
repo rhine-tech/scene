@@ -1,17 +1,17 @@
 package delivery
 
 import (
-	"github.com/aynakeya/scene"
-	"github.com/aynakeya/scene/errcode"
-	"github.com/aynakeya/scene/lens/infrastructure/logger"
-	"github.com/aynakeya/scene/lens/middlewares/authentication"
-	authMw "github.com/aynakeya/scene/lens/middlewares/authentication/middleware"
-	"github.com/aynakeya/scene/lens/middlewares/permission"
-	"github.com/aynakeya/scene/model"
 	"github.com/gin-gonic/gin"
+	"github.com/rhine-tech/scene"
+	"github.com/rhine-tech/scene/errcode"
+	"github.com/rhine-tech/scene/lens/infrastructure/logger"
+	"github.com/rhine-tech/scene/lens/middlewares/authentication"
+	authMw "github.com/rhine-tech/scene/lens/middlewares/authentication/middleware"
+	"github.com/rhine-tech/scene/lens/middlewares/permission"
+	"github.com/rhine-tech/scene/model"
 	"net/http"
 
-	sgin "github.com/aynakeya/scene/scenes/gin"
+	sgin "github.com/rhine-tech/scene/scenes/gin"
 )
 
 type ginApp struct {

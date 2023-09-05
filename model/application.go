@@ -1,6 +1,6 @@
 package model
 
-import "github.com/aynakeya/scene/errcode"
+import "github.com/rhine-tech/scene/errcode"
 
 type AppResponse struct {
 	Code int         `json:"code"`

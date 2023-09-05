@@ -6,12 +6,12 @@ import (
 
 const InjectTag = "aperture"
 
-func TryInject[T any](injectable T) {
+func TryInject[T any](injectable T) T {
 	val := reflect.ValueOf(injectable)
 	indirectVal := reflect.Indirect(val) // In case injectable is a pointer
 	if indirectVal.Kind() != reflect.Struct {
 		// not injectable
-		return
+		return injectable
 	}
 	typ := indirectVal.Type()
 	for i := 0; i < typ.NumField(); i++ {
@@ -30,4 +30,5 @@ func TryInject[T any](injectable T) {
 			}
 		}
 	}
+	return injectable
 }

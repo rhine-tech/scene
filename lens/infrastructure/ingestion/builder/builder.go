@@ -1,10 +1,10 @@
 package builder
 
 import (
-	"github.com/aynakeya/scene"
-	"github.com/aynakeya/scene/lens/infrastructure/config"
-	"github.com/aynakeya/scene/lens/infrastructure/ingestion/repository"
-	"github.com/aynakeya/scene/registry"
+	"github.com/rhine-tech/scene"
+	"github.com/rhine-tech/scene/lens/infrastructure/config"
+	"github.com/rhine-tech/scene/lens/infrastructure/ingestion/repository"
+	"github.com/rhine-tech/scene/registry"
 )
 
 // Init is instance of scene.LensInit

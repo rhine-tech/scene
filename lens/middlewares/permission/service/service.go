@@ -1,8 +1,8 @@
 package service
 
 import (
-	"github.com/aynakeya/scene/lens/infrastructure/logger"
-	"github.com/aynakeya/scene/lens/middlewares/permission"
+	"github.com/rhine-tech/scene/lens/infrastructure/logger"
+	"github.com/rhine-tech/scene/lens/middlewares/permission"
 )
 
 type PermissionManagerImpl struct {

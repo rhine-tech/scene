@@ -1,15 +1,15 @@
 package builder
 
 import (
-	"github.com/aynakeya/scene"
-	"github.com/aynakeya/scene/lens/infrastructure/logger"
-	"github.com/aynakeya/scene/lens/middlewares/authentication"
-	"github.com/aynakeya/scene/lens/middlewares/authentication/delivery"
-	"github.com/aynakeya/scene/lens/middlewares/authentication/repository"
-	"github.com/aynakeya/scene/lens/middlewares/authentication/service"
-	"github.com/aynakeya/scene/model"
-	"github.com/aynakeya/scene/registry"
-	sgin "github.com/aynakeya/scene/scenes/gin"
+	"github.com/rhine-tech/scene"
+	"github.com/rhine-tech/scene/lens/infrastructure/logger"
+	"github.com/rhine-tech/scene/lens/middlewares/authentication"
+	"github.com/rhine-tech/scene/lens/middlewares/authentication/delivery"
+	"github.com/rhine-tech/scene/lens/middlewares/authentication/repository"
+	"github.com/rhine-tech/scene/lens/middlewares/authentication/service"
+	"github.com/rhine-tech/scene/model"
+	"github.com/rhine-tech/scene/registry"
+	sgin "github.com/rhine-tech/scene/scenes/gin"
 )
 
 //func CreateAndInitialize(cfg model.DatabaseConfig, logger adapter.ILogger) (

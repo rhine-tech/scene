@@ -2,8 +2,8 @@ package repository
 
 import (
 	"encoding/json"
-	"github.com/aynakeya/scene/lens/middlewares/authentication"
 	"github.com/google/uuid"
+	"github.com/rhine-tech/scene/lens/middlewares/authentication"
 	"os"
 )
 

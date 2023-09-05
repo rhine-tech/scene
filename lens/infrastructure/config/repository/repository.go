@@ -1,8 +1,8 @@
 package repository
 
 import (
-	"github.com/aynakeya/scene/lens/infrastructure/config"
-	"github.com/aynakeya/scene/pkg/cfgur"
+	"github.com/rhine-tech/scene/lens/infrastructure/config"
+	"github.com/rhine-tech/scene/pkg/cfgur"
 )
 
 func NewDotEnvironmentCfgur(filenames ...string) config.ConfigUnmarshaler {

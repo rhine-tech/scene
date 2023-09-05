@@ -1,7 +1,7 @@
 package grpc
 
 import (
-	"github.com/aynakeya/scene"
+	"github.com/rhine-tech/scene"
 	"google.golang.org/grpc"
 )
 

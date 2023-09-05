@@ -2,7 +2,7 @@ package repos
 
 import (
 	"encoding/json"
-	"github.com/aynakeya/scene/model"
+	"github.com/rhine-tech/scene/model"
 	"os"
 )
 

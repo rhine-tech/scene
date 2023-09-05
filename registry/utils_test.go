@@ -1,7 +1,7 @@
 package registry
 
 import (
-	"github.com/aynakeya/scene/model"
+	"github.com/rhine-tech/scene/model"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )

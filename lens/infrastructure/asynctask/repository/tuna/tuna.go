@@ -1,8 +1,8 @@
 package tuna
 
 import (
-	"github.com/aynakeya/scene/lens/infrastructure/asynctask"
-	"github.com/aynakeya/scene/pkg/queue"
+	"github.com/rhine-tech/scene/lens/infrastructure/asynctask"
+	"github.com/rhine-tech/scene/pkg/queue"
 	"runtime"
 )
 
@@ -33,6 +33,7 @@ func (t *Thunnus) Run(tsk asynctask.TaskFunc) *asynctask.Task {
 }
 
 func (t *Thunnus) RunTask(task *asynctask.Task) {
+	task.SetStatus(asynctask.TaskStatusQueue)
 	t.taskQueue.Push(task)
 }
 
@@ -88,6 +89,7 @@ func (w *tuna) run() {
 			if !ok {
 				goto finish
 			}
+			tsk.SetStatus(asynctask.TaskStatusRunning)
 			tsk.Err = tsk.Func()
 			tsk.SetStatus(asynctask.TaskStatusFinish)
 		default:

@@ -1,8 +1,8 @@
 package builder
 
 import (
-	"github.com/aynakeya/scene/lens/infrastructure/config/repository"
-	"github.com/aynakeya/scene/registry"
+	"github.com/rhine-tech/scene/lens/infrastructure/config/repository"
+	"github.com/rhine-tech/scene/registry"
 )
 
 func Init(configFile string) {

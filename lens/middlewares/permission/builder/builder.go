@@ -1,15 +1,15 @@
 package builder
 
 import (
-	"github.com/aynakeya/scene"
-	"github.com/aynakeya/scene/lens/infrastructure/logger"
-	"github.com/aynakeya/scene/lens/middlewares/permission"
-	"github.com/aynakeya/scene/lens/middlewares/permission/delivery"
-	"github.com/aynakeya/scene/lens/middlewares/permission/repository"
-	"github.com/aynakeya/scene/lens/middlewares/permission/service"
-	"github.com/aynakeya/scene/model"
-	"github.com/aynakeya/scene/registry"
-	sgin "github.com/aynakeya/scene/scenes/gin"
+	"github.com/rhine-tech/scene"
+	"github.com/rhine-tech/scene/lens/infrastructure/logger"
+	"github.com/rhine-tech/scene/lens/middlewares/permission"
+	"github.com/rhine-tech/scene/lens/middlewares/permission/delivery"
+	"github.com/rhine-tech/scene/lens/middlewares/permission/repository"
+	"github.com/rhine-tech/scene/lens/middlewares/permission/service"
+	"github.com/rhine-tech/scene/model"
+	"github.com/rhine-tech/scene/registry"
+	sgin "github.com/rhine-tech/scene/scenes/gin"
 )
 
 // Init is instance of scene.LensInit

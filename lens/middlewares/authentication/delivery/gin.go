@@ -1,14 +1,14 @@
 package delivery
 
 import (
-	"github.com/aynakeya/scene"
-	"github.com/aynakeya/scene/errcode"
-	"github.com/aynakeya/scene/lens/infrastructure/logger"
-	"github.com/aynakeya/scene/lens/middlewares/authentication"
-	"github.com/aynakeya/scene/lens/middlewares/authentication/middleware"
-	"github.com/aynakeya/scene/model"
-	sgin "github.com/aynakeya/scene/scenes/gin"
 	"github.com/gin-gonic/gin"
+	"github.com/rhine-tech/scene"
+	"github.com/rhine-tech/scene/errcode"
+	"github.com/rhine-tech/scene/lens/infrastructure/logger"
+	"github.com/rhine-tech/scene/lens/middlewares/authentication"
+	"github.com/rhine-tech/scene/lens/middlewares/authentication/middleware"
+	"github.com/rhine-tech/scene/model"
+	sgin "github.com/rhine-tech/scene/scenes/gin"
 	"net/http"
 )
 

@@ -2,7 +2,7 @@ package datasource
 
 import (
 	"database/sql"
-	"github.com/aynakeya/scene"
+	"github.com/rhine-tech/scene"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 

@@ -3,7 +3,7 @@ package repository
 import (
 	"errors"
 	nested "github.com/antonfisher/nested-logrus-formatter"
-	"github.com/aynakeya/scene/lens/infrastructure/logger"
+	"github.com/rhine-tech/scene/lens/infrastructure/logger"
 	"github.com/sirupsen/logrus"
 	"github.com/virtuald/go-paniclog"
 	"io"

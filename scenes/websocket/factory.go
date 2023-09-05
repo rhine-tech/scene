@@ -1,7 +1,7 @@
 package websocket
 
 import (
-	"github.com/aynakeya/scene"
+	"github.com/rhine-tech/scene"
 )
 
 type websocketFactory struct {

@@ -2,10 +2,10 @@ package grpc
 
 import (
 	"context"
-	"github.com/aynakeya/scene"
-	"github.com/aynakeya/scene/lens/infrastructure/logger"
-	"github.com/aynakeya/scene/registry"
-	scommon "github.com/aynakeya/scene/scenes/common"
+	"github.com/rhine-tech/scene"
+	"github.com/rhine-tech/scene/lens/infrastructure/logger"
+	"github.com/rhine-tech/scene/registry"
+	scommon "github.com/rhine-tech/scene/scenes/common"
 	"google.golang.org/grpc"
 	greflection "google.golang.org/grpc/reflection"
 	"net"

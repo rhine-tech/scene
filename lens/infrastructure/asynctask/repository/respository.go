@@ -1,8 +1,8 @@
 package repository
 
 import (
-	"github.com/aynakeya/scene/lens/infrastructure/asynctask"
-	"github.com/aynakeya/scene/lens/infrastructure/asynctask/repository/tuna"
+	"github.com/rhine-tech/scene/lens/infrastructure/asynctask"
+	"github.com/rhine-tech/scene/lens/infrastructure/asynctask/repository/tuna"
 )
 
 func NewThunnusTaskDispatcher() asynctask.TaskDispatcher {

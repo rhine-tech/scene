@@ -1,8 +1,8 @@
 package service
 
 import (
-	"github.com/aynakeya/scene/lens/middlewares/authentication"
 	"github.com/golang-jwt/jwt"
+	"github.com/rhine-tech/scene/lens/middlewares/authentication"
 	"net/http"
 	"time"
 )

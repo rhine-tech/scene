@@ -1,8 +1,8 @@
 package registry
 
 import (
-	"github.com/aynakeya/scene"
-	"github.com/aynakeya/scene/model"
+	"github.com/rhine-tech/scene"
+	"github.com/rhine-tech/scene/model"
 )
 
 // var Repository Registry[string, scene.Repository]

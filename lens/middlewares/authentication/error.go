@@ -1,6 +1,6 @@
 package authentication
 
-import "github.com/aynakeya/scene/errcode"
+import "github.com/rhine-tech/scene/errcode"
 
 var _eg = errcode.NewErrorGroup(2, "authentication")
 var (

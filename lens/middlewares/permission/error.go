@@ -1,6 +1,6 @@
 package permission
 
-import "github.com/aynakeya/scene/errcode"
+import "github.com/rhine-tech/scene/errcode"
 
 var _eg = errcode.NewErrorGroup(1, "permission")
 

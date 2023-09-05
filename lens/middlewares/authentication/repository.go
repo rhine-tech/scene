@@ -1,6 +1,6 @@
 package authentication
 
-import "github.com/aynakeya/scene"
+import "github.com/rhine-tech/scene"
 
 type AuthenticationRepository interface {
 	scene.Repository

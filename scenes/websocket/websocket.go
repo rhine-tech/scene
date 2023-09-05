@@ -1,8 +1,8 @@
 package websocket
 
 import (
-	"github.com/aynakeya/scene"
 	"github.com/gorilla/websocket"
+	"github.com/rhine-tech/scene"
 	"net/http"
 )
 

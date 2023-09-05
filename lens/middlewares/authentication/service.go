@@ -1,7 +1,7 @@
 package authentication
 
 import (
-	"github.com/aynakeya/scene"
+	"github.com/rhine-tech/scene"
 	"net/http"
 )
 

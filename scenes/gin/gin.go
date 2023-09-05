@@ -1,9 +1,9 @@
 package gin
 
 import (
-	"github.com/aynakeya/scene"
-	"github.com/aynakeya/scene/lens/infrastructure/logger"
 	"github.com/gin-gonic/gin"
+	"github.com/rhine-tech/scene"
+	"github.com/rhine-tech/scene/lens/infrastructure/logger"
 )
 
 const SceneName = "scene.app-container.http.gin"

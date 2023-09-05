@@ -2,7 +2,7 @@ package utils
 
 import (
 	"fmt"
-	"github.com/aynakeya/scene"
+	"github.com/rhine-tech/scene"
 )
 
 func FormatContainerInfo(idx int, container scene.ApplicationContainer) string {

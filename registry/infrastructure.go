@@ -1,9 +1,9 @@
 package registry
 
 import (
-	"github.com/aynakeya/scene/lens/infrastructure/asynctask"
-	"github.com/aynakeya/scene/lens/infrastructure/config"
-	"github.com/aynakeya/scene/lens/infrastructure/logger"
+	"github.com/rhine-tech/scene/lens/infrastructure/asynctask"
+	"github.com/rhine-tech/scene/lens/infrastructure/config"
+	"github.com/rhine-tech/scene/lens/infrastructure/logger"
 )
 
 // Infrastructure

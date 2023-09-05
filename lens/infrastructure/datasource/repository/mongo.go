@@ -3,8 +3,8 @@ package repository
 import (
 	"context"
 	"fmt"
-	"github.com/aynakeya/scene/lens/infrastructure/datasource"
-	"github.com/aynakeya/scene/model"
+	"github.com/rhine-tech/scene/lens/infrastructure/datasource"
+	"github.com/rhine-tech/scene/model"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"

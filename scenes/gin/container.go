@@ -2,14 +2,14 @@ package gin
 
 import (
 	"fmt"
-	"github.com/aynakeya/scene"
-	"github.com/aynakeya/scene/lens/infrastructure/asynctask"
-	"github.com/aynakeya/scene/lens/infrastructure/ingestion"
-	"github.com/aynakeya/scene/lens/infrastructure/logger"
-	"github.com/aynakeya/scene/registry"
-	scommon "github.com/aynakeya/scene/scenes/common"
 	ginCors "github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/rhine-tech/scene"
+	"github.com/rhine-tech/scene/lens/infrastructure/asynctask"
+	"github.com/rhine-tech/scene/lens/infrastructure/ingestion"
+	"github.com/rhine-tech/scene/lens/infrastructure/logger"
+	"github.com/rhine-tech/scene/registry"
+	scommon "github.com/rhine-tech/scene/scenes/common"
 	"time"
 )
 

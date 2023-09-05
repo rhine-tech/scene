@@ -4,10 +4,6 @@
 > 
 > Author: @Aynakeya(Yiyang Lu)
 
-## App
+Still In development.
 
-- delivery
-- service
-  - error handling
-- repository
-  - throw error
+For design details and development diaries, please refer to my [blog](https://www.aynakeya.com/scene-series/)

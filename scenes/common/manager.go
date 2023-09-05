@@ -2,7 +2,7 @@ package common
 
 import (
 	"fmt"
-	"github.com/aynakeya/scene"
+	"github.com/rhine-tech/scene"
 )
 
 type commonStaticApplicationManagerImpl[T scene.Application] struct {

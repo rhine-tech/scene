@@ -2,9 +2,9 @@ package repository
 
 import (
 	"database/sql"
-	"github.com/aynakeya/scene/errcode"
-	"github.com/aynakeya/scene/lens/infrastructure/datasource"
-	"github.com/aynakeya/scene/model"
+	"github.com/rhine-tech/scene/errcode"
+	"github.com/rhine-tech/scene/lens/infrastructure/datasource"
+	"github.com/rhine-tech/scene/model"
 
 	_ "github.com/go-sql-driver/mysql"
 )

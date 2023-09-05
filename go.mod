@@ -1,4 +1,4 @@
-module github.com/aynakeya/scene
+module github.com/rhine-tech/scene
 
 go 1.20
 

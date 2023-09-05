@@ -2,8 +2,8 @@ package common
 
 import (
 	"context"
-	"github.com/aynakeya/scene"
-	"github.com/aynakeya/scene/lens/infrastructure/logger"
+	"github.com/rhine-tech/scene"
+	"github.com/rhine-tech/scene/lens/infrastructure/logger"
 	"net/http"
 	"time"
 )

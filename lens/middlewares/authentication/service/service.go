@@ -1,8 +1,8 @@
 package service
 
 import (
-	"github.com/aynakeya/scene/lens/infrastructure/logger"
-	"github.com/aynakeya/scene/lens/middlewares/authentication"
+	"github.com/rhine-tech/scene/lens/infrastructure/logger"
+	"github.com/rhine-tech/scene/lens/middlewares/authentication"
 )
 
 type authenticationManageService struct {
