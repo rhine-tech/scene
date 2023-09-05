@@ -7,3 +7,5 @@
 Still In development.
 
 For design details and development diaries, please refer to my [blog](https://www.aynakeya.com/scene-series/)
+
+For example usage, please refer to [scene-template](https://github.com/rhine-tech/scene-template)
