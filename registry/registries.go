@@ -1,9 +1,12 @@
 package registry
 
 import (
+	"context"
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/model"
 )
+
+var EmptyContext = context.Background()
 
 // var Repository Registry[string, scene.Repository]
 // var Service Registry[string, scene.Service]

@@ -1,5 +1,10 @@
 package model
 
+type PageParam struct {
+	Page int `json:"page" bson:"page"` // Page is the page number, starts from 1
+	Size int `json:"size" bson:"size"` // Size is the page size
+}
+
 // PaginationParam is a *interface* struct
 // provide interface for all common pagination parameter
 type PaginationParam struct {

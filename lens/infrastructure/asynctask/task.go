@@ -1,9 +1,13 @@
 package asynctask
 
 import (
+	"math"
 	"sync/atomic"
 	"time"
 )
+
+const DefaultMaxPoolSize = math.MaxInt32
+const DefaultInitialPoolSize = 1024
 
 type TaskFunc func() error
 type TaskStatus int32

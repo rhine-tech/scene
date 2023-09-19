@@ -6,5 +6,5 @@ import (
 )
 
 func NewThunnusTaskDispatcher() asynctask.TaskDispatcher {
-	return tuna.NewThunnus(16)
+	return tuna.NewThunnus(asynctask.DefaultInitialPoolSize)
 }

@@ -2,7 +2,7 @@ package scene
 
 type Engine interface {
 	Run() error
-	Start()
+	Start() error
 	Stop()
 
 	ListContainers() []ApplicationContainer

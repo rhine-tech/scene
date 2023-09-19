@@ -43,8 +43,11 @@ func (eg *BasicEngine) Run() error {
 	registry.Validate()
 	eg.logger.Info("scene service initialized successfully")
 	eg.printContainersInfo()
-	eg.logger.Info("starting scene service...")
-	eg.Start()
+	eg.logger.Info("starting scene engine...")
+	if err := eg.Start(); err != nil {
+		eg.logger.Errorf("start scene engine error: %s", err)
+		return err
+	}
 	quit := make(chan os.Signal)
 	signal.Notify(quit, os.Interrupt)
 	sig := <-quit
@@ -54,19 +57,21 @@ func (eg *BasicEngine) Run() error {
 	return nil
 }
 
-func (eg *BasicEngine) Start() {
+func (eg *BasicEngine) Start() error {
 	for _, setupable := range registry.Setupable.AcquireAll() {
 		err := setupable.Setup()
 		if err != nil {
 			eg.logger.Warnf("setup %v error: %v", reflect.TypeOf(setupable), err)
+			return err
 		}
 	}
 	for _, container := range eg.containers {
 		if err := container.Start(); err != nil {
 			eg.logger.Errorf("start container %s error: %s", container.Name(), err)
+			return err
 		}
 	}
-	return
+	return nil
 }
 
 func (eg *BasicEngine) Stop() {
