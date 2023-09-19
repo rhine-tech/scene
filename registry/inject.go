@@ -20,11 +20,12 @@ func TryInject[T any](injectable T) T {
 			fieldVal := indirectVal.Field(i)
 			if (fieldVal.Kind() == reflect.Interface || fieldVal.Kind() == reflect.Ptr) && fieldVal.IsNil() {
 				//fmt.Println("injecting", field.Type.String(), "for", getInterfaceName[T]())
-				var instance interface{}
 				if tagValue == "" {
-					instance = singletonRegistry[field.Type.String()]
-				} else {
-					instance = singletonRegistry[tagValue]
+					tagValue = field.Type.String()
+				}
+				instance, exists := singletonRegistry[tagValue]
+				if !exists {
+					panic("scene registry: no instance found for " + tagValue + " when injecting " + field.Name)
 				}
 				setUnexportedField(fieldVal, instance)
 			}

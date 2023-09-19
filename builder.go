@@ -14,7 +14,7 @@ func (inits InitArray) Inits() {
 
 type AppInit[T Application] func() T
 
-type Buildable interface {
+type IBuilder interface {
 	Init() LensInit
 	Apps() []any
 }
@@ -30,9 +30,9 @@ func (b Builder) Apps() []any {
 	return nil
 }
 
-type BuildableArray []Buildable
+type BuilderArray []IBuilder
 
-func BuildInitArray(builders BuildableArray) InitArray {
+func BuildInitArray(builders BuilderArray) InitArray {
 	var inits InitArray
 	for _, builder := range builders {
 		init := builder.Init()
@@ -43,11 +43,12 @@ func BuildInitArray(builders BuildableArray) InitArray {
 	return inits
 }
 
-func BuildApps[T Application](builders BuildableArray) []T {
+func BuildApps[T Application](builders BuilderArray) []T {
 	var apps []T
 	for _, builder := range builders {
 		for _, app := range builder.Apps() {
-			//fmt.Println(app.(AppInit[T]))
+			// should be AppInit[T], but golang compiler complains about it
+			// So use func() T instead
 			if init, ok := app.(func() T); ok {
 				if init != nil {
 					apps = append(apps, init())
