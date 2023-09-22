@@ -21,6 +21,11 @@ func Use[T any](val T) T {
 	return AcquireSingleton[T](val)
 }
 
+// Load is a shortcut for TryInject(val)
+func Load[T any](val T) T {
+	return TryInject(val)
+}
+
 func Validate() {
 	AcquireInfrastructure()
 }

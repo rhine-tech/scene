@@ -111,6 +111,41 @@ func (p *Permission) IsEqual(perm *Permission) bool {
 	return p.SubPermission.IsEqual(perm.SubPermission)
 }
 
+func (p *Permission) Copy() *Permission {
+	// can be implemented by recursion or ParsePermission
+	// but since it is tail recursion, so I use loop
+
+	// top level permission
+	newPerm := &Permission{Name: "", SubPermission: &Permission{}}
+	// holder is used to hold the previous permission
+	prevPerm := newPerm
+	currPerm := p
+	for currPerm != nil {
+		prevPerm = prevPerm.SubPermission
+		prevPerm.Name = currPerm.Name
+		currPerm = currPerm.SubPermission
+		prevPerm.SubPermission = &Permission{}
+	}
+	// last permission should be nil
+	prevPerm.SubPermission = nil
+	return newPerm.SubPermission
+}
+
+// WithSubPerm returns a new permission with sub permission
+func (p *Permission) WithSubPerm(perm *Permission) *Permission {
+	p1 := p.Copy()
+	p1.SubPermission = perm
+	return p1
+}
+
+// WithSubPermStr returns a new permission with sub permission
+// - perm must be a valid permission string
+func (p *Permission) WithSubPermStr(perm string) *Permission {
+	p1 := p.Copy()
+	p1.SubPermission = MustParsePermission(perm)
+	return p1
+}
+
 type PermissionSet []*Permission
 
 func (ps PermissionSet) HasPermission(perm *Permission) bool {

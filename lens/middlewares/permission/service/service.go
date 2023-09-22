@@ -23,18 +23,22 @@ func (p *PermissionManagerImpl) Setup() error {
 	return nil
 }
 
-func (p *PermissionManagerImpl) HasPermission(owner string, perm string) bool {
-	p1, err := permission.ParsePermission(perm)
-	if err != nil {
-		return false
-	}
+func (p *PermissionManagerImpl) HasPermission(owner string, perm *permission.Permission) bool {
 	perms := p.repo.GetPermissions(owner)
 	for _, p0 := range perms {
-		if p0.HasPermission(p1) {
+		if p0.HasPermission(perm) {
 			return true
 		}
 	}
 	return false
+}
+
+func (p *PermissionManagerImpl) HasPermissionStr(owner string, perm string) bool {
+	p1, err := permission.ParsePermission(perm)
+	if err != nil {
+		return false
+	}
+	return p.HasPermission(owner, p1)
 }
 
 //func (p *PermissionManagerImpl) ListOwners() []string {

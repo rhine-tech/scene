@@ -34,3 +34,7 @@ func (c *Cache[Model]) Set(key string, value Model) error {
 	}
 	return c.icache.Set(c.getKey(key), string(val))
 }
+
+func (c *Cache[Model]) Delete(key string) error {
+	return c.icache.Delete(c.getKey(key))
+}

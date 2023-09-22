@@ -2,8 +2,10 @@ package middleware
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/lens/middlewares/permission"
 	"github.com/rhine-tech/scene/model"
+	sgin "github.com/rhine-tech/scene/scenes/gin"
 	"net/http"
 )
 
@@ -11,12 +13,14 @@ type GinOwnerGetter func(c *gin.Context) permission.PermOwner
 
 func GinRequirePermissionFromRole(srv permission.PermissionService, perm string, getter GinOwnerGetter) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		ctx := sgin.GetContext(c)
 		owner := getter(c)
 		if owner == "" {
 			c.AbortWithStatusJSON(http.StatusForbidden, model.NewErrorCodeResponse(permission.ErrPermissionDenied.WithDetailStr("owner is empty")))
 			return
 		}
-		if !srv.HasPermission(string(owner), perm) {
+		scene.ContextSetValue(ctx, permission.NewPermContext(owner, srv))
+		if !srv.HasPermissionStr(string(owner), perm) {
 			c.AbortWithStatusJSON(http.StatusForbidden, model.NewErrorCodeResponse(permission.ErrPermissionDenied.WithDetailStr(perm)))
 			return
 		}

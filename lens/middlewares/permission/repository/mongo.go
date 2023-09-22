@@ -15,7 +15,7 @@ type mongoImpl struct {
 }
 
 func (m *mongoImpl) RepoImplName() string {
-	return "permission.repository.mongo"
+	return "permission.repository.mongo.nocache"
 }
 
 func NewPermissionMongoRepo(cfg model.DatabaseConfig) permission.PermissionRepository {

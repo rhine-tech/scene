@@ -28,3 +28,7 @@ func (r *RedisCache) Set(key cache.CacheKey, value string) error {
 	}
 	return nil
 }
+
+func (r *RedisCache) Delete(key cache.CacheKey) error {
+	return r.ds.Delete(registry.EmptyContext, string(key))
+}

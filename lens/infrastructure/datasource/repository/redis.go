@@ -47,6 +47,10 @@ func (r *RedisDataRepo) Get(ctx context.Context, key string) (string, error) {
 	return r.rdb.Get(context.Background(), key).Result()
 }
 
+func (r *RedisDataRepo) Delete(ctx context.Context, key string) error {
+	return r.rdb.Del(ctx, key).Err()
+}
+
 func (r *RedisDataRepo) Dispose() error {
 	return r.rdb.Close()
 }

@@ -13,4 +13,5 @@ type CacheKey string
 type ICache interface {
 	Get(key CacheKey) (string, bool)
 	Set(key CacheKey, value string) error
+	Delete(key CacheKey) error
 }

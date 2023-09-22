@@ -1,0 +1,1 @@
+How to get delivery context in service layer?
