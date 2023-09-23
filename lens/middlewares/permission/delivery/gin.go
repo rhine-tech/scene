@@ -37,8 +37,8 @@ func (g *ginApp) Prefix() string {
 }
 
 func (g *ginApp) Create(engine *gin.Engine, router gin.IRouter) error {
-	router.GET("/check", authMw.RequireAuthGlobal(), g.handleCheck)
-	router.GET("/list", authMw.RequireAuthGlobal(), g.handleList)
+	router.GET("/check", authMw.GinRequireStatusAuth(nil), g.handleCheck)
+	router.GET("/list", authMw.GinRequireStatusAuth(nil), g.handleList)
 	return nil
 }
 
@@ -52,13 +52,13 @@ func (g *ginApp) handleCheck(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, model.NewErrorCodeResponse(errcode.ParameterError.WithDetail(err)))
 		return
 	}
-	status := c.MustGet(authMw.ContextKeyStatus).(authentication.LoginStatus)
+	actx, _ := scene.ContextFindValue[authentication.AuthContext](sgin.GetContext(c))
 	c.JSON(200, model.NewDataResponse(gin.H{
 		"permission": param.Perm,
-		"has":        g.permSrv.HasPermission(status.UserID, param.Perm)}))
+		"has":        g.permSrv.HasPermissionStr(actx.UserID, param.Perm)}))
 }
 
 func (g *ginApp) handleList(c *gin.Context) {
-	status := c.MustGet(authMw.ContextKeyStatus).(authentication.LoginStatus)
-	c.JSON(200, model.NewDataResponse(g.permSrv.ListPermissions(status.UserID)))
+	actx, _ := scene.ContextFindValue[authentication.AuthContext](sgin.GetContext(c))
+	c.JSON(200, model.NewDataResponse(g.permSrv.ListPermissions(actx.UserID)))
 }

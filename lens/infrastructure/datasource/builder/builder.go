@@ -18,6 +18,13 @@ func Init() {
 	})
 	registry.Register(
 		repository.NewMongoDataSource(*cfg))
+	registry.Register(
+		repository.NewRedisDataRepo(
+			model.DatabaseConfig{
+				Host:     registry.Config.GetString("scene.redis.host"),
+				Port:     int(registry.Config.GetInt("scene.redis.port")),
+				Database: "0",
+			}))
 
 }
 

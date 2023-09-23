@@ -90,7 +90,7 @@ func (m *commonMarshaller) Unmarshal(val interface{}) error {
 			if v, ok := m.ConfigProvider.GetIntE(field.tag); ok {
 				field.field.SetInt(v)
 			} else {
-				field.field.SetInt(field.defValue.(int64))
+				field.field.SetInt(int64(field.defValue.(int)))
 			}
 		case reflect.Bool:
 			if v, ok := m.ConfigProvider.GetBoolE(field.tag); ok {

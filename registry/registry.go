@@ -1,5 +1,7 @@
 package registry
 
+import "reflect"
+
 func Register[T any](val T) T {
 	for _, registrant := range registrants {
 		registrant(val)
@@ -16,9 +18,38 @@ func MustRegister[T any](val T, err error) T {
 	return Register(val)
 }
 
-// Use is a shortcut for AcquireSingleton[T](val)
+// Use is a function to get instance from registry
+// if val is not nil, then return itself
+// if val is nil, then return the instance from registry
 func Use[T any](val T) T {
+	if canUse(val) {
+		return val
+	}
 	return AcquireSingleton[T](val)
+}
+
+func canUse[T any](val T) bool {
+	rv := reflect.ValueOf(val)
+	actualKind := reflect.TypeOf(new(T)).Elem().Kind()
+	if actualKind == reflect.Struct {
+		return !rv.IsZero()
+	}
+	if actualKind == reflect.Interface {
+		return rv.IsValid()
+	}
+	if actualKind == reflect.Ptr {
+		return !rv.IsNil()
+	}
+	return rv.IsValid()
+	//if actualVal.Kind() == reflect.Interface || actualVal.Kind() == reflect.Ptr {
+	//	return rv.IsValid()
+	//}
+	//if rv.Kind() == reflect.Ptr || rv.Kind() == reflect.Slice || rv.Kind() == reflect.Map || rv.Kind() == reflect.Chan || rv.Kind() == reflect.Func {
+	//	if rv.IsNil() {
+	//		return false
+	//	}
+	//}
+	//return rv.IsValid()
 }
 
 // Load is a shortcut for TryInject(val)

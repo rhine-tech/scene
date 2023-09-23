@@ -19,7 +19,7 @@ func (p *PermissionManagerImpl) Setup() error {
 	if err := p.repo.Status(); err != nil {
 		p.logger.Errorf("Failed to reload permission repository: %s", err.Error())
 	}
-	p.logger.Infof("Permission service is ready")
+	p.logger.Infof("Permission service is ready, using: %s", p.repo.RepoImplName())
 	return nil
 }
 

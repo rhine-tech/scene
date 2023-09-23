@@ -1,5 +1,7 @@
 package scene
 
+import "context"
+
 type AppContainerStatus int
 
 const (
@@ -26,9 +28,9 @@ type ApplicationManager[T Application] interface {
 type ApplicationContainer interface {
 	Name() string // return container name
 
-	Start() error                      // start container
-	Stop(ctx defaultCtx.Context) error // stop container
-	Status() AppContainerStatus        // return container status
+	Start() error                   // start container
+	Stop(ctx context.Context) error // stop container
+	Status() AppContainerStatus     // return container status
 
 	GetAppInfo(appID AppName) Application // return application info
 	ListAppNames() []AppName              // return application names

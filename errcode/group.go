@@ -10,8 +10,8 @@ type ErrorGroup struct {
 var _groups = map[int]string{}
 
 func NewErrorGroup(groupCode int, name string) *ErrorGroup {
-	if _, ok := _groups[groupCode]; ok {
-		panic(fmt.Sprintf("error group %d 已经存在，请更换一个", groupCode))
+	if groupName, ok := _groups[groupCode]; ok {
+		panic(fmt.Sprintf("error group %d(%s) already exists, please choose another one", groupCode, groupName))
 	}
 	eg := &ErrorGroup{
 		Code: groupCode,

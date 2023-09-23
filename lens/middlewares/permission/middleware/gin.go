@@ -5,6 +5,7 @@ import (
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/lens/middlewares/permission"
 	"github.com/rhine-tech/scene/model"
+	"github.com/rhine-tech/scene/registry"
 	sgin "github.com/rhine-tech/scene/scenes/gin"
 	"net/http"
 )
@@ -39,5 +40,14 @@ func GinRequirePermission(perm string, getter GinPermsGetter) gin.HandlerFunc {
 			return
 		}
 		c.AbortWithStatusJSON(http.StatusForbidden, model.NewErrorCodeResponse(permission.ErrPermissionDenied.WithDetailStr(perm)))
+	}
+}
+
+func GinPermContext(getter GinOwnerGetter, srv permission.PermissionService) gin.HandlerFunc {
+	srv = registry.Use(srv)
+	return func(c *gin.Context) {
+		ctx := sgin.GetContext(c)
+		scene.ContextSetValue(ctx, permission.NewPermContext(getter(c), srv))
+		c.Next()
 	}
 }

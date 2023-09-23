@@ -3,15 +3,35 @@ package repository
 import (
 	"github.com/rhine-tech/scene/lens/infrastructure/cache"
 	"github.com/rhine-tech/scene/lens/infrastructure/datasource"
+	"github.com/rhine-tech/scene/lens/infrastructure/logger"
 	"github.com/rhine-tech/scene/registry"
 )
 
 type RedisCache struct {
-	ds datasource.RedisDataSource
+	ds  datasource.RedisDataSource
+	log logger.ILogger `aperture:""`
 }
 
 func NewRedisCache(ds datasource.RedisDataSource) cache.ICache {
 	return &RedisCache{ds: ds}
+}
+
+func (r *RedisCache) RepoImplName() string {
+	return "cache.repository.redis"
+}
+
+func (r *RedisCache) Status() error {
+	return r.ds.Status()
+}
+
+func (r *RedisCache) Setup() error {
+	r.log = r.log.WithPrefix(r.RepoImplName())
+	if err := r.Status(); err != nil {
+		r.log.Warn("setup redis cache failed")
+		return err
+	}
+	r.log.Info("setup redis cache succeed")
+	return nil
 }
 
 func (r *RedisCache) Get(key cache.CacheKey) (string, bool) {

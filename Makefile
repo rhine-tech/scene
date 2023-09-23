@@ -29,8 +29,13 @@ build-all: build-linux build-windows build-macos
 run: build
 	./$(SCENE_EXECUTABLE)
 
+test:
+	go test ./...
+
 clean:
 	rm -f ./$(SCENE_EXECUTABLE)
 	rm -rf ./release
 	rm -rf ./dist
 
+
+.PHONY: build build-linux build-windows build-macos build-all run test clean protogen prebuild

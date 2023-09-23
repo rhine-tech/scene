@@ -6,15 +6,22 @@ import (
 	"github.com/rhine-tech/scene/registry"
 )
 
-// Init is instance of scene.LensInit
-func Init() {
-	registry.RegisterTaskDispatcher(repository.NewThunnusTaskDispatcher())
-}
-
-type Builder struct {
+type Thunnus struct {
 	scene.Builder
 }
 
-func (b Builder) Init() scene.LensInit {
-	return Init
+func (b Thunnus) Init() scene.LensInit {
+	return func() {
+		registry.RegisterTaskDispatcher(repository.NewThunnusTaskDispatcher())
+	}
+}
+
+type Ants struct {
+	scene.Builder
+}
+
+func (b Ants) Init() scene.LensInit {
+	return func() {
+		registry.RegisterTaskDispatcher(repository.NewAntsTaskDispatcher())
+	}
 }

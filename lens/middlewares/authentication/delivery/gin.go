@@ -37,7 +37,7 @@ func (g *ginApp) Create(engine *gin.Engine, router gin.IRouter) error {
 	router.GET("/login", g.handleLogin)
 	router.POST("/login", g.handleLogin)
 	router.GET("/logout", g.handleLogout)
-	router.GET("/info", middleware.RequireAuthGlobal(), g.handleInfo)
+	router.GET("/info", middleware.GinRequireStatusAuth(nil), g.handleInfo)
 	//router.POST("/info", middleware.RequireAuthGlobal(), g.handleEditInfo)
 	//router.POST("/info/list", middleware.RequireAuthGlobal(), g.handleListInfo)
 	//router.POST("/info/delete", middleware.RequireAuthGlobal(), g.handleDeleteInfo)
@@ -90,8 +90,8 @@ func (g *ginApp) handleLogout(c *gin.Context) {
 }
 
 func (g *ginApp) handleInfo(c *gin.Context) {
-	status := c.MustGet(middleware.ContextKeyStatus).(authentication.LoginStatus)
-	info, err := g.infoSrv.InfoById(status.UserID)
+	ctx, _ := scene.ContextFindValue[authentication.AuthContext](sgin.GetContext(c))
+	info, err := g.infoSrv.InfoById(ctx.UserID)
 	if err != nil {
 		c.JSON(http.StatusOK, model.TryErrorCodeResponse(err))
 	}

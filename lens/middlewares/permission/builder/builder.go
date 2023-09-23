@@ -38,3 +38,21 @@ func (b Builder) Apps() []any {
 		InitApp,
 	}
 }
+
+type BuildWithCache struct {
+	scene.Builder
+}
+
+func (b BuildWithCache) Init() scene.LensInit {
+	return func() {
+		_ = registry.Register(repository.NewPermissionMongoRepoCached())
+		_ = registry.Register(
+			permission.PermissionService(&service.PermissionManagerImpl{}))
+	}
+}
+
+func (b BuildWithCache) Apps() []any {
+	return []any{
+		InitApp,
+	}
+}

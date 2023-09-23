@@ -1,7 +1,7 @@
 package cfgur
 
 import (
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"os"
 	"testing"
 )
@@ -19,9 +19,9 @@ func TestCommonMarshaller_Unmarshal(t *testing.T) {
 	os.Setenv("enabled", "true")
 	var ss testStruct
 	err := NewEnvMarshaller().Unmarshal(&ss)
-	assert.Nil(t, err)
-	assert.Equal(t, "test", ss.Username)
-	assert.Equal(t, 1, ss.Value)
-	assert.Equal(t, true, ss.Enabled)
-	assert.Equal(t, 3, ss.Val2)
+	require.Nil(t, err)
+	require.Equal(t, "test", ss.Username)
+	require.Equal(t, 1, ss.Value)
+	require.Equal(t, true, ss.Enabled)
+	require.Equal(t, 3, ss.Val2)
 }

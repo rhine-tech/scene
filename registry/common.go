@@ -2,7 +2,9 @@ package registry
 
 import (
 	"fmt"
+	"golang.org/x/exp/constraints"
 	"reflect"
+	"sort"
 	"sync"
 )
 
@@ -82,9 +84,8 @@ func (r *registry[I, T]) AcquireAll() []T {
 	return vals
 }
 
-type orderedregistry[I comparable, T any] struct {
+type orderedregistry[I constraints.Ordered, T any] struct {
 	*registry[I, T]
-	keys []I
 }
 
 func (r *orderedregistry[I, T]) Register(impl T) {
@@ -101,15 +102,21 @@ func (r *orderedregistry[I, T]) RegisterByEntry(entry I, impl T) {
 	}
 
 	r.registry.registry[entry] = impl
-	r.keys = append(r.keys, entry)
 	r.lock.Unlock()
 }
 
 func (r *orderedregistry[I, T]) AcquireAll() []T {
 	r.lock.RLock()
 	sets := make(map[uintptr]uint8, 0)
-	vals := make([]T, 0, len(r.keys))
-	for _, key := range r.keys {
+	keys := make([]I, 0, len(r.registry.registry))
+	for key := range r.registry.registry {
+		keys = append(keys, key)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i] < keys[j]
+	})
+	vals := make([]T, 0, len(r.registry.registry))
+	for _, key := range keys {
 		if _, ok := sets[reflect.ValueOf(r.registry.registry[key]).Pointer()]; ok {
 			continue
 		}
@@ -120,13 +127,12 @@ func (r *orderedregistry[I, T]) AcquireAll() []T {
 	return vals
 }
 
-func NewOrderedRegistry[I comparable, T any](naming naming[I, T]) Registry[I, T] {
+func NewOrderedRegistry[I constraints.Ordered, T any](naming naming[I, T]) Registry[I, T] {
 	return &orderedregistry[I, T]{
 		registry: &registry[I, T]{
 			registry: make(map[I]T),
 			naming:   naming,
 		},
-		keys: make([]I, 0),
 	}
 }
 

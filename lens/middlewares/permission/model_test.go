@@ -16,9 +16,8 @@ func TestPermission_MarshalJSON(t *testing.T) {
 	var pset2 PermissionSet
 	err = json.Unmarshal(val, &pset2)
 	require.Nil(t, err)
-	fmt.Println(pset[0], pset2[0])
 	require.True(t, pset[0].IsEqual(pset2[0]))
-	require.Equal(t, `["a.b.c","a.b.c.d"]`, string(val))
+	require.Equal(t, `["a:b:c","a:b:c:d"]`, string(val))
 }
 
 func TestPermission_Tree(t *testing.T) {
@@ -31,8 +30,8 @@ func TestPermission_Tree(t *testing.T) {
 		MustParsePermission("r:s:t"),
 	}
 
-	x, _ := json.MarshalIndent(BuildTreeFromSet(perms), "", "  ")
-	fmt.Println(string(x))
+	_, err := json.MarshalIndent(BuildTreeFromSet(perms), "", "  ")
+	require.NoError(t, err)
 }
 
 func TestPermissionSet_Cleanup(t *testing.T) {

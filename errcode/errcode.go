@@ -42,7 +42,7 @@ var _codes = map[int]string{}
 
 func CreateError(code int, msg string) *Error {
 	if _, ok := _codes[code]; ok {
-		panic(fmt.Sprintf("error %d 已经存在，请更换一个", code))
+		panic(fmt.Sprintf("error %d already exists, please choose another code", code))
 	}
 	_codes[code] = msg
 	return &Error{Code: code, Message: msg}

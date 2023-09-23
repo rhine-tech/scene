@@ -50,3 +50,13 @@ func (d DatabaseConfig) MysqlDSN() string {
 	}
 	return sb.String()
 }
+
+func (d DatabaseConfig) RedisDSN() string {
+	var sb strings.Builder
+	sb.WriteString("redis://")
+	if d.Username != "" {
+		sb.WriteString(fmt.Sprintf("%s:%s@", d.Username, d.Password))
+	}
+	sb.WriteString(fmt.Sprintf("%s:%d/%s", d.Host, d.Port, d.Database))
+	return sb.String()
+}

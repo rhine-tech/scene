@@ -1,7 +1,5 @@
 package permission
 
-// TODO using cache for permission service
-
 type PermContext struct {
 	Owner PermOwner
 	srv   PermissionService

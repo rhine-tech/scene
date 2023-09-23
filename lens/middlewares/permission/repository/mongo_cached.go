@@ -8,6 +8,7 @@ import (
 	"github.com/rhine-tech/scene/lens/infrastructure/datasource"
 	"github.com/rhine-tech/scene/lens/infrastructure/logger"
 	"github.com/rhine-tech/scene/lens/middlewares/permission"
+	"github.com/rhine-tech/scene/registry"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -22,15 +23,15 @@ type mongoImplCached struct {
 	log   logger.ILogger `aperture:""`
 }
 
-func NewPermissionMongoRepoCached(ds datasource.MongoDataSource, cache cache.ICache) permission.PermissionRepository {
-	return &mongoImplCached{
-		mgDrv: repos.UseMongoDatasourceCollection[permDBModel](ds, "permissions"),
-		cache: caches.UseCache[[]string]("permissions", cache),
-	}
+func NewPermissionMongoRepoCached() permission.PermissionRepository {
+	return &mongoImplCached{}
 }
 
 func (m *mongoImplCached) Setup() error {
 	m.log = m.log.WithPrefix(m.RepoImplName())
+	m.mgDrv = repos.UseMongoDatasourceCollection[permDBModel](
+		registry.Use(datasource.MongoDataSource(nil)), "permissions")
+	m.cache = caches.UseCache[[]string]("permissions", registry.Use(cache.ICache(nil)))
 	return nil
 }
 
