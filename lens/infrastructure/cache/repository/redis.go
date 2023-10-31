@@ -27,7 +27,7 @@ func (r *RedisCache) Status() error {
 func (r *RedisCache) Setup() error {
 	r.log = r.log.WithPrefix(r.RepoImplName())
 	if err := r.Status(); err != nil {
-		r.log.Warn("setup redis cache failed")
+		r.log.Error("setup redis cache failed")
 		return err
 	}
 	r.log.Info("setup redis cache succeed")

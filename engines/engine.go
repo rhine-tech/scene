@@ -13,6 +13,10 @@ import (
 	"strings"
 )
 
+var (
+	errStartEngineFailed = fmt.Errorf("failed to start engine")
+)
+
 type BasicEngine struct {
 	logger     logger.ILogger
 	containers map[string]scene.ApplicationContainer
@@ -45,8 +49,8 @@ func (eg *BasicEngine) Run() error {
 	eg.printContainersInfo()
 	eg.logger.Info("starting scene engine...")
 	if err := eg.Start(); err != nil {
-		eg.logger.Errorf("start scene engine error: %s", err)
-		return err
+		eg.logger.Error("start scene engine encounter an error, please fix error and restart")
+		return errStartEngineFailed
 	}
 	quit := make(chan os.Signal)
 	signal.Notify(quit, os.Interrupt)
@@ -61,7 +65,7 @@ func (eg *BasicEngine) Start() error {
 	for _, setupable := range registry.Setupable.AcquireAll() {
 		err := setupable.Setup()
 		if err != nil {
-			eg.logger.Warnf("setup %v error: %v", reflect.TypeOf(setupable), err)
+			eg.logger.Errorf("setup %v error: %v", reflect.TypeOf(setupable), err)
 			return err
 		}
 	}

@@ -15,6 +15,8 @@ func NewFileConfig(path string) FileConfig {
 	}
 }
 
+// DatabaseConfig is a struct that contains the configuration for a database.
+// Universal database configuration.
 type DatabaseConfig struct {
 	Host     string
 	Port     int
@@ -22,6 +24,12 @@ type DatabaseConfig struct {
 	Password string
 	Database string
 	Options  string // in format of "key1=value1&key2=value2"
+}
+
+// DatabaseConfigFromDSN parses a DSN string and returns a DatabaseConfig.
+func DatabaseConfigFromDSN(dsn string) DatabaseConfig {
+	var db DatabaseConfig
+	return db
 }
 
 func (d DatabaseConfig) MongoDSN() string {

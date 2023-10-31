@@ -34,7 +34,7 @@ func (r *RedisDataRepo) DataSourceName() string {
 func (r *RedisDataRepo) Setup() error {
 	r.log = r.log.WithPrefix(r.DataSourceName())
 	if err := r.Status(); err != nil {
-		r.log.Warnf("establish connection %s failed", r.cfg.RedisDSN())
+		r.log.Errorf("establish connection %s failed", r.cfg.RedisDSN())
 		return err
 	}
 	r.log.Infof("establish connection %s succeed", r.cfg.RedisDSN())
