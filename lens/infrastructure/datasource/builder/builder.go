@@ -35,3 +35,30 @@ type Builder struct {
 func (b Builder) Init() scene.LensInit {
 	return Init
 }
+
+type mysqlBuilder struct {
+	scene.Builder
+	prefix string
+	cfg    model.DatabaseConfig
+}
+
+func (m *mysqlBuilder) Init() scene.LensInit {
+	return func() {
+		if m.prefix != "" {
+			err := registry.Config.UnmarshalWithPrefix(m.prefix, &m.cfg)
+			if err != nil {
+				panic(err)
+			}
+		}
+		registry.Register(
+			repository.NewMysqlDatasource(m.cfg))
+	}
+}
+
+func MysqlBuilder(cfg model.DatabaseConfig) scene.IBuilder {
+	return &mysqlBuilder{cfg: cfg}
+}
+
+func MysqlBuilderFromConfig(prefix string) scene.IBuilder {
+	return &mysqlBuilder{prefix: prefix}
+}

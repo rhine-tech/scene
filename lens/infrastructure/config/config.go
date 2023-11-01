@@ -1,5 +1,7 @@
 package config
 
+const TagName = "scfg"
+
 type ConfigProvider interface {
 	Init() error
 	GetString(key string) string
@@ -13,4 +15,5 @@ type ConfigProvider interface {
 type ConfigUnmarshaler interface {
 	ConfigProvider
 	Unmarshal(val interface{}) error
+	UnmarshalWithPrefix(prefix string, val interface{}) error
 }

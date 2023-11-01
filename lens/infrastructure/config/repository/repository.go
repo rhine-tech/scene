@@ -6,13 +6,13 @@ import (
 )
 
 func NewDotEnvironmentCfgur(filenames ...string) config.ConfigUnmarshaler {
-	return cfgur.NewDotenvMarshaller(filenames...)
+	return &commonMarshaller{cfgur.NewDotenvMarshaller(filenames...)}
 }
 
 func NewJsonCfgur(filename string) config.ConfigUnmarshaler {
-	return cfgur.NewJsonMarshaller(filename)
+	return &commonMarshaller{cfgur.NewJsonMarshaller(filename)}
 }
 
 func NewEnvironmentCfgur() config.ConfigUnmarshaler {
-	return cfgur.NewEnvMarshaller()
+	return &commonMarshaller{cfgur.NewEnvMarshaller()}
 }

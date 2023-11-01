@@ -53,7 +53,11 @@ func canUse[T any](val T) bool {
 }
 
 // Load is a shortcut for TryInject(val)
+// Load will also check if val can add to registry
 func Load[T any](val T) T {
+	for _, registrant := range registrants {
+		registrant(val)
+	}
 	return TryInject(val)
 }
 

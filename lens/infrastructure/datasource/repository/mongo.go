@@ -32,7 +32,7 @@ func (m *MongoRepo) DataSourceName() string {
 func (m *MongoRepo) Setup() error {
 	m.log = m.log.WithPrefix(m.DataSourceName())
 	if m.err != nil {
-		m.log.Warnf("%s init failed", m.cfg.MongoDSN())
+		m.log.Errorf("%s init failed", m.cfg.MongoDSN())
 		return m.err
 	}
 	serverAPI := options.ServerAPI(options.ServerAPIVersion1)

@@ -2,8 +2,8 @@ package repository
 
 import (
 	"database/sql"
-	"github.com/rhine-tech/scene/errcode"
 	"github.com/rhine-tech/scene/lens/infrastructure/datasource"
+	"github.com/rhine-tech/scene/lens/infrastructure/logger"
 	"github.com/rhine-tech/scene/model"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -11,19 +11,15 @@ import (
 
 type MysqlRepo struct {
 	db  *sql.DB
+	cfg model.DatabaseConfig
 	err error
+	log logger.ILogger `aperture:""`
 }
 
-func NewMysqlRepo(cfg model.DatabaseConfig) datasource.MysqlDataSource {
-	db, err := sql.Open("mysql", cfg.MysqlDSN())
-	repo := &MysqlRepo{
-		db:  db,
-		err: err,
+func NewMysqlDatasource(cfg model.DatabaseConfig) datasource.MysqlDataSource {
+	return &MysqlRepo{
+		cfg: cfg,
 	}
-	if err != nil {
-		return repo
-	}
-	return repo
 }
 
 func (m *MysqlRepo) Dispose() error {
@@ -31,9 +27,17 @@ func (m *MysqlRepo) Dispose() error {
 }
 
 func (m *MysqlRepo) Setup() error {
+	m.log = m.log.WithPrefix(m.DataSourceName())
 	if m.err != nil {
-		return errcode.RepositoryInitError.WithDetail(m.err)
+		m.log.Errorf("\"%s\" init failed: %s", m.cfg.MysqlDSN(), m.err)
+		return m.err
 	}
+	m.db, m.err = sql.Open("mysql", m.cfg.MysqlDSN())
+	if m.err != nil {
+		m.log.Errorf("\"%s\" failed to open: %s", m.cfg.MysqlDSN(), m.err)
+		return m.err
+	}
+	m.log.Infof("establish connection to \"%s\" succeed", m.cfg.MysqlDSN())
 	return nil
 }
 

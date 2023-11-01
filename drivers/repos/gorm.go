@@ -5,17 +5,23 @@ import (
 	"github.com/rhine-tech/scene/model"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 type GormRepo[T any] struct {
 	*gorm.DB
 }
 
-func UseGormMysql[T any](ds datasource.MysqlDataSource) *GormRepo[T] {
-	gormDb, _ := gorm.Open(mysql.New(mysql.Config{
+func UseGormMysql[T any](ds datasource.MysqlDataSource) (*GormRepo[T], error) {
+	gormDb, err := gorm.Open(mysql.New(mysql.Config{
 		Conn: ds.Connection(),
-	}), &gorm.Config{})
-	return &GormRepo[T]{DB: gormDb}
+	}), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
+	if err == nil {
+		err = gormDb.AutoMigrate(new(T))
+	}
+	return &GormRepo[T]{DB: gormDb}, err
 }
 
 func (m *GormRepo[T]) FindPagination(scope func(db *gorm.DB) *gorm.DB, offset int, limit int) (result model.PaginationResult[T], err error) {
