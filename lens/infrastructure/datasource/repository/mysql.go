@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/lens/infrastructure/datasource"
 	"github.com/rhine-tech/scene/lens/infrastructure/logger"
 	"github.com/rhine-tech/scene/model"
@@ -27,7 +28,7 @@ func (m *MysqlRepo) Dispose() error {
 }
 
 func (m *MysqlRepo) Setup() error {
-	m.log = m.log.WithPrefix(m.DataSourceName())
+	m.log = m.log.WithPrefix(m.DataSourceName().String())
 	if m.err != nil {
 		m.log.Errorf("\"%s\" init failed: %s", m.cfg.MysqlDSN(), m.err)
 		return m.err
@@ -41,8 +42,8 @@ func (m *MysqlRepo) Setup() error {
 	return nil
 }
 
-func (m *MysqlRepo) DataSourceName() string {
-	return "datasource.repository.mysql"
+func (m *MysqlRepo) DataSourceName() scene.ImplName {
+	return scene.NewRepoImplNameNoVer("datasource", "mysql")
 }
 
 func (m *MysqlRepo) Status() error {

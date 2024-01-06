@@ -17,12 +17,13 @@ func NewFileConfig(path string) FileConfig {
 
 // DatabaseConfig is a struct that contains the configuration for a database.
 // Universal database configuration.
+// "scfg" is the tag name used in infrastructure/config.
 type DatabaseConfig struct {
 	Host     string `scfg:"host"`
 	Port     int    `scfg:"port"`
-	Username string `scfg:"username" default:""`
-	Password string `scfg:"password" default:""`
-	Database string `scfg:"database" default:"scene"`
+	Username string `scfg:"username"`
+	Password string `scfg:"password"`
+	Database string `scfg:"database,default=scene"`
 	Options  string `scfg:"options"` // in format of "key1=value1&key2=value2"
 }
 

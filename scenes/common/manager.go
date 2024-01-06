@@ -6,12 +6,12 @@ import (
 )
 
 type commonStaticApplicationManagerImpl[T scene.Application] struct {
-	apps map[scene.AppName]T
+	apps map[string]T
 }
 
 func NewAppManager[T scene.Application](apps ...T) scene.ApplicationManager[T] {
 	m := &commonStaticApplicationManagerImpl[T]{
-		apps: make(map[scene.AppName]T),
+		apps: make(map[string]T),
 	}
 	_ = m.LoadApps(apps...)
 	return m
@@ -29,7 +29,7 @@ func (c *commonStaticApplicationManagerImpl[T]) LoadApps(apps ...T) error {
 }
 
 func (c *commonStaticApplicationManagerImpl[T]) LoadApp(app T) error {
-	id := app.Name()
+	id := app.Name().Identifier()
 	_, ok := c.apps[id]
 	if ok {
 		panic(fmt.Sprintf("app %s already exists", string(id)))
@@ -39,7 +39,7 @@ func (c *commonStaticApplicationManagerImpl[T]) LoadApp(app T) error {
 	return nil
 }
 
-func (c *commonStaticApplicationManagerImpl[T]) GetApp(appID scene.AppName) T {
+func (c *commonStaticApplicationManagerImpl[T]) GetApp(appID string) T {
 	app, ok := c.apps[appID]
 	if !ok {
 		return *new(T)
@@ -47,8 +47,8 @@ func (c *commonStaticApplicationManagerImpl[T]) GetApp(appID scene.AppName) T {
 	return app
 }
 
-func (c *commonStaticApplicationManagerImpl[T]) ListAppNames() []scene.AppName {
-	ids := make([]scene.AppName, 0, len(c.apps))
+func (c *commonStaticApplicationManagerImpl[T]) ListAppNames() []string {
+	ids := make([]string, 0, len(c.apps))
 	for id := range c.apps {
 		ids = append(ids, id)
 	}

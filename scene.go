@@ -20,8 +20,8 @@ type ApplicationManager[T Application] interface {
 	Name() string             // return registry name
 	LoadApp(app T) error      // load application
 	LoadApps(apps ...T) error // load applications
-	GetApp(appID AppName) T   // return application
-	ListAppNames() []AppName  // return application names
+	GetApp(appID string) T    // return application
+	ListAppNames() []string   // return application names
 	ListApps() []T            // return list of applications
 }
 
@@ -32,6 +32,6 @@ type ApplicationContainer interface {
 	Stop(ctx context.Context) error // stop container
 	Status() AppContainerStatus     // return container status
 
-	GetAppInfo(appID AppName) Application // return application info
-	ListAppNames() []AppName              // return application names
+	GetAppInfo(appID string) Application // return application info
+	ListAppNames() []string              // return application names
 }

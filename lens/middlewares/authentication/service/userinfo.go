@@ -1,14 +1,17 @@
 package service
 
-import "github.com/rhine-tech/scene/lens/middlewares/authentication"
+import (
+	"github.com/rhine-tech/scene"
+	"github.com/rhine-tech/scene/lens/middlewares/authentication"
+)
 
 type userInfoServiceImpl struct {
 	authRepo authentication.AuthenticationRepository
 	infoRepo authentication.UserInfoRepository
 }
 
-func (u *userInfoServiceImpl) SrvImplName() string {
-	return "authentication.service.userinfo.v1"
+func (u *userInfoServiceImpl) SrvImplName() scene.ImplName {
+	return scene.NewSrvImplName("authentication", "UserInfoService", "v1")
 }
 
 func (u *userInfoServiceImpl) InfoById(userId string) (authentication.UserInfo, error) {

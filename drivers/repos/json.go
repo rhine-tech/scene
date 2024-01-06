@@ -2,6 +2,7 @@ package repos
 
 import (
 	"encoding/json"
+	"github.com/rhine-tech/scene/lens/infrastructure/datasource"
 	"github.com/rhine-tech/scene/model"
 	"os"
 )
@@ -46,4 +47,28 @@ func NewJsonRepository[T any](cfg model.FileConfig) *CommonJsonRepo[T] {
 		Cfg: cfg,
 	}
 	return rp
+}
+
+type JsonDatasourceRepo[T any] struct {
+	datasource datasource.JsonDataSource
+	Data       T
+}
+
+func UseJsonDatasourceRepo[T any](datasource datasource.JsonDataSource) *JsonDatasourceRepo[T] {
+	rp := &JsonDatasourceRepo[T]{datasource: datasource, Data: *new(T)}
+	return rp
+}
+
+func (j *JsonDatasourceRepo[T]) LoadData() (T, error) {
+	var data T
+	content, err := j.datasource.Load()
+	if err != nil {
+		return data, err
+	}
+	err = json.Unmarshal(content, &data)
+	if err != nil {
+		return data, err
+	}
+	j.Data = data
+	return data, err
 }

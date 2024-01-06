@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/redis/go-redis/v9"
+	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/lens/infrastructure/datasource"
 	"github.com/rhine-tech/scene/lens/infrastructure/logger"
 	"github.com/rhine-tech/scene/model"
@@ -27,12 +28,12 @@ func NewRedisDataRepo(cfg model.DatabaseConfig) datasource.RedisDataSource {
 	return &RedisDataRepo{rdb: rdb, cfg: cfg}
 }
 
-func (r *RedisDataRepo) DataSourceName() string {
-	return "datasource.repository.redis"
+func (r *RedisDataRepo) DataSourceName() scene.ImplName {
+	return scene.NewRepoImplNameNoVer("datasource", "redis")
 }
 
 func (r *RedisDataRepo) Setup() error {
-	r.log = r.log.WithPrefix(r.DataSourceName())
+	r.log = r.log.WithPrefix(r.DataSourceName().String())
 	if err := r.Status(); err != nil {
 		r.log.Errorf("establish connection %s failed", r.cfg.RedisDSN())
 		return err

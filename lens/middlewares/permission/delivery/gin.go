@@ -28,8 +28,8 @@ func NewGinApp(logger logger.ILogger, permSrv permission.PermissionService) sgin
 	}
 }
 
-func (g *ginApp) Name() scene.AppName {
-	return "permission.app.gin"
+func (g *ginApp) Name() scene.ImplName {
+	return scene.NewAppImplNameNoVer("permission", "gin")
 }
 
 func (g *ginApp) Prefix() string {

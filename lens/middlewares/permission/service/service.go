@@ -1,6 +1,7 @@
 package service
 
 import (
+	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/lens/infrastructure/logger"
 	"github.com/rhine-tech/scene/lens/middlewares/permission"
 )
@@ -10,12 +11,12 @@ type PermissionManagerImpl struct {
 	repo   permission.PermissionRepository `aperture:""`
 }
 
-func (p *PermissionManagerImpl) SrvImplName() string {
-	return "permission.service.PermissionService"
+func (p *PermissionManagerImpl) SrvImplName() scene.ImplName {
+	return scene.NewSrvImplNameNoVer("permission", "PermissionService")
 }
 
 func (p *PermissionManagerImpl) Setup() error {
-	p.logger = p.logger.WithPrefix(p.SrvImplName())
+	p.logger = p.logger.WithPrefix(p.SrvImplName().Identifier())
 	if err := p.repo.Status(); err != nil {
 		p.logger.Errorf("Failed to reload permission repository: %s", err.Error())
 	}

@@ -11,3 +11,31 @@ func Init(configFile string) {
 		panic(err)
 	}
 }
+
+func InitDotEnv(configFile string) {
+	registry.RegisterConfig(repository.NewDotEnvironmentCfgur(configFile))
+	if err := registry.Config.Init(); err != nil {
+		panic(err)
+	}
+}
+
+func InitJson(configFile string) {
+	registry.RegisterConfig(repository.NewJsonCfgur(configFile))
+	if err := registry.Config.Init(); err != nil {
+		panic(err)
+	}
+}
+
+func InitEnv() {
+	registry.RegisterConfig(repository.NewEnvironmentCfgur())
+	if err := registry.Config.Init(); err != nil {
+		panic(err)
+	}
+}
+
+func InitINI(configFile string) {
+	registry.RegisterConfig(repository.NewINICfgur(configFile))
+	if err := registry.Config.Init(); err != nil {
+		panic(err)
+	}
+}

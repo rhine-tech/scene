@@ -39,11 +39,11 @@ func (h *HttpAppContainer[T]) Name() string {
 	return "scene.app-container.http"
 }
 
-func (h *HttpAppContainer[T]) GetAppInfo(appID scene.AppName) scene.Application {
+func (h *HttpAppContainer[T]) GetAppInfo(appID string) scene.Application {
 	return h.manager.GetApp(appID)
 }
 
-func (h *HttpAppContainer[T]) ListAppNames() []scene.AppName {
+func (h *HttpAppContainer[T]) ListAppNames() []string {
 	return h.manager.ListAppNames()
 }
 

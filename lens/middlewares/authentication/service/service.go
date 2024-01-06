@@ -1,6 +1,7 @@
 package service
 
 import (
+	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/lens/infrastructure/logger"
 	"github.com/rhine-tech/scene/lens/middlewares/authentication"
 )
@@ -11,7 +12,7 @@ type authenticationManageService struct {
 }
 
 func (a *authenticationManageService) Setup() error {
-	a.logger = a.logger.WithPrefix(a.SrvImplName())
+	a.logger = a.logger.WithPrefix(a.SrvImplName().Identifier())
 	if err := a.repo.Status(); err != nil {
 		a.logger.Errorf("repo init failed: %v", err)
 	} else {
@@ -20,8 +21,8 @@ func (a *authenticationManageService) Setup() error {
 	return nil
 }
 
-func (a *authenticationManageService) SrvImplName() string {
-	return "authentication.service.AuthenticationManageService"
+func (a *authenticationManageService) SrvImplName() scene.ImplName {
+	return scene.NewSrvImplNameNoVer("authentication", "AuthenticationManageService")
 }
 
 func NewAuthenticationService(

@@ -2,6 +2,7 @@ package service
 
 import (
 	"github.com/golang-jwt/jwt"
+	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/lens/middlewares/authentication"
 	"net/http"
 	"time"
@@ -21,8 +22,8 @@ func NewJWTLoginStatusService() authentication.LoginStatusService {
 	return &jwtAuthStatusService{}
 }
 
-func (j *jwtAuthStatusService) SrvImplName() string {
-	return "jwtAuthStatusService"
+func (j *jwtAuthStatusService) SrvImplName() scene.ImplName {
+	return scene.NewSrvImplName("authentication", "LoginStatusService", "jwtAuthStatusService")
 }
 
 func (j *jwtAuthStatusService) Verify(request *http.Request) (status authentication.LoginStatus, err error) {

@@ -16,3 +16,7 @@ func NewJsonCfgur(filename string) config.ConfigUnmarshaler {
 func NewEnvironmentCfgur() config.ConfigUnmarshaler {
 	return &commonMarshaller{cfgur.NewEnvMarshaller()}
 }
+
+func NewINICfgur(filename string) config.ConfigUnmarshaler {
+	return &commonMarshaller{cfgur.NewIniConfig(filename)}
+}

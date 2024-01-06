@@ -13,6 +13,7 @@ type Thunnus struct {
 func (b Thunnus) Init() scene.LensInit {
 	return func() {
 		registry.RegisterTaskDispatcher(repository.NewThunnusTaskDispatcher())
+		registry.Register(repository.NewCommonCronTaskDispatcher(registry.TaskDispatcher))
 	}
 }
 
@@ -23,5 +24,6 @@ type Ants struct {
 func (b Ants) Init() scene.LensInit {
 	return func() {
 		registry.RegisterTaskDispatcher(repository.NewAntsTaskDispatcher())
+		registry.Register(repository.NewCommonCronTaskDispatcher(registry.TaskDispatcher))
 	}
 }

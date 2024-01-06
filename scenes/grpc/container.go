@@ -33,11 +33,11 @@ func (g *grpcContainer) Name() string {
 	return SceneName
 }
 
-func (h *grpcContainer) ListAppNames() []scene.AppName {
+func (h *grpcContainer) ListAppNames() []string {
 	return h.manager.ListAppNames()
 }
 
-func (g *grpcContainer) GetAppInfo(appID scene.AppName) scene.Application {
+func (g *grpcContainer) GetAppInfo(appID string) scene.Application {
 	return g.manager.GetApp(appID)
 }
 

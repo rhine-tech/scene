@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/lens/infrastructure/datasource"
 	"github.com/rhine-tech/scene/lens/infrastructure/logger"
 	"github.com/rhine-tech/scene/model"
@@ -25,12 +26,12 @@ func NewMongoDataSource(cfg model.DatabaseConfig) datasource.MongoDataSource {
 	return repo
 }
 
-func (m *MongoRepo) DataSourceName() string {
-	return "datasource.repository.mongo"
+func (j *MongoRepo) DataSourceName() scene.ImplName {
+	return scene.NewRepoImplNameNoVer("datasource", "mongo")
 }
 
 func (m *MongoRepo) Setup() error {
-	m.log = m.log.WithPrefix(m.DataSourceName())
+	m.log = m.log.WithPrefix(m.DataSourceName().String())
 	if m.err != nil {
 		m.log.Errorf("%s init failed", m.cfg.MongoDSN())
 		return m.err
