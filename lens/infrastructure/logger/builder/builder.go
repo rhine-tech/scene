@@ -26,3 +26,16 @@ type Builder struct {
 func (b Builder) Init() scene.LensInit {
 	return Init
 }
+
+type ZapBuilder struct {
+	scene.Builder
+}
+
+func (b ZapBuilder) Init() scene.LensInit {
+	return func() {
+		cfg := registry.AcquireSingleton(config.ConfigUnmarshaler(nil))
+		l := repository.NewZapColoredLogger()
+		l.SetLogLevel(logger.LogLevel(cfg.GetInt("scene.log.level")))
+		registry.RegisterLogger(l.WithPrefix(cfg.GetString("scene.name")))
+	}
+}
