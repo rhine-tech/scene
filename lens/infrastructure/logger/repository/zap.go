@@ -39,9 +39,7 @@ func customLevelEncoder(level zapcore.Level, enc zapcore.PrimitiveArrayEncoder) 
 }
 
 func customNamedEncoder(loggerName string, enc zapcore.PrimitiveArrayEncoder) {
-	{
-		enc.AppendString(logger.LogColorMagenta.Add("[" + loggerName + "]"))
-	}
+	enc.AppendString(logger.LogColorMagenta.Add("[" + loggerName + "]"))
 }
 
 type zapLoggerImpl struct {

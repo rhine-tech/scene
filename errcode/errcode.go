@@ -18,6 +18,14 @@ type Error struct {
 	Detail  string
 }
 
+func (e *Error) Is(target error) bool {
+	er, ok := target.(*Error)
+	if !ok {
+		return false
+	}
+	return e.Code == er.Code
+}
+
 func (e *Error) MarshalJSON() ([]byte, error) {
 	return []byte(fmt.Sprintf("err%d", e.Code)), nil
 }
