@@ -19,7 +19,7 @@ func Init() {
 }
 
 type DummyBuilder struct {
-	scene.Builder
+	scene.ModuleFactory
 }
 
 func (b DummyBuilder) Init() scene.LensInit {
@@ -29,7 +29,7 @@ func (b DummyBuilder) Init() scene.LensInit {
 }
 
 type Builder struct {
-	scene.Builder
+	scene.ModuleFactory
 }
 
 func (b Builder) Init() scene.LensInit {

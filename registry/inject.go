@@ -18,6 +18,8 @@ func TryInject[T any](injectable T) T {
 		field := typ.Field(i)
 		if tagValue, ok := field.Tag.Lookup(InjectTag); ok {
 			fieldVal := indirectVal.Field(i)
+			// if field is nil, inject it. otherwise keep the value
+			// field value can only be Interface or Ptr
 			if (fieldVal.Kind() == reflect.Interface || fieldVal.Kind() == reflect.Ptr) && fieldVal.IsNil() {
 				//fmt.Println("injecting", field.Type.String(), "for", getInterfaceName[T]())
 				if tagValue == "" {

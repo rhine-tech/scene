@@ -2,7 +2,6 @@ package permission
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -44,7 +43,8 @@ func TestPermissionSet_Cleanup(t *testing.T) {
 		MustParsePermission("b:d:e"),
 		MustParsePermission("r:s:t"),
 	}
-	fmt.Println(perms.Cleanup())
+	require.Equal(t, 7, len(perms))
+	require.Equal(t, 5, len(perms.Cleanup()))
 }
 
 func TestPermission_Copy(t *testing.T) {

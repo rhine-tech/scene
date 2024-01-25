@@ -7,6 +7,7 @@ import (
 	"os"
 )
 
+// Deprecated: use mongo one instead
 type JSONAuthenticationRepository struct {
 	cfg   authentication.AuthRepoConfig
 	users map[string]*authentication.User

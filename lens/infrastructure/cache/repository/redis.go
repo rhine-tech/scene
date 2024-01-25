@@ -8,8 +8,8 @@ import (
 )
 
 type RedisCache struct {
-	ds  datasource.RedisDataSource
-	log logger.ILogger `aperture:""`
+	ds  datasource.RedisDataSource `aperture:""`
+	log logger.ILogger             `aperture:""`
 }
 
 func NewRedisCache(ds datasource.RedisDataSource) cache.ICache {

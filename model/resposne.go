@@ -10,6 +10,7 @@ type PageResult[T any] struct {
 // provide interface for all common pagination response
 type PaginationResult[T any] struct {
 	Total   int `json:"total" bson:"total"`
-	Results []T `json:"results" bson:"results"`
 	Offset  int `json:"offset" bson:"offset"`
+	Results []T `json:"results" bson:"results"`
+	Count   int `json:"count" bson:"count"`
 }

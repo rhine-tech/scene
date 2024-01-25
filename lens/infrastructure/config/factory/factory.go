@@ -1,4 +1,4 @@
-package builder
+package factory
 
 import (
 	"github.com/rhine-tech/scene/lens/infrastructure/config/repository"

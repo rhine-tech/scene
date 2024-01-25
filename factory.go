@@ -14,25 +14,34 @@ func (inits InitArray) Inits() {
 
 type AppInit[T Application] func() T
 
-type IBuilder interface {
+type IModuleDependencyProvider[T any] interface {
+	Provide() T
+}
+
+type IModuleFactory interface {
 	Init() LensInit
 	Apps() []any
 }
 
-type Builder struct {
+type IDefaultableModuleFactory interface {
+	IModuleFactory
+	Default() IDefaultableModuleFactory
 }
 
-func (b Builder) Init() LensInit {
+type ModuleFactory struct {
+}
+
+func (b ModuleFactory) Init() LensInit {
 	return nil
 }
 
-func (b Builder) Apps() []any {
+func (b ModuleFactory) Apps() []any {
 	return nil
 }
 
-type BuilderArray []IBuilder
+type ModuleFactoryArray []IModuleFactory
 
-func BuildInitArray(builders BuilderArray) InitArray {
+func BuildInitArray(builders ModuleFactoryArray) InitArray {
 	var inits InitArray
 	for _, builder := range builders {
 		init := builder.Init()
@@ -43,7 +52,7 @@ func BuildInitArray(builders BuilderArray) InitArray {
 	return inits
 }
 
-func BuildApps[T Application](builders BuilderArray) []T {
+func BuildApps[T Application](builders ModuleFactoryArray) []T {
 	var apps []T
 	for _, builder := range builders {
 		for _, app := range builder.Apps() {

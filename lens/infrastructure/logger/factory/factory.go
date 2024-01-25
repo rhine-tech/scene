@@ -1,4 +1,4 @@
-package builder
+package factory
 
 import (
 	"github.com/rhine-tech/scene"
@@ -19,23 +19,34 @@ func Init() {
 	registry.RegisterLogger(l.WithPrefix(cfg.GetString("scene.name")))
 }
 
-type Builder struct {
-	scene.Builder
+// LogrusFactory
+// Deprecated: FunctionName is deprecated.
+type LogrusFactory struct {
+	scene.ModuleFactory
 }
 
-func (b Builder) Init() scene.LensInit {
+func (b LogrusFactory) Init() scene.LensInit {
 	return Init
 }
 
-type ZapBuilder struct {
-	scene.Builder
+type ZapFactory struct {
+	scene.ModuleFactory
+	LogLevel logger.LogLevel
+	Prefix   string
 }
 
-func (b ZapBuilder) Init() scene.LensInit {
+func (b ZapFactory) Default() scene.IDefaultableModuleFactory {
+	cfg := registry.AcquireSingleton(config.ConfigUnmarshaler(nil))
+	return ZapFactory{
+		LogLevel: logger.LogLevel(cfg.GetInt("scene.log.level")),
+		Prefix:   cfg.GetString("scene.name"),
+	}
+}
+
+func (b ZapFactory) Init() scene.LensInit {
 	return func() {
-		cfg := registry.AcquireSingleton(config.ConfigUnmarshaler(nil))
 		l := repository.NewZapColoredLogger()
-		l.SetLogLevel(logger.LogLevel(cfg.GetInt("scene.log.level")))
-		registry.RegisterLogger(l.WithPrefix(cfg.GetString("scene.name")))
+		l.SetLogLevel(b.LogLevel)
+		registry.RegisterLogger(l.WithPrefix(b.Prefix))
 	}
 }

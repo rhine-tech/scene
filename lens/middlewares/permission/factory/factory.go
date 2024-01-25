@@ -1,4 +1,4 @@
-package builder
+package factory
 
 import (
 	"github.com/rhine-tech/scene"
@@ -25,25 +25,26 @@ func InitApp() sgin.GinApplication {
 	return delivery.NewGinApp(registry.AcquireSingleton(logger.ILogger(nil)), registry.AcquireSingleton(permission.PermissionService(nil)))
 }
 
-type Builder struct {
-	scene.Builder
+// Deprecated: use MongoNoCache instead
+type MongoNoCache struct {
+	scene.ModuleFactory
 }
 
-func (b Builder) Init() scene.LensInit {
+func (b MongoNoCache) Init() scene.LensInit {
 	return Init
 }
 
-func (b Builder) Apps() []any {
+func (b MongoNoCache) Apps() []any {
 	return []any{
 		InitApp,
 	}
 }
 
-type BuildWithCache struct {
-	scene.Builder
+type MongoCached struct {
+	scene.ModuleFactory
 }
 
-func (b BuildWithCache) Init() scene.LensInit {
+func (b MongoCached) Init() scene.LensInit {
 	return func() {
 		_ = registry.Register(repository.NewPermissionMongoRepoCached())
 		_ = registry.Register(
@@ -51,7 +52,7 @@ func (b BuildWithCache) Init() scene.LensInit {
 	}
 }
 
-func (b BuildWithCache) Apps() []any {
+func (b MongoCached) Apps() []any {
 	return []any{
 		InitApp,
 	}

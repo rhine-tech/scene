@@ -3,26 +3,34 @@ package repository
 import (
 	"context"
 	"github.com/google/uuid"
-	"github.com/rhine-tech/scene/drivers/repos"
+	"github.com/rhine-tech/scene/lens/infrastructure/datasource"
 	"github.com/rhine-tech/scene/lens/middlewares/authentication"
-	"github.com/rhine-tech/scene/model"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type mongoImpl struct {
-	*repos.MongoRepo
+	ds         datasource.MongoDataSource `aperture:""`
 	collection *mongo.Collection
 }
 
-func NewMongoAuthenticationRepository(cfg model.DatabaseConfig) authentication.AuthenticationManageRepository {
+func (m *mongoImpl) RepoImplName() string {
+	return "authentication.repository.mongo"
+}
+
+func (m *mongoImpl) Status() error {
+	return m.ds.Status()
+}
+
+func (m *mongoImpl) Setup() error {
+	m.collection = m.ds.Collection("users")
+	return nil
+}
+
+func NewMongoAuthenticationRepository(ds datasource.MongoDataSource) authentication.AuthenticationManageRepository {
 	repo := &mongoImpl{
-		MongoRepo: repos.NewMongoRepo(cfg),
+		ds: ds,
 	}
-	if repo.Status() != nil {
-		return repo
-	}
-	repo.collection = repo.Database().Collection("users")
 	return repo
 }
 
@@ -107,22 +115,27 @@ func (m *mongoImpl) UpdateUser(user authentication.User) error {
 }
 
 type mongoInfoImpl struct {
-	*repos.MongoRepo
+	ds         datasource.MongoDataSource `aperture:""`
 	collection *mongo.Collection
 }
 
-func (m *mongoImpl) RepoImplName() string {
-	return "authentication.repository.mongo"
+func (m *mongoInfoImpl) RepoImplName() string {
+	return "authentication.repository.mongo.UserInfo"
 }
 
-func NewUserInfoRepository(cfg model.DatabaseConfig) authentication.UserInfoRepository {
+func (m *mongoInfoImpl) Status() error {
+	return m.ds.Status()
+}
+
+func (m *mongoInfoImpl) Setup() error {
+	m.collection = m.ds.Collection("user_info")
+	return m.ds.Status()
+}
+
+func NewUserInfoRepository(ds datasource.MongoDataSource) authentication.UserInfoRepository {
 	repo := &mongoInfoImpl{
-		MongoRepo: repos.NewMongoRepo(cfg),
+		ds: ds,
 	}
-	if repo.Status() != nil {
-		return repo
-	}
-	repo.collection = repo.Database().Collection("user_info")
 	return repo
 }
 

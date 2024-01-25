@@ -170,12 +170,15 @@ func (ps PermissionSet) HasPermissionStr(perm string) bool {
 	return false
 }
 
+// Merge merges two permission set
 func (ps PermissionSet) Merge(other PermissionSet) PermissionSet {
 	x := mapset.NewSet[*Permission](ps...).Union(
 		mapset.NewSet[*Permission](other...))
 	return x.ToSlice()
 }
 
+// Cleanup cleans up the permission set
+// - if permission set already have a top level permission, then remove all sub permissions
 func (ps PermissionSet) Cleanup() PermissionSet {
 	topPerm := make(map[string]*Permission)
 	childMap := make(map[string]PermissionSet)

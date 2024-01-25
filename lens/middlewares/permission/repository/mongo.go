@@ -9,6 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+// Deprecated: use cached repository instead
 type mongoImpl struct {
 	*repos.MongoRepo
 	collection *mongo.Collection
