@@ -3,6 +3,7 @@ package repository
 import (
 	"encoding/json"
 	"github.com/google/uuid"
+	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/lens/middlewares/authentication"
 	"os"
 )
@@ -14,8 +15,8 @@ type JSONAuthenticationRepository struct {
 	err   error
 }
 
-func (jar *JSONAuthenticationRepository) RepoImplName() string {
-	return "json"
+func (jar *JSONAuthenticationRepository) RepoImplName() scene.ImplName {
+	return scene.NewRepoImplName("authentication", "AuthenticationManageRepository", "json")
 }
 
 func (jar *JSONAuthenticationRepository) Status() error {

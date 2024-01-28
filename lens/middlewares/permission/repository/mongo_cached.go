@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/drivers/caches"
 	"github.com/rhine-tech/scene/drivers/repos"
 	"github.com/rhine-tech/scene/lens/infrastructure/cache"
@@ -28,15 +29,15 @@ func NewPermissionMongoRepoCached() permission.PermissionRepository {
 }
 
 func (m *mongoImplCached) Setup() error {
-	m.log = m.log.WithPrefix(m.RepoImplName())
+	m.log = m.log.WithPrefix(m.RepoImplName().Identifier())
 	m.mgDrv = repos.UseMongoDatasourceCollection[permDBModel](
 		registry.Use(datasource.MongoDataSource(nil)), "permissions")
 	m.cache = caches.UseCache[[]string]("permissions", registry.Use(cache.ICache(nil)))
 	return nil
 }
 
-func (m *mongoImplCached) RepoImplName() string {
-	return "permission.repository.mongo.cached"
+func (m *mongoImplCached) RepoImplName() scene.ImplName {
+	return scene.NewRepoImplName("permission", "PermissionRepository", "mongo_cached")
 }
 
 func (m *mongoImplCached) Status() error {
@@ -53,7 +54,7 @@ func (m *mongoImplCached) GetPermissions(owner string) []*permission.Permission 
 			return []*permission.Permission{}
 		}
 		permStrs = result.Permissions
-		_ = m.cache.Set(owner, permStrs)
+		_ = m.cache.Set(owner, permStrs, cache.NoExpiration)
 	}
 	var permissions []*permission.Permission
 	for _, perm := range permStrs {

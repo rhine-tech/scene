@@ -10,6 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
+// Deprecated: use MongoDatasourceCollection instead
 type MongoRepo struct {
 	Cfg    model.DatabaseConfig
 	client *mongo.Client
@@ -47,10 +48,6 @@ func (m *MongoRepo) Dispose() error {
 	return nil
 }
 
-func (m *MongoRepo) RepoImplName() string {
-	return "mongo"
-}
-
 func (m *MongoRepo) Status() error {
 	if m.err != nil {
 		return m.err
@@ -65,6 +62,7 @@ func (m *MongoRepo) Database() *mongo.Database {
 	return m.db
 }
 
+// Deprecated: use MongoDatasourceCollection instead
 type MongoCollectionRepo[T any] struct {
 	Cfg    model.DatabaseConfig
 	client *mongo.Client
@@ -132,10 +130,6 @@ func (m *MongoCollectionRepo[T]) Dispose() error {
 	return nil
 }
 
-func (m *MongoCollectionRepo[T]) RepoImplName() string {
-	return "mongo"
-}
-
 func (m *MongoCollectionRepo[T]) Status() error {
 	if m.err != nil {
 		return m.err
@@ -159,10 +153,6 @@ func UseMongoDatasourceCollection[T any](datasource datasource.MongoDataSource, 
 	rp := &MongoDatasourceCollection[T]{datasource: datasource}
 	rp.coll = datasource.Collection(coll)
 	return rp
-}
-
-func (m *MongoDatasourceCollection[T]) RepoImplName() string {
-	return "mongo"
 }
 
 func (m *MongoDatasourceCollection[T]) Status() error {

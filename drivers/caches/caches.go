@@ -3,6 +3,7 @@ package caches
 import (
 	"encoding/json"
 	"github.com/rhine-tech/scene/lens/infrastructure/cache"
+	"time"
 )
 
 type Cache[Model any] struct {
@@ -27,12 +28,12 @@ func (c *Cache[Model]) Get(key string) (Model, bool) {
 	return val, json.Unmarshal([]byte(strVal), &val) == nil
 }
 
-func (c *Cache[Model]) Set(key string, value Model) error {
+func (c *Cache[Model]) Set(key string, value Model, expiration time.Duration) error {
 	val, err := json.Marshal(value)
 	if err != nil {
 		return err
 	}
-	return c.icache.Set(c.getKey(key), string(val))
+	return c.icache.Set(c.getKey(key), string(val), expiration)
 }
 
 func (c *Cache[Model]) Delete(key string) error {

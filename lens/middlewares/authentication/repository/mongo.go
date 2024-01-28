@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"github.com/google/uuid"
+	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/lens/infrastructure/datasource"
 	"github.com/rhine-tech/scene/lens/middlewares/authentication"
 	"go.mongodb.org/mongo-driver/bson"
@@ -14,8 +15,8 @@ type mongoImpl struct {
 	collection *mongo.Collection
 }
 
-func (m *mongoImpl) RepoImplName() string {
-	return "authentication.repository.mongo"
+func (m *mongoImpl) RepoImplName() scene.ImplName {
+	return scene.NewRepoImplName("authentication", "AuthenticationManageRepository", "mongo")
 }
 
 func (m *mongoImpl) Status() error {
@@ -119,8 +120,8 @@ type mongoInfoImpl struct {
 	collection *mongo.Collection
 }
 
-func (m *mongoInfoImpl) RepoImplName() string {
-	return "authentication.repository.mongo.UserInfo"
+func (m *mongoInfoImpl) RepoImplName() scene.ImplName {
+	return scene.NewRepoImplName("authentication", "UserInfo", "mongo")
 }
 
 func (m *mongoInfoImpl) Status() error {

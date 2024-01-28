@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/drivers/repos"
 	"github.com/rhine-tech/scene/lens/middlewares/permission"
 	"github.com/rhine-tech/scene/model"
@@ -15,8 +16,8 @@ type mongoImpl struct {
 	collection *mongo.Collection
 }
 
-func (m *mongoImpl) RepoImplName() string {
-	return "permission.repository.mongo.nocache"
+func (m *mongoImpl) RepoImplName() scene.ImplName {
+	return scene.NewRepoImplName("permission", "PermissionRepository", "mongo")
 }
 
 func NewPermissionMongoRepo(cfg model.DatabaseConfig) permission.PermissionRepository {

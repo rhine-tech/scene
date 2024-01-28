@@ -17,7 +17,7 @@ type Application interface {
 }
 
 type Repository interface {
-	RepoImplName() string
+	RepoImplName() ImplName
 	Status() error
 }
 

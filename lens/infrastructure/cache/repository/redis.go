@@ -1,10 +1,12 @@
 package repository
 
 import (
+	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/lens/infrastructure/cache"
 	"github.com/rhine-tech/scene/lens/infrastructure/datasource"
 	"github.com/rhine-tech/scene/lens/infrastructure/logger"
 	"github.com/rhine-tech/scene/registry"
+	"time"
 )
 
 type RedisCache struct {
@@ -16,8 +18,8 @@ func NewRedisCache(ds datasource.RedisDataSource) cache.ICache {
 	return &RedisCache{ds: ds}
 }
 
-func (r *RedisCache) RepoImplName() string {
-	return "cache.repository.redis"
+func (r *RedisCache) RepoImplName() scene.ImplName {
+	return scene.NewRepoImplName("cache", "ICache", "redis")
 }
 
 func (r *RedisCache) Status() error {
@@ -25,7 +27,7 @@ func (r *RedisCache) Status() error {
 }
 
 func (r *RedisCache) Setup() error {
-	r.log = r.log.WithPrefix(r.RepoImplName())
+	r.log = r.log.WithPrefix(r.RepoImplName().Identifier())
 	if err := r.Status(); err != nil {
 		r.log.Error("setup redis cache failed")
 		return err
@@ -42,8 +44,8 @@ func (r *RedisCache) Get(key cache.CacheKey) (string, bool) {
 	return val, true
 }
 
-func (r *RedisCache) Set(key cache.CacheKey, value string) error {
-	if err := r.ds.Set(registry.EmptyContext, string(key), value, -1); err != nil {
+func (r *RedisCache) Set(key cache.CacheKey, value string, expiration time.Duration) error {
+	if err := r.ds.Set(registry.EmptyContext, string(key), value, expiration); err != nil {
 		return cache.ErrFailedToSetCache.WithDetail(err)
 	}
 	return nil

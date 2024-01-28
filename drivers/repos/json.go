@@ -2,11 +2,13 @@ package repos
 
 import (
 	"encoding/json"
+	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/lens/infrastructure/datasource"
 	"github.com/rhine-tech/scene/model"
 	"os"
 )
 
+// Deprecated: use JsonDatasourceRepo one instead
 type CommonJsonRepo[T any] struct {
 	Cfg  model.FileConfig
 	Data T
@@ -34,14 +36,15 @@ func (j *CommonJsonRepo[T]) Dispose() error {
 	return os.WriteFile(j.Cfg.Path, content, 0644)
 }
 
-func (j *CommonJsonRepo[T]) RepoImplName() string {
-	return "json"
+func (j *CommonJsonRepo[T]) RepoImplName() scene.ImplName {
+	return scene.NewRepoImplName("json", "JsonRepository", "json")
 }
 
 func (j *CommonJsonRepo[T]) Status() error {
 	return j.Err
 }
 
+// Deprecated: use JsonDatasourceRepo one instead
 func NewJsonRepository[T any](cfg model.FileConfig) *CommonJsonRepo[T] {
 	rp := &CommonJsonRepo[T]{
 		Cfg: cfg,
