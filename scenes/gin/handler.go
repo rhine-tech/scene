@@ -88,7 +88,10 @@ func Handle[A GinApplication, T Request[A]](app A, request T) gin.HandlerFunc {
 		// === here starts the business logic layer ===
 		resp, err := r.Process(ctx)
 		if err != nil {
-			ec := errcode.UnknownError.WithDetail(err)
+			ec, ok := err.(*errcode.Error)
+			if !ok {
+				ec = errcode.UnknownError.WithDetail(err)
+			}
 			_ = ctx.Error(ec)
 			ctx.JSON(http.StatusOK, model.NewErrorCodeResponse(ec))
 			return
