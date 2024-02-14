@@ -145,13 +145,15 @@ func (m *MongoCollectionRepo[T]) Database() *mongo.Database {
 }
 
 type MongoDatasourceCollection[T any] struct {
-	datasource datasource.MongoDataSource
-	coll       *mongo.Collection
+	datasource     datasource.MongoDataSource
+	coll           *mongo.Collection
+	CollectionName string
 }
 
 func UseMongoDatasourceCollection[T any](datasource datasource.MongoDataSource, coll string) *MongoDatasourceCollection[T] {
 	rp := &MongoDatasourceCollection[T]{datasource: datasource}
 	rp.coll = datasource.Collection(coll)
+	rp.CollectionName = coll
 	return rp
 }
 
