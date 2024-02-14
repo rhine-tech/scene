@@ -31,7 +31,7 @@ func (r *RequestQuery) Binding() binding.Binding { return binding.Query }
 type uriBindingPlaceHolder struct{}
 
 func (u uriBindingPlaceHolder) Name() string {
-	return "uri_place_holder"
+	return "uri_placeholder"
 }
 
 func (u uriBindingPlaceHolder) Bind(request *http.Request, obj any) error {
@@ -59,7 +59,7 @@ func Handle[A GinApplication, T Request[A]](app A, request T) gin.HandlerFunc {
 		// ======== here is the delivery layer, so https status code will be standard http code ========
 		// bind parameter with request
 		// process request, explicitly bind uri parameter
-		if r.Binding().Name() == "uri_place_holder" {
+		if r.Binding().Name() == "uri_placeholder" {
 			if err := ctx.ShouldBindUri(r); err != nil {
 				ec := errcode.ParameterError.WithDetail(err)
 				_ = ctx.Error(ec)
