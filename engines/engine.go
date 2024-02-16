@@ -107,11 +107,11 @@ func (eg *BasicEngine) GetContainer(name string) scene.ApplicationContainer {
 }
 
 func (eg *BasicEngine) AddContainer(container scene.ApplicationContainer) error {
-	if _, exists := eg.containers[container.Name()]; exists {
+	if _, exists := eg.containers[container.Name().Identifier()]; exists {
 		panic(fmt.Sprintf("container %s already exists", container.Name()))
 	}
 	eg.logger.Infof("add container %s", container.Name())
-	eg.containers[container.Name()] = container
+	eg.containers[container.Name().Identifier()] = container
 	return nil
 }
 

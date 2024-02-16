@@ -9,25 +9,25 @@ import (
 )
 
 // Init is instance of scene.LensInit
-func Init() {
-	cfg := registry.AcquireSingleton(config.ConfigUnmarshaler(nil))
-	l := repository.NewLogrusLogger(
-		cfg.GetString("scene.log.file"), cfg.GetInt("scene.log.max_size"),
-		cfg.GetBool("scene.log.panic"),
-	)
-	l.SetLogLevel(logger.LogLevel(cfg.GetInt("scene.log.level")))
-	registry.RegisterLogger(l.WithPrefix(cfg.GetString("scene.name")))
-}
+//func Init() {
+//	cfg := registry.AcquireSingleton(config.ConfigUnmarshaler(nil))
+//	l := repository.NewLogrusLogger(
+//		cfg.GetString("scene.log.file"), cfg.GetInt("scene.log.max_size"),
+//		cfg.GetBool("scene.log.panic"),
+//	)
+//	l.SetLogLevel(logger.LogLevel(cfg.GetInt("scene.log.level")))
+//	registry.RegisterLogger(l.WithPrefix(cfg.GetString("scene.name")))
+//}
 
 // LogrusFactory
 // Deprecated: FunctionName is deprecated.
-type LogrusFactory struct {
-	scene.ModuleFactory
-}
-
-func (b LogrusFactory) Init() scene.LensInit {
-	return Init
-}
+//type LogrusFactory struct {
+//	scene.ModuleFactory
+//}
+//
+//func (b LogrusFactory) Init() scene.LensInit {
+//	return Init
+//}
 
 type ZapFactory struct {
 	scene.ModuleFactory

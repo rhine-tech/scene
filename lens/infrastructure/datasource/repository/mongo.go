@@ -43,11 +43,11 @@ func (m *MongoRepo) Setup() error {
 	// Create a new client and connect to the server
 	m.client, m.err = mongo.Connect(context.TODO(), opts)
 	if m.err != nil {
-		m.log.Warnf("%s init failed", m.cfg.MongoDSN())
+		m.log.Warnf("'%s' init failed", m.cfg.MongoDSN())
 		return m.err
 	}
 	m.db = m.client.Database(m.cfg.Database)
-	m.log.Infof("establish connection to %s succeed", m.cfg.MongoDSN())
+	m.log.Infof("establish connection to '%s' succeed", m.cfg.MongoDSN())
 	return nil
 }
 

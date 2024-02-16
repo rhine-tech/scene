@@ -11,8 +11,8 @@ type websocketContainer struct {
 	*scommon.HttpAppContainer[WebsocketApplication]
 }
 
-func (g *websocketContainer) Name() string {
-	return "scene.app-container.websocket"
+func (g *websocketContainer) Name() scene.ImplName {
+	return scene.NewSceneImplNameNoVer("websocket")
 }
 
 func NewContainer(addr string, apps ...WebsocketApplication) scene.ApplicationContainer {

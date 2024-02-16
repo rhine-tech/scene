@@ -33,10 +33,11 @@ It is used to identify an implementation of a repository, service or application
 type ImplType string
 
 const (
-	ImplTypeCore = ImplType("core")
-	ImplTypeRepo = ImplType("repo")
-	ImplTypeSrv  = ImplType("srv")
-	ImplTypeApp  = ImplType("app")
+	ImplTypeCore  = ImplType("core")
+	ImplTypeRepo  = ImplType("repo")
+	ImplTypeSrv   = ImplType("srv")
+	ImplTypeApp   = ImplType("app")
+	ImplTypeScene = ImplType("scene")
 )
 
 type NamableImplementation interface {
@@ -85,6 +86,14 @@ func NewImplNameNoVer(implType ImplType, module, implementation string) ImplName
 		Implementation: implementation,
 		Version:        "default",
 	}
+}
+
+func NewSceneImplName(module, implementation, version string) ImplName {
+	return NewImplName(ImplTypeScene, module, implementation, version)
+}
+
+func NewSceneImplNameNoVer(module, implementation string) ImplName {
+	return NewImplNameNoVer(ImplTypeScene, module, implementation)
 }
 
 func NewCoreImplName(module, implementation, version string) ImplName {

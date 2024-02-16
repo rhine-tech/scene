@@ -1,15 +1,14 @@
 package gin
 
 import (
-	"fmt"
-	ginCors "github.com/gin-contrib/cors"
+	"context"
+	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/rhine-tech/scene"
-	"github.com/rhine-tech/scene/lens/infrastructure/asynctask"
-	"github.com/rhine-tech/scene/lens/infrastructure/ingestion"
 	"github.com/rhine-tech/scene/lens/infrastructure/logger"
 	"github.com/rhine-tech/scene/registry"
-	scommon "github.com/rhine-tech/scene/scenes/common"
+	"github.com/rhine-tech/scene/utils"
+	"net/http"
 	"time"
 )
 
@@ -20,80 +19,104 @@ func createGinEngine() *gin.Engine {
 		gin.SetMode(gin.ReleaseMode)
 	}
 	engine := gin.New()
-	engine.Use(gin.Recovery(), newGinLogger(registry.Logger))
-	corsCfg := ginCors.DefaultConfig()
-	corsCfg.AllowHeaders = []string{"*"}
-	corsCfg.AllowAllOrigins = true
-	engine.Use(ginCors.New(corsCfg))
 	return engine
 }
 
-type ginLogMessage struct {
-	logger.LogMessage
-	Method         string `json:"method"`
-	Path           string `json:"path"`
-	Query          string `json:"query"`
-	SourceIP       string `json:"source_ip"`
-	ResponseStatus int    `json:"response_status"`
-	Latency        int64  `json:"latency"`
-}
-
-func newGinLogger(log logger.ILogger) gin.HandlerFunc {
-	log = log.WithPrefix("scene.app-container.http.gin")
-	ingestor := registry.AcquireSingleton(ingestion.CommonIngestor(nil)).UsePipe("scene.app-container.http.gin")
-	taskDispatcher := registry.AcquireSingleton(asynctask.TaskDispatcher(nil))
-
-	return func(c *gin.Context) {
-		// Start timer
-		start := time.Now()
-		c.Next()
-
-		latency := time.Now().Sub(start)
-
-		msg := fmt.Sprintf("%s %d %s %s \"%s\" (%dms)",
-			c.ClientIP(), c.Writer.Status(), c.Request.Method, c.Request.URL.String(),
-			c.Errors.ByType(gin.ErrorTypePrivate).String(),
-			latency.Milliseconds())
-
-		log.Info(msg)
-		taskDispatcher.Run(func() error {
-			err := ingestor.Ingest(ginLogMessage{
-				LogMessage: logger.LogMessage{
-					Timestamp: start.Unix(),
-					Level:     logger.LogLevelInfo,
-					Prefix:    SceneName,
-					Message:   msg,
-				},
-				Method:         c.Request.Method,
-				Path:           c.Request.URL.Path,
-				Query:          c.Request.URL.RawQuery,
-				SourceIP:       c.ClientIP(),
-				ResponseStatus: c.Writer.Status(),
-				Latency:        latency.Milliseconds(),
-			})
-			if err != nil {
-				log.Errorf("failed to ingest log message: %v", err)
-			}
-			return nil
-		})
-	}
-}
-
 type ginContainer struct {
-	*scommon.HttpAppContainer[GinApplication]
+	addr   string
+	engine *gin.Engine
+	apps   []GinApplication
+	logger logger.ILogger
+	server *http.Server
 }
 
-func (g *ginContainer) Name() string {
-	return SceneName
+func (c *ginContainer) Name() scene.ImplName {
+	return scene.NewSceneImplNameNoVer("gin", "container")
 }
 
-func NewAppContainer(addr string, apps ...GinApplication) scene.ApplicationContainer {
+func (c *ginContainer) startApps() error {
+	for _, app := range c.apps {
+		if err := app.Create(c.engine, c.engine.Group(app.Prefix())); err != nil {
+			c.logger.Errorf("failed to create %s: %s", app.Name(), err.Error())
+		} else {
+			c.logger.Infof("%s created", app.Name())
+		}
+	}
+	return nil
+}
+
+func (c *ginContainer) stopApps() error {
+	for _, app := range c.apps {
+		if err := app.Destroy(); err != nil {
+			c.logger.Errorf("%s failed to destroy: %s", app.Name(), err.Error())
+		} else {
+			c.logger.Infof("%s destroyed", app.Name())
+		}
+	}
+	return nil
+}
+
+func (c *ginContainer) Start() error {
+	if utils.IsValidAddress(c.addr) {
+		registry.Logger.Errorf("invalid address: %s", c.addr)
+		return errors.New("invalid address " + c.addr)
+	}
+	if err := c.startApps(); err != nil {
+		return err
+	}
+	c.server = &http.Server{
+		Addr:    c.addr,
+		Handler: c.engine,
+	}
+	go func() {
+		c.logger.Infof("http server started, listen on 'http://%s'", utils.PrettyAddress(c.addr))
+		if err := c.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			c.logger.Errorf("listen: %s\n", err)
+		}
+	}()
+	return nil
+}
+
+func (c *ginContainer) Stop(ctx context.Context) error {
+
+	if err := c.stopApps(); err != nil {
+		return err
+	}
+
+	subctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	if err := c.server.Shutdown(subctx); err != nil {
+		c.logger.Infof("Server Shutdown:", err)
+		return err
+	}
+	return nil
+}
+
+func (g *ginContainer) ListAppNames() []string {
+	names := make([]string, 0, len(g.apps))
+	for _, app := range g.apps {
+		names = append(names, app.Name().Identifier())
+	}
+	return names
+}
+
+func NewAppContainer(
+	addr string,
+	apps []GinApplication,
+	options ...GinOption,
+) scene.ApplicationContainer {
 	ginEngine := createGinEngine()
-	return &ginContainer{scommon.NewHttpAppContainer(
-		scommon.NewAppManager(apps...),
-		NewAppFactory(ginEngine),
-		registry.Logger.WithPrefix(SceneName),
-		addr,
-		ginEngine,
-	)}
+	for _, opt := range options {
+		if err := opt(ginEngine); err != nil {
+			panic(err)
+		}
+	}
+	container := &ginContainer{
+		addr:   addr,
+		engine: ginEngine,
+		apps:   apps,
+	}
+	container.logger = registry.Logger.WithPrefix(container.Name().Identifier())
+	return container
 }

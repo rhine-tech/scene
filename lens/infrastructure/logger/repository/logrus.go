@@ -77,9 +77,9 @@ func NewLogrusLogger(fileName string, maxSize int64, redirectStderr bool) *Logru
 	}
 }
 
-func (l *LogrusLogger) WithPrefix(prefix string) logger.ILogger {
-	return &LogrusLogger{
-		Entry:  l.Entry.WithField("Module", prefix),
-		module: prefix,
-	}
-}
+//func (l *LogrusLogger) WithPrefix(prefix string) logger.ILogger {
+//	return &LogrusLogger{
+//		Entry:  l.Entry.WithField("Module", prefix),
+//		module: prefix,
+//	}
+//}

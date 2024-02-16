@@ -35,19 +35,19 @@ func (r *RedisDataRepo) DataSourceName() scene.ImplName {
 func (r *RedisDataRepo) Setup() error {
 	r.log = r.log.WithPrefix(r.DataSourceName().String())
 	if err := r.Status(); err != nil {
-		r.log.Errorf("establish connection %s failed", r.cfg.RedisDSN())
+		r.log.Errorf("establish connection '%s' failed", r.cfg.RedisDSN())
 		return err
 	}
-	r.log.Infof("establish connection %s succeed", r.cfg.RedisDSN())
+	r.log.Infof("establish connection '%s' succeed", r.cfg.RedisDSN())
 	return nil
 }
 
 func (r *RedisDataRepo) Dispose() error {
 	err := r.rdb.Close()
 	if err != nil {
-		r.log.Warnf("close %s failed", r.cfg.RedisDSN())
+		r.log.Warnf("close '%s' failed", r.cfg.RedisDSN())
 	}
-	r.log.Infof("close connection %s succeed", r.cfg.RedisDSN())
+	r.log.Infof("close connection '%s' succeed", r.cfg.RedisDSN())
 	return err
 }
 

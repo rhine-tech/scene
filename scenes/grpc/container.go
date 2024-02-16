@@ -29,8 +29,8 @@ func NewContainer(
 	}
 }
 
-func (g *grpcContainer) Name() string {
-	return SceneName
+func (g *grpcContainer) Name() scene.ImplName {
+	return scene.NewSceneImplNameNoVer("grpc")
 }
 
 func (h *grpcContainer) ListAppNames() []string {

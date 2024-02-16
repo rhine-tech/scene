@@ -26,12 +26,12 @@ type ApplicationManager[T Application] interface {
 }
 
 type ApplicationContainer interface {
-	Name() string // return container name
+	Name() ImplName // return container name
 
 	Start() error                   // start container
 	Stop(ctx context.Context) error // stop container
-	Status() AppContainerStatus     // return container status
+	// Status() AppContainerStatus     // return container status
 
-	GetAppInfo(appID string) Application // return application info
-	ListAppNames() []string              // return application names
+	// GetAppInfo(appID string) Application // return application info
+	ListAppNames() []string // return application names
 }

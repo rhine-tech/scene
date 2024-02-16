@@ -8,6 +8,18 @@ import (
 type DummyLogger struct {
 }
 
+func (l *DummyLogger) DebugW(message string, field logger.LogField) {
+}
+
+func (l *DummyLogger) InfoW(message string, field logger.LogField) {
+}
+
+func (l *DummyLogger) WarnW(message string, field logger.LogField) {
+}
+
+func (l *DummyLogger) ErrorW(message string, field logger.LogField) {
+}
+
 func (l *DummyLogger) Debug(args ...interface{}) {
 	fmt.Println(args...)
 }

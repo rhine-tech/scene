@@ -60,6 +60,22 @@ func (n *namedZapLoggerImpl) SetLogLevel(level logger.LogLevel) {
 	n.parent.SetLogLevel(level)
 }
 
+func (z *namedZapLoggerImpl) DebugW(message string, field logger.LogField) {
+	z.Debugw(message, field.Flatten()...)
+}
+
+func (z *namedZapLoggerImpl) InfoW(message string, field logger.LogField) {
+	z.Infow(message, field.Flatten()...)
+}
+
+func (z *namedZapLoggerImpl) WarnW(message string, field logger.LogField) {
+	z.Warnw(message, field.Flatten()...)
+}
+
+func (z *namedZapLoggerImpl) ErrorW(message string, field logger.LogField) {
+	z.Errorw(message, field.Flatten()...)
+}
+
 func NewZapLogger() logger.ILogger {
 	zapLog, _ := zap.NewProduction()
 	sugar := zapLog.Sugar()
@@ -95,4 +111,20 @@ func (z *zapLoggerImpl) WithPrefix(prefix string) logger.ILogger {
 func (z *zapLoggerImpl) SetLogLevel(level logger.LogLevel) {
 	z.level.SetLevel(_logLevelMap[level])
 	return
+}
+
+func (z *zapLoggerImpl) DebugW(message string, field logger.LogField) {
+	z.Debugw(message, field.Flatten()...)
+}
+
+func (z *zapLoggerImpl) InfoW(message string, field logger.LogField) {
+	z.Infow(message, field.Flatten()...)
+}
+
+func (z *zapLoggerImpl) WarnW(message string, field logger.LogField) {
+	z.Warnw(message, field.Flatten()...)
+}
+
+func (z *zapLoggerImpl) ErrorW(message string, field logger.LogField) {
+	z.Errorw(message, field.Flatten()...)
 }
