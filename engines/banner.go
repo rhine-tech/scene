@@ -1,8 +1,9 @@
-package app
+package engines
 
-import "fmt"
-
-const version = "0.6.0"
+import (
+	"fmt"
+	"github.com/rhine-tech/scene"
+)
 
 const banner = `
 ===============================================================
@@ -15,6 +16,6 @@ const banner = `
 ===============================================================
 `
 
-func GetBanner() string {
-	return fmt.Sprintf(banner, version)
+func getBanner() string {
+	return fmt.Sprintf(banner, scene.Version)
 }

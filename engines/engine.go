@@ -40,10 +40,14 @@ func (eg *BasicEngine) printContainersInfo() {
 	for idx, container := range containers {
 		info[idx] = utils.FormatContainerInfo(idx, container)
 	}
-	eg.logger.Infof("successfully loaded %d containers. \n\n%s", len(containers), strings.Join(info, "\n"))
+
+	eg.logger.Infof("successfully loaded %d containers. \n\n%s",
+		len(containers),
+		strings.Join(info, "\n"))
 }
 
 func (eg *BasicEngine) Run() error {
+	eg.logger.Info(getBanner())
 	registry.Validate()
 	eg.logger.Info("scene service initialized successfully")
 	eg.printContainersInfo()
