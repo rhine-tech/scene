@@ -24,7 +24,7 @@ func _ginLogger(log logger.ILogger) gin.HandlerFunc {
 
 		msg := fmt.Sprintf("%s %d %s %s \"%s\" (%dms)",
 			c.ClientIP(), c.Writer.Status(), c.Request.Method, c.Request.URL.String(),
-			c.Errors.ByType(gin.ErrorTypePrivate).String(),
+			c.Errors.ByType(gin.ErrorTypePrivate).Errors(),
 			latency.Milliseconds())
 
 		log.Info(msg)

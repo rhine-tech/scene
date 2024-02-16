@@ -59,7 +59,7 @@ func (c *ginContainer) stopApps() error {
 }
 
 func (c *ginContainer) Start() error {
-	if utils.IsValidAddress(c.addr) {
+	if !utils.IsValidAddress(c.addr) {
 		registry.Logger.Errorf("invalid address: %s", c.addr)
 		return errors.New("invalid address " + c.addr)
 	}
@@ -130,18 +130,5 @@ func NewAppContainer(
 	apps []GinApplication,
 	options ...GinOption,
 ) scene.ApplicationContainer {
-	ginEngine := createGinEngine()
-	for _, opt := range options {
-		if err := opt(ginEngine); err != nil {
-			panic(err)
-		}
-	}
-	container := &ginContainer{
-		addr:   addr,
-		prefix: "/",
-		engine: ginEngine,
-		apps:   apps,
-	}
-	container.logger = registry.Logger.WithPrefix(container.Name().Identifier())
-	return container
+	return NewAppContainerWithPrefix(addr, "/", apps, options...)
 }

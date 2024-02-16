@@ -24,7 +24,7 @@ func IsValidAddress(address string) bool {
 	}
 	ip, portStr := parts[0], parts[1]
 
-	if net.ParseIP(ip) == nil {
+	if ip != "" && net.ParseIP(ip) == nil {
 		return false
 	}
 	port, err := strconv.Atoi(portStr)
