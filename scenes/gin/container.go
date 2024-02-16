@@ -24,6 +24,7 @@ func createGinEngine() *gin.Engine {
 
 type ginContainer struct {
 	addr   string
+	prefix string
 	engine *gin.Engine
 	apps   []GinApplication
 	logger logger.ILogger
@@ -35,8 +36,9 @@ func (c *ginContainer) Name() scene.ImplName {
 }
 
 func (c *ginContainer) startApps() error {
+	router := c.engine.Group(c.prefix)
 	for _, app := range c.apps {
-		if err := app.Create(c.engine, c.engine.Group(app.Prefix())); err != nil {
+		if err := app.Create(c.engine, router.Group(app.Prefix())); err != nil {
 			c.logger.Errorf("failed to create %s: %s", app.Name(), err.Error())
 		} else {
 			c.logger.Infof("%s created", app.Name())
@@ -101,6 +103,28 @@ func (g *ginContainer) ListAppNames() []string {
 	return names
 }
 
+func NewAppContainerWithPrefix(
+	addr string,
+	prefix string,
+	apps []GinApplication,
+	options ...GinOption,
+) scene.ApplicationContainer {
+	ginEngine := createGinEngine()
+	for _, opt := range options {
+		if err := opt(ginEngine); err != nil {
+			panic(err)
+		}
+	}
+	container := &ginContainer{
+		addr:   addr,
+		prefix: prefix,
+		engine: ginEngine,
+		apps:   apps,
+	}
+	container.logger = registry.Logger.WithPrefix(container.Name().Identifier())
+	return container
+}
+
 func NewAppContainer(
 	addr string,
 	apps []GinApplication,
@@ -114,6 +138,7 @@ func NewAppContainer(
 	}
 	container := &ginContainer{
 		addr:   addr,
+		prefix: "/",
 		engine: ginEngine,
 		apps:   apps,
 	}
