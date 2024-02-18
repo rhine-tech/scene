@@ -185,8 +185,8 @@ func (m *MongoDatasourceCollection[T]) FindPagination(filter interface{}, sort i
 		return result, err
 	}
 	result.Results = results
-	result.Total = int(cnt)
-	result.Offset = int(offset)
-	result.Count = len(results)
+	result.Total = cnt
+	result.Offset = offset
+	result.Count = int64(len(results))
 	return result, nil
 }

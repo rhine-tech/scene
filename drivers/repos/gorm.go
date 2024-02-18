@@ -36,9 +36,9 @@ func (m *GormRepo[T]) FindPagination(scope func(db *gorm.DB) *gorm.DB, offset in
 	if cur.Error != nil {
 		return result, cur.Error
 	}
-	result.Total = int(cnt)
-	result.Offset = offset
-	result.Count = len(results)
+	result.Total = cnt
+	result.Offset = int64(offset)
+	result.Count = int64(len(results))
 	return result, nil
 }
 
