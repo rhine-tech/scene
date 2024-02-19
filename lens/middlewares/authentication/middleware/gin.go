@@ -10,6 +10,20 @@ import (
 	"net/http"
 )
 
+func GinAuthContextStatus(lgStSrv authentication.LoginStatusService) gin.HandlerFunc {
+	lgStSrv = registry.Use(lgStSrv)
+	return func(c *gin.Context) {
+		ctx := sgin.GetContext(c)
+		status, err := lgStSrv.Verify(c.Request)
+		if err == nil {
+			scene.ContextSetValue(ctx, authentication.AuthContext{UserID: status.UserID, Username: status.Name})
+		} else {
+			scene.ContextSetValue(ctx, authentication.AuthContext{})
+		}
+		c.Next()
+	}
+}
+
 // GinRequireStatusAuth is a middleware that requires LoginStatus authentication.
 func GinRequireStatusAuth(lgStSrv authentication.LoginStatusService) gin.HandlerFunc {
 	lgStSrv = registry.Use(lgStSrv)
