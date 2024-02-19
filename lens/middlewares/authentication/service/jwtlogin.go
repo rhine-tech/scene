@@ -5,7 +5,6 @@ import (
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/lens/middlewares/authentication"
 	"net/http"
-	"time"
 )
 
 var jwtSecret = []byte("HFSAGF$GFASDGASDF$#@TGHS#@QRF")
@@ -68,7 +67,9 @@ func (j *jwtAuthStatusService) Login(userId string, resp http.ResponseWriter) (s
 
 func (j *jwtAuthStatusService) Logout(resp http.ResponseWriter) (err error) {
 	http.SetCookie(resp, &http.Cookie{
-		Expires: time.Unix(0, 0),
+		Name:   "jwt_token",
+		Path:   "/",
+		MaxAge: -1,
 	})
 	return nil
 }
