@@ -3,7 +3,6 @@ package tuna
 import (
 	"github.com/rhine-tech/scene/lens/infrastructure/asynctask"
 	"github.com/rhine-tech/scene/pkg/queue"
-	"runtime"
 )
 
 type Thunnus struct {
@@ -84,7 +83,7 @@ func (w *tuna) run() {
 	for {
 		select {
 		case <-w.stopSig:
-			return
+			goto finish
 		case tsk, ok := <-w.taskChan:
 			if !ok {
 				goto finish
@@ -92,11 +91,6 @@ func (w *tuna) run() {
 			tsk.SetStatus(asynctask.TaskStatusRunning)
 			tsk.Err = tsk.Func()
 			tsk.SetStatus(asynctask.TaskStatusFinish)
-		default:
-			if w.taskChan == nil {
-				goto finish
-			}
-			runtime.Gosched()
 		}
 	}
 finish:

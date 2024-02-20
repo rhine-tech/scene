@@ -21,6 +21,8 @@ func TestThunnus_Run(t *testing.T) {
 	}
 	fmt.Println("wait")
 	wg.Wait()
+	thunnus.Stop()
+	fmt.Println("done")
 }
 
 func TestThunnus_RunSeq(t *testing.T) {
@@ -37,4 +39,6 @@ func TestThunnus_RunSeq(t *testing.T) {
 	}
 	fmt.Println("wait")
 	wg.Wait()
+	thunnus.Stop()
+	fmt.Println("done")
 }
