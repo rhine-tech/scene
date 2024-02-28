@@ -10,17 +10,18 @@ import (
 
 type MongoDB struct {
 	scene.ModuleFactory
-	Config model.DatabaseConfig
+	Config        model.DatabaseConfig
+	UseApiVersion bool
 }
 
 func (m MongoDB) Init() scene.LensInit {
 	return func() {
 		registry.Register[datasource.MongoDataSource](
-			repository.NewMongoDataSource(m.Config))
+			repository.NewMongoDataSource(m.Config, m.UseApiVersion))
 	}
 }
 
-func (m MongoDB) Default() scene.IDefaultableModuleFactory {
+func (m MongoDB) Default() MongoDB {
 	return MongoDB{
 		Config: model.DatabaseConfig{
 			Host:     registry.Config.GetString("scene.db.host"),
@@ -29,6 +30,7 @@ func (m MongoDB) Default() scene.IDefaultableModuleFactory {
 			Password: registry.Config.GetString("scene.db.password"),
 			Database: "scene",
 		},
+		UseApiVersion: true,
 	}
 }
 
@@ -44,7 +46,7 @@ func (r Redis) Init() scene.LensInit {
 	}
 }
 
-func (r Redis) Default() scene.IDefaultableModuleFactory {
+func (r Redis) Default() Redis {
 	return Redis{
 		Config: model.DatabaseConfig{
 			Host:     registry.Config.GetString("scene.redis.host"),
@@ -66,7 +68,7 @@ func (m Mysql) Init() scene.LensInit {
 	}
 }
 
-func (m Mysql) Default() scene.IDefaultableModuleFactory {
+func (m Mysql) Default() Mysql {
 	return Mysql{
 		Config: model.DatabaseConfig{
 			Host:     registry.Config.GetString("mysql.db.host"),

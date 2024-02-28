@@ -47,7 +47,12 @@ func (a *authenticationManageService) UserByEmail(email string) (authentication.
 }
 
 func (a *authenticationManageService) Authenticate(username string, password string) (userID string, err error) {
-	return a.repo.Authenticate(username, password)
+	uid, err := a.repo.Authenticate(username, password)
+	if err != nil {
+		a.logger.Warnf("failed to authenticate user %s with password %s: %v", username, password, err)
+		return "", authentication.ErrAuthenticationFailed
+	}
+	return uid, nil
 }
 
 func (a *authenticationManageService) AddUser(username, password string) (authentication.User, error) {

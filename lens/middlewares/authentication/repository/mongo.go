@@ -61,7 +61,7 @@ func (m *mongoImpl) Authenticate(username string, password string) (string, erro
 	err := m.collection.FindOne(context.Background(), bson.M{"username": username}).Decode(&user)
 
 	if err != nil || user.Password != password {
-		return "", authentication.ErrAuthenticationFailed
+		return "", err
 	}
 
 	return user.UserID, nil

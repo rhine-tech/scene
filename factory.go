@@ -23,9 +23,9 @@ type IModuleFactory interface {
 	Apps() []any
 }
 
-type IDefaultableModuleFactory interface {
+type IDefaultableModuleFactory[T any] interface {
 	IModuleFactory
-	Default() IDefaultableModuleFactory
+	Default() T
 }
 
 type ModuleFactory struct {

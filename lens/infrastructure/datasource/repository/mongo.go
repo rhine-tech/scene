@@ -12,17 +12,18 @@ import (
 )
 
 type MongoRepo struct {
-	cfg    model.DatabaseConfig
-	client *mongo.Client
-	err    error
-	db     *mongo.Database
-	log    logger.ILogger `aperture:""`
+	cfg           model.DatabaseConfig
+	client        *mongo.Client
+	err           error
+	db            *mongo.Database
+	log           logger.ILogger `aperture:""`
+	useApiVersion bool
 }
 
 var _ datasource.MongoDataSource = (*MongoRepo)(nil)
 
-func NewMongoDataSource(cfg model.DatabaseConfig) datasource.MongoDataSource {
-	repo := &MongoRepo{cfg: cfg}
+func NewMongoDataSource(cfg model.DatabaseConfig, useApiVersion bool) datasource.MongoDataSource {
+	repo := &MongoRepo{cfg: cfg, useApiVersion: useApiVersion}
 	return repo
 }
 
@@ -36,10 +37,18 @@ func (m *MongoRepo) Setup() error {
 		m.log.Errorf("%s init failed", m.cfg.MongoDSN())
 		return m.err
 	}
-	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
-	opts := options.Client().
-		ApplyURI(m.cfg.MongoDSN()).
-		SetServerAPIOptions(serverAPI)
+	var opts *options.ClientOptions
+	if m.useApiVersion {
+		m.log.Infof("use default server api version 1")
+		serverAPI := options.ServerAPI(options.ServerAPIVersion1)
+		opts = options.Client().
+			ApplyURI(m.cfg.MongoDSN()).
+			SetServerAPIOptions(serverAPI)
+	} else {
+		m.log.Infof("dont use default server api version for backward compatibility")
+		opts = options.Client().ApplyURI(m.cfg.MongoDSN())
+	}
+
 	// Create a new client and connect to the server
 	m.client, m.err = mongo.Connect(context.TODO(), opts)
 	if m.err != nil {

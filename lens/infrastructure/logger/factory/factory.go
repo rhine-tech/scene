@@ -35,7 +35,7 @@ type ZapFactory struct {
 	Prefix   string
 }
 
-func (b ZapFactory) Default() scene.IDefaultableModuleFactory {
+func (b ZapFactory) Default() ZapFactory {
 	cfg := registry.AcquireSingleton(config.ConfigUnmarshaler(nil))
 	return ZapFactory{
 		LogLevel: logger.LogLevel(cfg.GetInt("scene.log.level")),
