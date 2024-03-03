@@ -4,6 +4,7 @@ import (
 	"sync"
 )
 
+// Context should be a "context container" that store module's context
 type Context interface {
 	Get(key string) (value any, exists bool)
 	Set(key string, value any)

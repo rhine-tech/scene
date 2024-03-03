@@ -20,14 +20,14 @@ type AuthenticationManageService interface {
 	UpdateUser(user User) error
 }
 
-type LoginStatusService interface {
+type UserInfoService interface {
+	scene.Service
+	InfoById(userId string) (UserInfo, error)
+}
+
+type HTTPLoginStatusVerifier interface {
 	scene.Service
 	Verify(request *http.Request) (status LoginStatus, err error)
 	Login(userId string, resp http.ResponseWriter) (status LoginStatus, err error)
 	Logout(resp http.ResponseWriter) (err error)
-}
-
-type UserInfoService interface {
-	scene.Service
-	InfoById(userId string) (UserInfo, error)
 }

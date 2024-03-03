@@ -14,13 +14,13 @@ import (
 
 type ginApp struct {
 	sgin.CommonApp
-	lgStSrv authentication.LoginStatusService
-	authSrv authentication.AuthenticationService
-	infoSrv authentication.UserInfoService
+	lgStSrv authentication.HTTPLoginStatusVerifier `aperture:""`
+	authSrv authentication.AuthenticationService   `aperture:""`
+	infoSrv authentication.UserInfoService         `aperture:""`
 }
 
 func NewGinApp(logger logger.ILogger,
-	lgStSrv authentication.LoginStatusService,
+	lgStSrv authentication.HTTPLoginStatusVerifier,
 	authSrv authentication.AuthenticationService,
 	infoSrv authentication.UserInfoService) sgin.GinApplication {
 	return &ginApp{

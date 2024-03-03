@@ -28,6 +28,6 @@ type UserInfo struct {
 type LoginStatus struct {
 	UserID   string `json:"user_id"`
 	Token    string `json:"token"`
-	Name     string `json:"name"`
+	Verifier string `json:"verifier"`
 	ExpireAt int64  `json:"expire_at"`
 }

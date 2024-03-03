@@ -30,6 +30,7 @@ func GinRequirePermissionAuthFacade(perm string, srv permission.PermissionServic
 }
 
 func GinPermContextAuthFacade(srv permission.PermissionService) gin.HandlerFunc {
+	srv = registry.Use(srv)
 	return GinPermContext(func(c *gin.Context) permission.PermOwner {
 		ctx := sgin.GetContext(c)
 		actx, exist := scene.ContextFindValue[authentication.AuthContext](ctx)
