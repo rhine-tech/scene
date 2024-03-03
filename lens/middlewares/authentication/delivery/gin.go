@@ -6,7 +6,7 @@ import (
 	"github.com/rhine-tech/scene/errcode"
 	"github.com/rhine-tech/scene/lens/infrastructure/logger"
 	"github.com/rhine-tech/scene/lens/middlewares/authentication"
-	"github.com/rhine-tech/scene/lens/middlewares/authentication/middleware"
+	"github.com/rhine-tech/scene/lens/middlewares/authentication/delivery/middleware"
 	"github.com/rhine-tech/scene/model"
 	sgin "github.com/rhine-tech/scene/scenes/gin"
 	"net/http"
@@ -37,7 +37,7 @@ func (g *ginApp) Create(engine *gin.Engine, router gin.IRouter) error {
 	router.GET("/login", g.handleLogin)
 	router.POST("/login", g.handleLogin)
 	router.GET("/logout", g.handleLogout)
-	router.GET("/info", middleware.GinRequireStatusAuth(nil), g.handleInfo)
+	router.GET("/info", middleware.GinRequireAuth(g.lgStSrv), g.handleInfo)
 	//router.POST("/info", middleware.RequireAuthGlobal(), g.handleEditInfo)
 	//router.POST("/info/list", middleware.RequireAuthGlobal(), g.handleListInfo)
 	//router.POST("/info/delete", middleware.RequireAuthGlobal(), g.handleDeleteInfo)

@@ -27,6 +27,7 @@ func GinAuthContext(verifier authentication.HTTPLoginStatusVerifier) gin.Handler
 
 // GinRequireAuth is a middleware that requires LoginStatus authentication.
 func GinRequireAuth(verifier authentication.HTTPLoginStatusVerifier) gin.HandlerFunc {
+	verifier = registry.Use(verifier)
 	return func(c *gin.Context) {
 		ctx := sgin.GetContext(c)
 		status, err := verifier.Verify(c.Request)

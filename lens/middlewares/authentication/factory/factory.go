@@ -44,6 +44,7 @@ func (b GinAppMongoDB) Init() scene.LensInit {
 		srv1 := registry.Register(service.NewAuthenticationService(nil, repo))
 		registry.Register[authentication.UserInfoService](service.NewUserInfoService(repo, repo2))
 		registry.Register[authentication.AuthenticationService](srv1.(authentication.AuthenticationService))
+		registry.Register[authentication.HTTPLoginStatusVerifier](b.Verifier.Provide())
 	}
 }
 
@@ -52,7 +53,7 @@ func (b GinAppMongoDB) Apps() []any {
 		func() sgin.GinApplication {
 			return delivery.NewGinApp(
 				registry.Use[logger.ILogger](nil),
-				registry.Load(b.Verifier.Provide()),
+				registry.Use[authentication.HTTPLoginStatusVerifier](nil),
 				nil,
 				nil)
 		},

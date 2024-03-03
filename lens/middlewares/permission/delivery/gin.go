@@ -6,7 +6,7 @@ import (
 	"github.com/rhine-tech/scene/errcode"
 	"github.com/rhine-tech/scene/lens/infrastructure/logger"
 	"github.com/rhine-tech/scene/lens/middlewares/authentication"
-	authMw "github.com/rhine-tech/scene/lens/middlewares/authentication/middleware"
+	authMw "github.com/rhine-tech/scene/lens/middlewares/authentication/delivery/middleware"
 	"github.com/rhine-tech/scene/lens/middlewares/permission"
 	"github.com/rhine-tech/scene/model"
 	"net/http"
@@ -37,8 +37,8 @@ func (g *ginApp) Prefix() string {
 }
 
 func (g *ginApp) Create(engine *gin.Engine, router gin.IRouter) error {
-	router.GET("/check", authMw.GinRequireStatusAuth(nil), g.handleCheck)
-	router.GET("/list", authMw.GinRequireStatusAuth(nil), g.handleList)
+	router.GET("/check", authMw.GinRequireAuth(nil), g.handleCheck)
+	router.GET("/list", authMw.GinRequireAuth(nil), g.handleList)
 	return nil
 }
 
