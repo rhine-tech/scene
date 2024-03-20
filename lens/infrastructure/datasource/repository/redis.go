@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	"encoding"
+	"encoding/json"
 	"fmt"
 	"github.com/redis/go-redis/v9"
 	"github.com/rhine-tech/scene"
@@ -59,10 +61,27 @@ func (r *RedisDataRepo) Set(ctx context.Context, key string, value interface{}, 
 	return r.rdb.Set(ctx, key, value, expiration).Err()
 }
 
+func (r *RedisDataRepo) GetValue(ctx context.Context, key string, value interface{}) error {
+	_, isJsonUnmarshallable := value.(json.Unmarshaler)
+	_, isBinaryUnmarshallable := value.(encoding.BinaryUnmarshaler)
+	if isJsonUnmarshallable && !isBinaryUnmarshallable {
+		return r.rdb.Get(ctx, key).Scan(&binary2jsonMarshaller{value})
+	}
+	return r.rdb.Get(ctx, key).Scan(value)
+}
+
 func (r *RedisDataRepo) Get(ctx context.Context, key string) (string, error) {
 	return r.rdb.Get(context.Background(), key).Result()
 }
 
 func (r *RedisDataRepo) Delete(ctx context.Context, key string) error {
 	return r.rdb.Del(ctx, key).Err()
+}
+
+type binary2jsonMarshaller struct {
+	value interface{}
+}
+
+func (i *binary2jsonMarshaller) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, i.value)
 }

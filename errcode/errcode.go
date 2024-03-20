@@ -78,3 +78,11 @@ func (e *Error) WithDetailStr(err string) *Error {
 		err,
 	}
 }
+
+func (e *Error) WithDetailf(format string, a ...interface{}) *Error {
+	return &Error{
+		e.Code,
+		e.Message,
+		fmt.Sprintf(format, a...),
+	}
+}
