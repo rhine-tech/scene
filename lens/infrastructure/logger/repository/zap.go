@@ -60,20 +60,36 @@ func (n *namedZapLoggerImpl) SetLogLevel(level logger.LogLevel) {
 	n.parent.SetLogLevel(level)
 }
 
-func (z *namedZapLoggerImpl) DebugW(message string, field logger.LogField) {
-	z.Debugw(message, field.Flatten()...)
+func (z *namedZapLoggerImpl) DebugW(message string, keysAndValues ...interface{}) {
+	z.Debugw(message, keysAndValues...)
 }
 
-func (z *namedZapLoggerImpl) InfoW(message string, field logger.LogField) {
-	z.Infow(message, field.Flatten()...)
+func (z *namedZapLoggerImpl) InfoW(message string, keysAndValues ...interface{}) {
+	z.Infow(message, keysAndValues...)
 }
 
-func (z *namedZapLoggerImpl) WarnW(message string, field logger.LogField) {
-	z.Warnw(message, field.Flatten()...)
+func (z *namedZapLoggerImpl) WarnW(message string, keysAndValues ...interface{}) {
+	z.Warnw(message, keysAndValues...)
 }
 
-func (z *namedZapLoggerImpl) ErrorW(message string, field logger.LogField) {
-	z.Errorw(message, field.Flatten()...)
+func (z *namedZapLoggerImpl) ErrorW(message string, keysAndValues ...interface{}) {
+	z.Errorw(message, keysAndValues...)
+}
+
+func (z *namedZapLoggerImpl) DebugS(message string, fields logger.LogField) {
+	z.Debugw(message, fields.Flatten()...)
+}
+
+func (z *namedZapLoggerImpl) InfoS(message string, fields logger.LogField) {
+	z.Infow(message, fields.Flatten()...)
+}
+
+func (z *namedZapLoggerImpl) WarnS(message string, fields logger.LogField) {
+	z.Warnw(message, fields.Flatten()...)
+}
+
+func (z *namedZapLoggerImpl) ErrorS(message string, fields logger.LogField) {
+	z.Errorw(message, fields.Flatten()...)
 }
 
 func NewZapLogger() logger.ILogger {
@@ -113,18 +129,34 @@ func (z *zapLoggerImpl) SetLogLevel(level logger.LogLevel) {
 	return
 }
 
-func (z *zapLoggerImpl) DebugW(message string, field logger.LogField) {
-	z.Debugw(message, field.Flatten()...)
+func (z *zapLoggerImpl) DebugW(message string, keysAndValues ...interface{}) {
+	z.Debugw(message, keysAndValues...)
 }
 
-func (z *zapLoggerImpl) InfoW(message string, field logger.LogField) {
-	z.Infow(message, field.Flatten()...)
+func (z *zapLoggerImpl) InfoW(message string, keysAndValues ...interface{}) {
+	z.Infow(message, keysAndValues...)
 }
 
-func (z *zapLoggerImpl) WarnW(message string, field logger.LogField) {
-	z.Warnw(message, field.Flatten()...)
+func (z *zapLoggerImpl) WarnW(message string, keysAndValues ...interface{}) {
+	z.Warnw(message, keysAndValues...)
 }
 
-func (z *zapLoggerImpl) ErrorW(message string, field logger.LogField) {
-	z.Errorw(message, field.Flatten()...)
+func (z *zapLoggerImpl) ErrorW(message string, keysAndValues ...interface{}) {
+	z.Errorw(message, keysAndValues...)
+}
+
+func (z *zapLoggerImpl) DebugS(message string, fields logger.LogField) {
+	z.Debugw(message, fields.Flatten()...)
+}
+
+func (z *zapLoggerImpl) InfoS(message string, fields logger.LogField) {
+	z.Infow(message, fields.Flatten()...)
+}
+
+func (z *zapLoggerImpl) WarnS(message string, fields logger.LogField) {
+	z.Warnw(message, fields.Flatten()...)
+}
+
+func (z *zapLoggerImpl) ErrorS(message string, fields logger.LogField) {
+	z.Errorw(message, fields.Flatten()...)
 }
