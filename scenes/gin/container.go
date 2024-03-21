@@ -71,7 +71,7 @@ func (c *ginContainer) Start() error {
 		Handler: c.engine,
 	}
 	go func() {
-		c.logger.Infof("http server started, listen on 'http://%s'", utils.PrettyAddress(c.addr))
+		c.logger.Infof("gin http server started, listen on 'http://%s'", utils.PrettyAddress(c.addr))
 		if err := c.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			c.logger.Errorf("listen: %s\n", err)
 		}
