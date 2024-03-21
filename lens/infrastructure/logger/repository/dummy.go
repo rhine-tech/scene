@@ -8,16 +8,44 @@ import (
 type DummyLogger struct {
 }
 
-func (l *DummyLogger) DebugW(message string, field logger.LogField) {
+func (l *DummyLogger) DebugW(message string, keysAndValues ...interface{}) {
+	//TODO implement me
+	panic("implement me")
 }
 
-func (l *DummyLogger) InfoW(message string, field logger.LogField) {
+func (l *DummyLogger) DebugS(message string, fields logger.LogField) {
+	//TODO implement me
+	panic("implement me")
 }
 
-func (l *DummyLogger) WarnW(message string, field logger.LogField) {
+func (l *DummyLogger) InfoW(message string, keysAndValues ...interface{}) {
+	//TODO implement me
+	panic("implement me")
 }
 
-func (l *DummyLogger) ErrorW(message string, field logger.LogField) {
+func (l *DummyLogger) InfoS(message string, fields logger.LogField) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *DummyLogger) WarnW(message string, keysAndValues ...interface{}) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *DummyLogger) WarnS(message string, fields logger.LogField) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *DummyLogger) ErrorW(message string, keysAndValues ...interface{}) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *DummyLogger) ErrorS(message string, fields logger.LogField) {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (l *DummyLogger) Debug(args ...interface{}) {
