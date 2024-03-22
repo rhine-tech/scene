@@ -3,6 +3,7 @@ package gin
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/lens/infrastructure/logger"
@@ -37,13 +38,23 @@ func (c *ginContainer) Name() scene.ImplName {
 
 func (c *ginContainer) startApps() error {
 	router := c.engine.Group(c.prefix)
+	created := 0
 	for _, app := range c.apps {
 		if err := app.Create(c.engine, router.Group(app.Prefix())); err != nil {
 			c.logger.Errorf("failed to create %s: %s", app.Name(), err.Error())
 		} else {
 			c.logger.Infof("%s created", app.Name())
+			created++
 		}
 	}
+	c.logger.Infof("created %d apps, failed to create %d app", created, len(c.apps)-created)
+	endpoints := ""
+	endpointsCount := 0
+	for _, route := range c.engine.Routes() {
+		endpoints += fmt.Sprintf("%8s %-8s %s\n", "-", route.Method, route.Path)
+		endpointsCount++
+	}
+	c.logger.Infof("registered %d endpoint\n\n%s", endpointsCount, endpoints)
 	return nil
 }
 

@@ -29,4 +29,5 @@ type WebsocketApplication interface {
 	scene.Application
 	Prefix() string
 	Create(mux IWebsocketMux) error
+	Destroy() error
 }
