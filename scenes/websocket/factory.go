@@ -2,6 +2,7 @@ package websocket
 
 import (
 	"github.com/rhine-tech/scene"
+	"strings"
 )
 
 type websocketFactory struct {
@@ -19,7 +20,11 @@ func (w *websocketFactory) Name() string {
 }
 
 func (w *websocketFactory) Create(app WebsocketApplication) error {
-	return app.Create(w.mux.UsePrefix("/" + app.Prefix()))
+	prefix := app.Prefix()
+	if !strings.HasPrefix(prefix, "/") {
+		prefix = "/" + prefix
+	}
+	return app.Create(w.mux.UsePrefix(prefix))
 }
 
 func (w *websocketFactory) Destroy(app WebsocketApplication) error {
