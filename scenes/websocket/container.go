@@ -12,11 +12,14 @@ type websocketContainer struct {
 }
 
 func (g *websocketContainer) Name() scene.ImplName {
-	return scene.NewSceneImplNameNoVer("websocket")
+	return scene.NewSceneImplNameNoVer("websocket", "container")
 }
 
-func NewContainer(addr string, apps ...WebsocketApplication) scene.ApplicationContainer {
+func NewContainer(addr string, apps []WebsocketApplication, opts ...WsOption) scene.ApplicationContainer {
 	mux := NewWebSocketMux()
+	for _, opt := range opts {
+		_ = opt(mux)
+	}
 	return &websocketContainer{scommon.NewHttpAppContainer(
 		scommon.NewAppManager(apps...),
 		NewFactory(mux),

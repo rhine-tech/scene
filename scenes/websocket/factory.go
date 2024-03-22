@@ -5,10 +5,10 @@ import (
 )
 
 type websocketFactory struct {
-	mux WebsocketMux
+	mux IWebsocketMux
 }
 
-func NewFactory(mux WebsocketMux) scene.ApplicationFactory[WebsocketApplication] {
+func NewFactory(mux IWebsocketMux) scene.ApplicationFactory[WebsocketApplication] {
 	return &websocketFactory{
 		mux: mux,
 	}
