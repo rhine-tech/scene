@@ -18,6 +18,10 @@ type ParameterBinder[T GinApplication] interface {
 	Bind(ctx *Context[T]) error
 }
 
+type RequestNoParam struct{}
+
+func (r *RequestNoParam) Binding() binding.Binding { return nil }
+
 type RequestJson struct{}
 
 func (r *RequestJson) Binding() binding.Binding {
@@ -42,6 +46,10 @@ type RequestURI struct{}
 
 func (r *RequestURI) Binding() binding.Binding { return uriBindingPlaceHolder{} }
 
+func WrapReq[A GinApplication, T Request[A]](app A, request T) gin.HandlerFunc {
+	return Handle(app, request)
+}
+
 func Handle[A GinApplication, T Request[A]](app A, request T) gin.HandlerFunc {
 	// T is a request object, should be a pointer to a struct, and implement Request interface
 	// if not, Request object will not be able to receive bound parameters
@@ -59,20 +67,22 @@ func Handle[A GinApplication, T Request[A]](app A, request T) gin.HandlerFunc {
 		// ======== here is the delivery layer, so https status code will be standard http code ========
 		// bind parameter with request
 		// process request, explicitly bind uri parameter
-		if r.Binding().Name() == "uri_placeholder" {
-			if err := ctx.ShouldBindUri(r); err != nil {
-				ec := errcode.ParameterError.WithDetail(err)
-				_ = ctx.Error(ec)
-				ctx.JSON(http.StatusBadRequest, model.NewErrorCodeResponse(ec))
-				return
-			}
-		} else {
-			// otherwise, bind request with query or json
-			if err := ctx.ShouldBindWith(r, r.Binding()); err != nil {
-				ec := errcode.ParameterError.WithDetail(err)
-				_ = ctx.Error(ec)
-				ctx.JSON(http.StatusBadRequest, model.NewErrorCodeResponse(ec))
-				return
+		if r.Binding() != nil {
+			if r.Binding().Name() == "uri_placeholder" {
+				if err := ctx.ShouldBindUri(r); err != nil {
+					ec := errcode.ParameterError.WithDetail(err)
+					_ = ctx.Error(ec)
+					ctx.JSON(http.StatusBadRequest, model.NewErrorCodeResponse(ec))
+					return
+				}
+			} else {
+				// otherwise, bind request with query or json
+				if err := ctx.ShouldBindWith(r, r.Binding()); err != nil {
+					ec := errcode.ParameterError.WithDetail(err)
+					_ = ctx.Error(ec)
+					ctx.JSON(http.StatusBadRequest, model.NewErrorCodeResponse(ec))
+					return
+				}
 			}
 		}
 		// bind extra parameter if exists

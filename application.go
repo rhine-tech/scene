@@ -12,8 +12,8 @@ const (
 
 type Application interface {
 	Name() ImplName // return scene
-	Status() AppStatus
-	Error() error
+	//Status() AppStatus
+	//Error() error
 }
 
 type Repository interface {
