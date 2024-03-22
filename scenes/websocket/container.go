@@ -114,14 +114,14 @@ func (g *websocketContainer) ListAppNames() []string {
 }
 
 func NewContainer(addr string, apps []WebsocketApplication, opts ...WsOption) scene.ApplicationContainer {
-	mux := NewWebSocketMux()
+	wsMux := NewWebSocketMux()
 	for _, opt := range opts {
-		_ = opt(mux)
+		_ = opt(wsMux)
 	}
 	container := &websocketContainer{
 		addr: addr,
 		apps: apps,
-		mux:  mux,
+		mux:  wsMux,
 	}
 	container.logger = registry.Logger.WithPrefix(container.Name().Identifier())
 	return container
