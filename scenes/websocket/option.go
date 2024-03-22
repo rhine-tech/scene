@@ -16,7 +16,7 @@ type _wsUpgraderWithLogger struct {
 
 func (v *_wsUpgraderWithLogger) upgraderHandler(upgrader *websocket.Upgrader, handler WebsocketHandler) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		v.logger.Infof("%s %s %s",
+		v.logger.Infof("http -> Websocket %s %s %s",
 			request.RemoteAddr, request.Method, request.URL.Path)
 		conn, err := upgrader.Upgrade(writer, request, nil)
 		if err != nil {
@@ -37,9 +37,8 @@ func (v *_wsUpgraderWithLogger) upgraderHandler(upgrader *websocket.Upgrader, ha
 			}
 		}
 		err = conn.Close()
-		v.logger.Infof("connection closed",
+		v.logger.InfoW("connection closed",
 			"remoteAddr", request.RemoteAddr,
-			"method", request.Method,
 			"url", request.URL.Path,
 			"err", err)
 	}
