@@ -46,6 +46,12 @@ type RequestURI struct{}
 
 func (r *RequestURI) Binding() binding.Binding { return uriBindingPlaceHolder{} }
 
+func RequestWrapper[T GinApplication](app T) func(Request[T]) gin.HandlerFunc {
+	return func(request Request[T]) gin.HandlerFunc {
+		return Handle(app, request)
+	}
+}
+
 func WrapReq[A GinApplication, T Request[A]](app A, request T) gin.HandlerFunc {
 	return Handle(app, request)
 }
