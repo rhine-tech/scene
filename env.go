@@ -10,6 +10,19 @@ const (
 	EnvTest
 )
 
+func (e Environment) String() string {
+	switch e {
+	case EnvDevelopment:
+		return "development"
+	case EnvProduction:
+		return "production"
+	case EnvTest:
+		return "test"
+	default:
+		return "unknown"
+	}
+}
+
 var env Environment = EnvDevelopment
 
 func init() {
