@@ -1,4 +1,4 @@
-package repository
+package datasources
 
 import (
 	"github.com/rhine-tech/scene"

@@ -17,9 +17,9 @@ func (p *PermissionManagerImpl) SrvImplName() scene.ImplName {
 
 func (p *PermissionManagerImpl) Setup() error {
 	p.logger = p.logger.WithPrefix(p.SrvImplName().Identifier())
-	if err := p.repo.Status(); err != nil {
-		p.logger.Errorf("Failed to reload permission repository: %s", err.Error())
-	}
+	//if err := p.repo.Status(); err != nil {
+	//	p.logger.Errorf("Failed to reload permission repository: %s", err.Error())
+	//}
 	p.logger.Infof("Permission service is ready, using: %s", p.repo.RepoImplName())
 	return nil
 }

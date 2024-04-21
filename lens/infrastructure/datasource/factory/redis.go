@@ -3,7 +3,7 @@ package factory
 import (
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/lens/infrastructure/datasource"
-	"github.com/rhine-tech/scene/lens/infrastructure/datasource/repository"
+	"github.com/rhine-tech/scene/lens/infrastructure/datasource/datasources"
 	"github.com/rhine-tech/scene/model"
 	"github.com/rhine-tech/scene/registry"
 )
@@ -16,7 +16,7 @@ type Redis struct {
 func (r Redis) Init() scene.LensInit {
 	return func() {
 		registry.Register[datasource.RedisDataSource](
-			repository.NewRedisDataRepo(r.Config))
+			datasources.NewRedisDataRepo(r.Config))
 	}
 }
 

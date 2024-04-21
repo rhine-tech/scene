@@ -13,11 +13,11 @@ type authenticationManageService struct {
 
 func (a *authenticationManageService) Setup() error {
 	a.logger = a.logger.WithPrefix(a.SrvImplName().Identifier())
-	if err := a.repo.Status(); err != nil {
-		a.logger.Errorf("repo init failed: %v", err)
-	} else {
-		a.logger.Info("setup success")
-	}
+	//if err := a.repo.Status(); err != nil {
+	//	a.logger.Errorf("repo init failed: %v", err)
+	//	return err
+	//}
+	a.logger.Info("setup success")
 	return nil
 }
 

@@ -18,7 +18,6 @@ type Application interface {
 
 type Repository interface {
 	RepoImplName() ImplName
-	Status() error
 }
 
 type Service interface {
@@ -33,11 +32,13 @@ It is used to identify an implementation of a repository, service or application
 type ImplType string
 
 const (
-	ImplTypeCore  = ImplType("core")
-	ImplTypeRepo  = ImplType("repo")
-	ImplTypeSrv   = ImplType("srv")
-	ImplTypeApp   = ImplType("app")
-	ImplTypeScene = ImplType("scene")
+	ImplTypeCore   = ImplType("core")   // core type
+	ImplTypeScene  = ImplType("scene")  // scenario type
+	ImplTypeInfra  = ImplType("infra")  // infrastructure type
+	ImplTypeModule = ImplType("module") // module type
+	ImplTypeRepo   = ImplType("repo")   // module repository type
+	ImplTypeSrv    = ImplType("srv")    // module service type
+	ImplTypeApp    = ImplType("app")    // module application type
 )
 
 type NamableImplementation interface {
@@ -104,26 +105,50 @@ func NewCoreImplNameNoVer(module, implementation string) ImplName {
 	return NewImplNameNoVer(ImplTypeCore, module, implementation)
 }
 
+func NewModuleImplName(module, implementation, version string) ImplName {
+	return NewImplName(ImplTypeModule, module, implementation, version)
+}
+
+func NewModuleImplNameNoVer(module, implementation string) ImplName {
+	return NewImplNameNoVer(ImplTypeModule, module, implementation)
+}
+
+func NewInfraImplName(module, implementation, version string) ImplName {
+	return NewImplName(ImplTypeInfra, module, implementation, version)
+}
+
+func NewInfraImplNameNoVer(module, implementation string) ImplName {
+	return NewImplNameNoVer(ImplTypeInfra, module, implementation)
+}
+
+// NewModuleImplName creates a new module implementation name.
+// Deprecated: use NewModuleImplNameNoVer instead
 func NewAppImplName(module, implementation, version string) ImplName {
 	return NewImplName(ImplTypeApp, module, implementation, version)
 }
 
+// NewModuleImplName creates a new module implementation name.
+// Deprecated: use NewModuleImplNameNoVer instead
 func NewAppImplNameNoVer(module, implementation string) ImplName {
 	return NewImplNameNoVer(ImplTypeApp, module, implementation)
 }
 
+// Deprecated: use NewModuleImplNameNoVer instead
 func NewSrvImplName(module, implementation, version string) ImplName {
 	return NewImplName(ImplTypeSrv, module, implementation, version)
 }
 
+// Deprecated: use NewModuleImplNameNoVer instead
 func NewSrvImplNameNoVer(module, implementation string) ImplName {
 	return NewImplNameNoVer(ImplTypeSrv, module, implementation)
 }
 
+// Deprecated: use NewModuleImplNameNoVer instead
 func NewRepoImplName(module, implementation, version string) ImplName {
 	return NewImplName(ImplTypeRepo, module, implementation, version)
 }
 
+// Deprecated: use NewModuleImplNameNoVer instead
 func NewRepoImplNameNoVer(module, implementation string) ImplName {
 	return NewImplNameNoVer(ImplTypeRepo, module, implementation)
 }

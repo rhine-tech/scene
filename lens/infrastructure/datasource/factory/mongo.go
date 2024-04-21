@@ -3,7 +3,7 @@ package factory
 import (
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/lens/infrastructure/datasource"
-	"github.com/rhine-tech/scene/lens/infrastructure/datasource/repository"
+	"github.com/rhine-tech/scene/lens/infrastructure/datasource/datasources"
 	"github.com/rhine-tech/scene/model"
 	"github.com/rhine-tech/scene/registry"
 )
@@ -17,7 +17,7 @@ type MongoDB struct {
 func (m MongoDB) Init() scene.LensInit {
 	return func() {
 		registry.Register[datasource.MongoDataSource](
-			repository.NewMongoDataSource(m.Config, m.UseApiVer))
+			datasources.NewMongoDataSource(m.Config, m.UseApiVer))
 	}
 }
 
