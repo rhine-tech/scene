@@ -27,7 +27,7 @@ func (c *CommonCronTaskDispatcher) Setup() error {
 }
 
 func (c *CommonCronTaskDispatcher) ImplName() scene.ImplName {
-	return scene.NewRepoImplName("asynctask", "CronTaskDispatcher", "cron_v3")
+	return asynctask.Lens.ImplName("CronTaskDispatcher", "cron_v3")
 }
 
 func NewCommonCronTaskDispatcher(taskDispatcher asynctask.TaskDispatcher) asynctask.CronTaskDispatcher {

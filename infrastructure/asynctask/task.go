@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+const Lens scene.InfraName = "asynctask"
+
 const DefaultMaxPoolSize = math.MaxInt32
 const DefaultInitialPoolSize = 1024
 
@@ -36,6 +38,7 @@ func (t *Task) Status() TaskStatus {
 }
 
 type TaskDispatcher interface {
+	scene.NamableImplementation
 	Run(task TaskFunc) *Task
 	RunTask(task *Task)
 }

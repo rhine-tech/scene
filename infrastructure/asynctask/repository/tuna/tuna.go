@@ -1,6 +1,7 @@
 package tuna
 
 import (
+	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/asynctask"
 	"github.com/rhine-tech/scene/pkg/queue"
 )
@@ -9,6 +10,10 @@ type Thunnus struct {
 	taskQueue *queue.QueueChannel[*asynctask.Task]
 	taskChan  chan *asynctask.Task
 	tunas     []*tuna
+}
+
+func (a Thunnus) ImplName() scene.ImplName {
+	return asynctask.Lens.ImplName("TaskDispatcher", "Thunnus")
 }
 
 func NewThunnus(concurs int) *Thunnus {

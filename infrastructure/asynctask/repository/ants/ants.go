@@ -2,11 +2,16 @@ package ants
 
 import (
 	xants "github.com/panjf2000/ants/v2"
+	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/asynctask"
 )
 
 type AntsImpl struct {
 	xants *xants.Pool
+}
+
+func (a AntsImpl) ImplName() scene.ImplName {
+	return asynctask.Lens.ImplName("TaskDispatcher", "ants")
 }
 
 func (a AntsImpl) Run(task asynctask.TaskFunc) *asynctask.Task {
