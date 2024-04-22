@@ -2,8 +2,8 @@ package builder
 
 import (
 	"github.com/rhine-tech/scene"
-	"github.com/rhine-tech/scene/lens/infrastructure/config"
-	"github.com/rhine-tech/scene/lens/infrastructure/ingestion/repository"
+	"github.com/rhine-tech/scene/infrastructure/config"
+	"github.com/rhine-tech/scene/infrastructure/ingestion/repository"
 	"github.com/rhine-tech/scene/registry"
 )
 

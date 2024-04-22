@@ -3,7 +3,7 @@ package grpc
 import (
 	"context"
 	"github.com/rhine-tech/scene"
-	"github.com/rhine-tech/scene/lens/infrastructure/logger"
+	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/rhine-tech/scene/registry"
 	scommon "github.com/rhine-tech/scene/scenes/common"
 	"google.golang.org/grpc"

@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/drivers/repos"
-	"github.com/rhine-tech/scene/lens/middlewares/permission"
+	"github.com/rhine-tech/scene/lens/permission"
 	"github.com/rhine-tech/scene/model"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"

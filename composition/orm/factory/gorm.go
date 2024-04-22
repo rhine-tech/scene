@@ -2,8 +2,8 @@ package factory
 
 import (
 	"github.com/rhine-tech/scene"
-	"github.com/rhine-tech/scene/composition/database"
-	"github.com/rhine-tech/scene/lens/infrastructure/datasource"
+	"github.com/rhine-tech/scene/composition/orm"
+	"github.com/rhine-tech/scene/infrastructure/datasource"
 	"github.com/rhine-tech/scene/registry"
 )
 
@@ -12,7 +12,7 @@ type GormMysql struct {
 
 func (g GormMysql) Init() scene.LensInit {
 	return func() {
-		registry.Register[database.Gorm](database.GormWithMysql(registry.Use(datasource.MysqlDataSource(nil))))
+		registry.Register[orm.Gorm](orm.GormWithMysql(registry.Use(datasource.MysqlDataSource(nil))))
 	}
 }
 

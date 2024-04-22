@@ -1,7 +1,7 @@
 package repos
 
 import (
-	"github.com/rhine-tech/scene/lens/infrastructure/datasource"
+	"github.com/rhine-tech/scene/infrastructure/datasource"
 	"github.com/rhine-tech/scene/model"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"

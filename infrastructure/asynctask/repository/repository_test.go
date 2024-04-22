@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"github.com/rhine-tech/scene/lens/infrastructure/asynctask"
+	"github.com/rhine-tech/scene/infrastructure/asynctask"
 	"sync"
 	"testing"
 )

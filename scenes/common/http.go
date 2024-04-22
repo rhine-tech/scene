@@ -3,7 +3,7 @@ package common
 import (
 	"context"
 	"github.com/rhine-tech/scene"
-	"github.com/rhine-tech/scene/lens/infrastructure/logger"
+	"github.com/rhine-tech/scene/infrastructure/logger"
 	"net/http"
 	"time"
 )

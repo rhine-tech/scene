@@ -2,7 +2,7 @@ package repository
 
 import (
 	"github.com/mattn/go-colorable"
-	"github.com/rhine-tech/scene/lens/infrastructure/logger"
+	"github.com/rhine-tech/scene/infrastructure/logger"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"time"

@@ -2,7 +2,7 @@ package repository
 
 import (
 	"errors"
-	"github.com/rhine-tech/scene/lens/infrastructure/config"
+	"github.com/rhine-tech/scene/infrastructure/config"
 	"github.com/spf13/cast"
 	"reflect"
 	"strings"

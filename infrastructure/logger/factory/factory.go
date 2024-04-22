@@ -2,9 +2,9 @@ package factory
 
 import (
 	"github.com/rhine-tech/scene"
-	"github.com/rhine-tech/scene/lens/infrastructure/config"
-	"github.com/rhine-tech/scene/lens/infrastructure/logger"
-	"github.com/rhine-tech/scene/lens/infrastructure/logger/repository"
+	"github.com/rhine-tech/scene/infrastructure/config"
+	"github.com/rhine-tech/scene/infrastructure/logger"
+	"github.com/rhine-tech/scene/infrastructure/logger/repository"
 	"github.com/rhine-tech/scene/registry"
 )
 

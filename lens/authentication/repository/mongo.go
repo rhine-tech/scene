@@ -4,8 +4,8 @@ import (
 	"context"
 	"github.com/google/uuid"
 	"github.com/rhine-tech/scene"
-	"github.com/rhine-tech/scene/lens/infrastructure/datasource"
-	"github.com/rhine-tech/scene/lens/middlewares/authentication"
+	"github.com/rhine-tech/scene/infrastructure/datasource"
+	"github.com/rhine-tech/scene/lens/authentication"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )

@@ -2,7 +2,7 @@ package repository
 
 import (
 	"fmt"
-	"github.com/rhine-tech/scene/lens/infrastructure/logger"
+	"github.com/rhine-tech/scene/infrastructure/logger"
 )
 
 type DummyLogger struct {

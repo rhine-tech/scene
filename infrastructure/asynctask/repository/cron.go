@@ -2,8 +2,8 @@ package repository
 
 import (
 	"github.com/rhine-tech/scene"
-	"github.com/rhine-tech/scene/lens/infrastructure/asynctask"
-	"github.com/rhine-tech/scene/lens/infrastructure/logger"
+	"github.com/rhine-tech/scene/infrastructure/asynctask"
+	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/robfig/cron/v3"
 	"time"
 )

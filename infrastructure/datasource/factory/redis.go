@@ -2,8 +2,8 @@ package factory
 
 import (
 	"github.com/rhine-tech/scene"
-	"github.com/rhine-tech/scene/lens/infrastructure/datasource"
-	"github.com/rhine-tech/scene/lens/infrastructure/datasource/datasources"
+	"github.com/rhine-tech/scene/infrastructure/datasource"
+	"github.com/rhine-tech/scene/infrastructure/datasource/datasources"
 	"github.com/rhine-tech/scene/model"
 	"github.com/rhine-tech/scene/registry"
 )

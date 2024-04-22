@@ -2,7 +2,7 @@ package caches
 
 import (
 	"encoding/json"
-	"github.com/rhine-tech/scene/lens/infrastructure/cache"
+	"github.com/rhine-tech/scene/infrastructure/cache"
 	"time"
 )
 

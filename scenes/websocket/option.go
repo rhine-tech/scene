@@ -3,7 +3,7 @@ package websocket
 import (
 	"github.com/gorilla/websocket"
 	"github.com/rhine-tech/scene"
-	"github.com/rhine-tech/scene/lens/infrastructure/logger"
+	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/rhine-tech/scene/registry"
 	"net/http"
 )

@@ -2,11 +2,11 @@ package factory
 
 import (
 	"github.com/rhine-tech/scene"
-	"github.com/rhine-tech/scene/lens/infrastructure/logger"
-	"github.com/rhine-tech/scene/lens/middlewares/permission"
-	"github.com/rhine-tech/scene/lens/middlewares/permission/delivery"
-	"github.com/rhine-tech/scene/lens/middlewares/permission/repository"
-	"github.com/rhine-tech/scene/lens/middlewares/permission/service"
+	"github.com/rhine-tech/scene/infrastructure/logger"
+	"github.com/rhine-tech/scene/lens/permission"
+	"github.com/rhine-tech/scene/lens/permission/delivery"
+	"github.com/rhine-tech/scene/lens/permission/repository"
+	"github.com/rhine-tech/scene/lens/permission/service"
 	"github.com/rhine-tech/scene/model"
 	"github.com/rhine-tech/scene/registry"
 	sgin "github.com/rhine-tech/scene/scenes/gin"

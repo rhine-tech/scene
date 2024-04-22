@@ -3,7 +3,7 @@ package repos
 import (
 	"encoding/json"
 	"github.com/rhine-tech/scene"
-	"github.com/rhine-tech/scene/lens/infrastructure/datasource"
+	"github.com/rhine-tech/scene/infrastructure/datasource"
 	"github.com/rhine-tech/scene/model"
 	"os"
 )

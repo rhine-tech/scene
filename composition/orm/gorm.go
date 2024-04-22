@@ -1,11 +1,11 @@
-package database
+package orm
 
 import (
 	"context"
 	"database/sql"
 	"github.com/rhine-tech/scene"
-	"github.com/rhine-tech/scene/lens/infrastructure/datasource"
-	"github.com/rhine-tech/scene/lens/infrastructure/logger"
+	"github.com/rhine-tech/scene/infrastructure/datasource"
+	"github.com/rhine-tech/scene/infrastructure/logger"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	gormlog "gorm.io/gorm/logger"
@@ -13,7 +13,7 @@ import (
 )
 
 type Gorm interface {
-	Database
+	ORM
 	DB() *gorm.DB
 	RegisterModel(model ...any) error
 }
@@ -57,12 +57,12 @@ type gormImpl struct {
 	log        logger.ILogger `aperture:""`
 }
 
-func (g *gormImpl) DatabaseName() scene.ImplName {
-	return scene.NewRepoImplNameNoVer("database", "Gorm")
+func (g *gormImpl) OrmName() scene.ImplName {
+	return Lens.ImplNameNoVer("Gorm")
 }
 
 func (g *gormImpl) Setup() error {
-	g.log = g.log.WithPrefix(g.DatabaseName().Identifier())
+	g.log = g.log.WithPrefix(g.OrmName().Identifier())
 	g.log.Infof("setup gorm with datasource %s", g.ds.DataSourceName().Implementation)
 	gormDb, err := gorm.Open(mysql.New(mysql.Config{
 		Conn: g.connection(),

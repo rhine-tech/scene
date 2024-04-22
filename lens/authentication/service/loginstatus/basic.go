@@ -2,7 +2,7 @@ package loginstatus
 
 import (
 	"github.com/rhine-tech/scene"
-	"github.com/rhine-tech/scene/lens/middlewares/authentication"
+	"github.com/rhine-tech/scene/lens/authentication"
 	"net/http"
 )
 

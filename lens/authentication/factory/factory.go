@@ -2,12 +2,12 @@ package factory
 
 import (
 	"github.com/rhine-tech/scene"
-	"github.com/rhine-tech/scene/lens/infrastructure/logger"
-	"github.com/rhine-tech/scene/lens/middlewares/authentication"
-	"github.com/rhine-tech/scene/lens/middlewares/authentication/delivery"
-	"github.com/rhine-tech/scene/lens/middlewares/authentication/repository"
-	"github.com/rhine-tech/scene/lens/middlewares/authentication/service"
-	"github.com/rhine-tech/scene/lens/middlewares/authentication/service/loginstatus"
+	"github.com/rhine-tech/scene/infrastructure/logger"
+	"github.com/rhine-tech/scene/lens/authentication"
+	"github.com/rhine-tech/scene/lens/authentication/delivery"
+	"github.com/rhine-tech/scene/lens/authentication/repository"
+	"github.com/rhine-tech/scene/lens/authentication/service"
+	"github.com/rhine-tech/scene/lens/authentication/service/loginstatus"
 	"github.com/rhine-tech/scene/registry"
 	sgin "github.com/rhine-tech/scene/scenes/gin"
 )

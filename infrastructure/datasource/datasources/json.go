@@ -2,8 +2,8 @@ package datasources
 
 import (
 	"github.com/rhine-tech/scene"
-	"github.com/rhine-tech/scene/lens/infrastructure/datasource"
-	"github.com/rhine-tech/scene/lens/infrastructure/logger"
+	"github.com/rhine-tech/scene/infrastructure/datasource"
+	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/rhine-tech/scene/model"
 	"os"
 )
@@ -42,7 +42,7 @@ func (j *JsonRepo) Setup() error {
 }
 
 func (j *JsonRepo) DataSourceName() scene.ImplName {
-	return scene.NewRepoImplNameNoVer("datasource", "json")
+	return datasource.Lens.ImplName("datasource", "json")
 }
 
 func (j *JsonRepo) Status() error {

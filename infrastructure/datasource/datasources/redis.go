@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"github.com/redis/go-redis/v9"
 	"github.com/rhine-tech/scene"
-	"github.com/rhine-tech/scene/lens/infrastructure/datasource"
-	"github.com/rhine-tech/scene/lens/infrastructure/logger"
+	"github.com/rhine-tech/scene/infrastructure/datasource"
+	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/rhine-tech/scene/model"
 	"github.com/spf13/cast"
 	"time"
@@ -31,7 +31,7 @@ func NewRedisDataRepo(cfg model.DatabaseConfig) datasource.RedisDataSource {
 }
 
 func (r *RedisDataRepo) DataSourceName() scene.ImplName {
-	return scene.NewRepoImplNameNoVer("datasource", "redis")
+	return datasource.Lens.ImplName("datasource", "redis")
 }
 
 func (r *RedisDataRepo) Setup() error {

@@ -1,7 +1,7 @@
 package factory
 
 import (
-	"github.com/rhine-tech/scene/lens/infrastructure/config/repository"
+	"github.com/rhine-tech/scene/infrastructure/config/repository"
 	"github.com/rhine-tech/scene/registry"
 )
 

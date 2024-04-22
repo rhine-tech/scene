@@ -3,7 +3,7 @@ package repos
 import (
 	"context"
 	"fmt"
-	"github.com/rhine-tech/scene/lens/infrastructure/datasource"
+	"github.com/rhine-tech/scene/infrastructure/datasource"
 	"github.com/rhine-tech/scene/model"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"

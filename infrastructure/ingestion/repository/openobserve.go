@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-resty/resty/v2"
-	"github.com/rhine-tech/scene/lens/infrastructure/ingestion"
+	"github.com/rhine-tech/scene/infrastructure/ingestion"
 )
 
 type openobserve[T any] struct {

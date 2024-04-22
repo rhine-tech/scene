@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+const Lens scene.InfraName = "datasource"
+
 type DataSource interface {
 	scene.Disposable
 	scene.Setupable

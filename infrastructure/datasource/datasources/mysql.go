@@ -3,8 +3,8 @@ package datasources
 import (
 	"database/sql"
 	"github.com/rhine-tech/scene"
-	"github.com/rhine-tech/scene/lens/infrastructure/datasource"
-	"github.com/rhine-tech/scene/lens/infrastructure/logger"
+	"github.com/rhine-tech/scene/infrastructure/datasource"
+	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/rhine-tech/scene/model"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -43,7 +43,7 @@ func (m *MysqlRepo) Setup() error {
 }
 
 func (m *MysqlRepo) DataSourceName() scene.ImplName {
-	return scene.NewRepoImplNameNoVer("datasource", "mysql")
+	return datasource.Lens.ImplName("datasource", "mysql")
 }
 
 func (m *MysqlRepo) Status() error {

@@ -2,8 +2,8 @@ package factory
 
 import (
 	"github.com/rhine-tech/scene"
-	"github.com/rhine-tech/scene/lens/infrastructure/asynctask"
-	"github.com/rhine-tech/scene/lens/infrastructure/asynctask/repository"
+	"github.com/rhine-tech/scene/infrastructure/asynctask"
+	"github.com/rhine-tech/scene/infrastructure/asynctask/repository"
 	"github.com/rhine-tech/scene/registry"
 )
 

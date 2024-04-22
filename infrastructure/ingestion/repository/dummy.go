@@ -1,6 +1,6 @@
 package repository
 
-import "github.com/rhine-tech/scene/lens/infrastructure/ingestion"
+import "github.com/rhine-tech/scene/infrastructure/ingestion"
 
 type dummy[T any] struct {
 }

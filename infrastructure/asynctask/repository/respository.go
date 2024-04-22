@@ -1,9 +1,9 @@
 package repository
 
 import (
-	"github.com/rhine-tech/scene/lens/infrastructure/asynctask"
-	"github.com/rhine-tech/scene/lens/infrastructure/asynctask/repository/ants"
-	"github.com/rhine-tech/scene/lens/infrastructure/asynctask/repository/tuna"
+	"github.com/rhine-tech/scene/infrastructure/asynctask"
+	"github.com/rhine-tech/scene/infrastructure/asynctask/repository/ants"
+	"github.com/rhine-tech/scene/infrastructure/asynctask/repository/tuna"
 )
 
 func NewThunnusTaskDispatcher() asynctask.TaskDispatcher {

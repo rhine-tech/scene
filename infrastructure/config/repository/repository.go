@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"github.com/rhine-tech/scene/lens/infrastructure/config"
+	"github.com/rhine-tech/scene/infrastructure/config"
 	"github.com/rhine-tech/scene/pkg/cfgur"
 )
 

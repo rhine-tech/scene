@@ -2,7 +2,7 @@ package ants
 
 import (
 	xants "github.com/panjf2000/ants/v2"
-	"github.com/rhine-tech/scene/lens/infrastructure/asynctask"
+	"github.com/rhine-tech/scene/infrastructure/asynctask"
 )
 
 type AntsImpl struct {

@@ -3,8 +3,8 @@ package datasources
 import (
 	"context"
 	"github.com/rhine-tech/scene"
-	"github.com/rhine-tech/scene/lens/infrastructure/datasource"
-	"github.com/rhine-tech/scene/lens/infrastructure/logger"
+	"github.com/rhine-tech/scene/infrastructure/datasource"
+	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/rhine-tech/scene/model"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -28,7 +28,7 @@ func NewMongoDataSource(cfg model.DatabaseConfig, useApiVersion bool) datasource
 }
 
 func (j *MongoRepo) DataSourceName() scene.ImplName {
-	return scene.NewRepoImplNameNoVer("datasource", "mongo")
+	return datasource.Lens.ImplName("datasource", "mongo")
 }
 
 func (m *MongoRepo) Setup() error {
