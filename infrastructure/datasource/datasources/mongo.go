@@ -28,7 +28,7 @@ func NewMongoDataSource(cfg model.DatabaseConfig, useApiVersion bool) datasource
 }
 
 func (j *MongoRepo) DataSourceName() scene.ImplName {
-	return datasource.Lens.ImplName("datasource", "mongo")
+	return datasource.Lens.ImplNameNoVer("MongoDataSource")
 }
 
 func (m *MongoRepo) Setup() error {

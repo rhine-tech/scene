@@ -69,3 +69,11 @@ func (d DatabaseConfig) RedisDSN() string {
 	sb.WriteString(fmt.Sprintf("%s:%d/%s", d.Host, d.Port, d.Database))
 	return sb.String()
 }
+
+func (d DatabaseConfig) SqliteDSN() string {
+	val := d.Host
+	if d.Options != "" {
+		val += "?" + d.Options
+	}
+	return val
+}

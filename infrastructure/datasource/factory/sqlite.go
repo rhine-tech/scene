@@ -8,25 +8,23 @@ import (
 	"github.com/rhine-tech/scene/registry"
 )
 
-type Mysql struct {
+type Sqlite struct {
 	scene.ModuleFactory
 	Config model.DatabaseConfig
 }
 
-func (m Mysql) Init() scene.LensInit {
+func (m Sqlite) Init() scene.LensInit {
 	return func() {
-		registry.Register[datasource.MysqlDataSource](
-			datasources.NewMysqlDatasource(m.Config))
+		registry.Register[datasource.SqliteDataSource](
+			datasources.SqliteDatasource(m.Config))
 	}
 }
 
-func (m Mysql) Default() Mysql {
-	return Mysql{
+func (m Sqlite) Default() Sqlite {
+	return Sqlite{
 		Config: model.DatabaseConfig{
-			Host:     registry.Config.GetString("mysql.host"),
-			Port:     int(registry.Config.GetInt("mysql.port")),
-			Username: registry.Config.GetString("mysql.username"),
-			Password: registry.Config.GetString("mysql.password"),
+			Host:     registry.Config.GetString("sqlite.path"),
+			Options:  registry.Config.GetString("sqlite.options"),
 			Database: "scene",
 		},
 	}

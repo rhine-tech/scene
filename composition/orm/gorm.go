@@ -2,14 +2,15 @@ package orm
 
 import (
 	"context"
-	"database/sql"
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/datasource"
 	"github.com/rhine-tech/scene/infrastructure/logger"
-	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	gormlog "gorm.io/gorm/logger"
 	"time"
+
+	gormSqlite "github.com/glebarez/sqlite"
+	gormMysql "gorm.io/driver/mysql"
 )
 
 type Gorm interface {
@@ -19,8 +20,18 @@ type Gorm interface {
 }
 
 func GormWithMysql(ds datasource.MysqlDataSource) Gorm {
-	return &gormImpl{connection: func() *sql.DB {
-		return ds.Connection()
+	return &gormImpl{dialector: func() gorm.Dialector {
+		return gormMysql.New(gormMysql.Config{
+			Conn: ds.Connection(),
+		})
+	}, ds: ds}
+}
+
+func GormWithSqlite(ds datasource.SqliteDataSource) Gorm {
+	return &gormImpl{dialector: func() gorm.Dialector {
+		return &gormSqlite.Dialector{
+			Conn: ds.Connection(),
+		}
 	}, ds: ds}
 }
 
@@ -51,10 +62,10 @@ func (g *gormLogger) Trace(ctx context.Context, begin time.Time, fc func() (sql 
 }
 
 type gormImpl struct {
-	db         *gorm.DB
-	connection func() *sql.DB
-	ds         datasource.DataSource
-	log        logger.ILogger `aperture:""`
+	db        *gorm.DB
+	dialector func() gorm.Dialector
+	ds        datasource.DataSource
+	log       logger.ILogger `aperture:""`
 }
 
 func (g *gormImpl) OrmName() scene.ImplName {
@@ -64,9 +75,7 @@ func (g *gormImpl) OrmName() scene.ImplName {
 func (g *gormImpl) Setup() error {
 	g.log = g.log.WithPrefix(g.OrmName().Identifier())
 	g.log.Infof("setup gorm with datasource %s", g.ds.DataSourceName().Implementation)
-	gormDb, err := gorm.Open(mysql.New(mysql.Config{
-		Conn: g.connection(),
-	}), &gorm.Config{
+	gormDb, err := gorm.Open(g.dialector(), &gorm.Config{
 		Logger: &gormLogger{prefix: "GormInternal: ", log: g.log},
 	})
 	if err != nil {

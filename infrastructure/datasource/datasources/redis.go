@@ -31,7 +31,7 @@ func NewRedisDataRepo(cfg model.DatabaseConfig) datasource.RedisDataSource {
 }
 
 func (r *RedisDataRepo) DataSourceName() scene.ImplName {
-	return datasource.Lens.ImplName("datasource", "redis")
+	return datasource.Lens.ImplNameNoVer("RedisDataSource")
 }
 
 func (r *RedisDataRepo) Setup() error {

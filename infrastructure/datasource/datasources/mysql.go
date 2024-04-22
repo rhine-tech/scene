@@ -43,7 +43,7 @@ func (m *MysqlRepo) Setup() error {
 }
 
 func (m *MysqlRepo) DataSourceName() scene.ImplName {
-	return datasource.Lens.ImplName("datasource", "mysql")
+	return datasource.Lens.ImplNameNoVer("MysqlDataSource")
 }
 
 func (m *MysqlRepo) Status() error {

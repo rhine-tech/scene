@@ -23,9 +23,17 @@ type MongoDataSource interface {
 	Collection(coll string) *mongo.Collection
 }
 
-type MysqlDataSource interface {
+type SqlDataSource interface {
 	DataSource
 	Connection() *sql.DB
+}
+
+type MysqlDataSource interface {
+	SqlDataSource
+}
+
+type SqliteDataSource interface {
+	SqlDataSource
 }
 
 type RedisDataSource interface {

@@ -1,4 +1,4 @@
-package mysql
+package gorm
 
 import (
 	"github.com/rhine-tech/scene/lens/authentication"

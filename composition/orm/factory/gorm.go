@@ -19,3 +19,15 @@ func (g GormMysql) Init() scene.LensInit {
 func (g GormMysql) Apps() []any {
 	return nil
 }
+
+type GormSqlite struct{}
+
+func (g GormSqlite) Init() scene.LensInit {
+	return func() {
+		registry.Register[orm.Gorm](orm.GormWithSqlite(registry.Use(datasource.SqliteDataSource(nil))))
+	}
+}
+
+func (g GormSqlite) Apps() []any {
+	return nil
+}
