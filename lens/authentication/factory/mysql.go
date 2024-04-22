@@ -2,7 +2,6 @@ package factory
 
 import (
 	"github.com/rhine-tech/scene"
-	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/rhine-tech/scene/lens/authentication"
 	"github.com/rhine-tech/scene/lens/authentication/delivery"
 	"github.com/rhine-tech/scene/lens/authentication/repository/mysql"
@@ -40,7 +39,6 @@ func (b GinAppMysql) Apps() []any {
 	return []any{
 		func() sgin.GinApplication {
 			return delivery.NewGinApp(
-				registry.Use[logger.ILogger](nil),
 				registry.Use[authentication.HTTPLoginStatusVerifier](nil),
 				nil,
 				nil)

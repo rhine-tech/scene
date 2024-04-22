@@ -2,7 +2,6 @@ package factory
 
 import (
 	"github.com/rhine-tech/scene"
-	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/rhine-tech/scene/lens/authentication"
 	"github.com/rhine-tech/scene/lens/authentication/delivery"
 	"github.com/rhine-tech/scene/lens/authentication/repository"
@@ -10,7 +9,6 @@ import (
 	"github.com/rhine-tech/scene/registry"
 	sgin "github.com/rhine-tech/scene/scenes/gin"
 )
-
 
 type GinAppMongoDB struct {
 	scene.ModuleFactory
@@ -41,7 +39,6 @@ func (b GinAppMongoDB) Apps() []any {
 	return []any{
 		func() sgin.GinApplication {
 			return delivery.NewGinApp(
-				registry.Use[logger.ILogger](nil),
 				registry.Use[authentication.HTTPLoginStatusVerifier](nil),
 				nil,
 				nil)
