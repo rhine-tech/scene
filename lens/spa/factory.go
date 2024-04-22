@@ -3,7 +3,7 @@ package spa
 import (
 	"embed"
 	"github.com/rhine-tech/scene"
-	"github.com/rhine-tech/scene/lens/app/spa/delivery"
+	"github.com/rhine-tech/scene/lens/spa/delivery"
 	sgin "github.com/rhine-tech/scene/scenes/gin"
 )
 
