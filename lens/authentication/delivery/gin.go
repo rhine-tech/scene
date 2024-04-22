@@ -4,7 +4,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/errcode"
-	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/rhine-tech/scene/lens/authentication"
 	"github.com/rhine-tech/scene/lens/authentication/delivery/middleware"
 	"github.com/rhine-tech/scene/model"
@@ -13,20 +12,20 @@ import (
 )
 
 type ginApp struct {
-	sgin.CommonApp
 	lgStSrv authentication.HTTPLoginStatusVerifier `aperture:""`
 	authSrv authentication.AuthenticationService   `aperture:""`
 	infoSrv authentication.UserInfoService         `aperture:""`
 }
 
-func NewGinApp(logger logger.ILogger,
+func (g *ginApp) Destroy() error {
+	return nil
+}
+
+func NewGinApp(
 	lgStSrv authentication.HTTPLoginStatusVerifier,
 	authSrv authentication.AuthenticationService,
 	infoSrv authentication.UserInfoService) sgin.GinApplication {
 	return &ginApp{
-		CommonApp: sgin.CommonApp{
-			Logger: logger.WithPrefix("authentication.app.gin"),
-		},
 		lgStSrv: lgStSrv,
 		authSrv: authSrv,
 		infoSrv: infoSrv,
