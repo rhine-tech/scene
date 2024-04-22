@@ -47,7 +47,7 @@ func (g *ginApp) Create(engine *gin.Engine, router gin.IRouter) error {
 }
 
 func (g *ginApp) Name() scene.ImplName {
-	return scene.NewAppImplNameNoVer("authentication", "gin")
+	return authentication.Lens.ImplNameNoVer("GinApplication")
 }
 
 func (g *ginApp) Prefix() string {

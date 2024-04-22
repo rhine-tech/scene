@@ -7,25 +7,14 @@ import (
 	"github.com/rhine-tech/scene/lens/authentication/delivery"
 	"github.com/rhine-tech/scene/lens/authentication/repository"
 	"github.com/rhine-tech/scene/lens/authentication/service"
-	"github.com/rhine-tech/scene/lens/authentication/service/loginstatus"
 	"github.com/rhine-tech/scene/registry"
 	sgin "github.com/rhine-tech/scene/scenes/gin"
 )
 
-type HTTPLoginStatusVerifier scene.IModuleDependencyProvider[authentication.HTTPLoginStatusVerifier]
-
-type JWTVerifier struct {
-	Key    string
-	Secret []byte
-}
-
-func (J JWTVerifier) Provide() authentication.HTTPLoginStatusVerifier {
-	return loginstatus.NewJWT(J.Secret, J.Key)
-}
 
 type GinAppMongoDB struct {
 	scene.ModuleFactory
-	Verifier HTTPLoginStatusVerifier
+	Verifier scene.IModuleDependencyProvider[authentication.HTTPLoginStatusVerifier]
 }
 
 func (b GinAppMongoDB) Default() GinAppMongoDB {

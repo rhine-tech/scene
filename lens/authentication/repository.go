@@ -8,10 +8,7 @@ type AuthenticationRepository interface {
 	UserById(userId string) (User, error)
 	UserByName(username string) (User, error)
 	UserByEmail(email string) (User, error)
-}
 
-type AuthenticationManageRepository interface {
-	AuthenticationRepository
 	AddUser(username, password string) (User, error)
 	DeleteUser(userId string) error
 	UpdateUser(user User) error

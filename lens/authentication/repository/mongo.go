@@ -28,7 +28,7 @@ func (m *mongoImpl) Setup() error {
 	return nil
 }
 
-func NewMongoAuthenticationRepository(ds datasource.MongoDataSource) authentication.AuthenticationManageRepository {
+func NewMongoAuthenticationRepository(ds datasource.MongoDataSource) authentication.AuthenticationRepository {
 	repo := &mongoImpl{
 		ds: ds,
 	}
@@ -121,7 +121,7 @@ type mongoInfoImpl struct {
 }
 
 func (m *mongoInfoImpl) RepoImplName() scene.ImplName {
-	return scene.NewRepoImplName("authentication", "UserInfo", "mongo")
+	return authentication.Lens.ImplName("UserInfoRepository", "mongo")
 }
 
 func (m *mongoInfoImpl) Status() error {

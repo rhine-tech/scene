@@ -11,7 +11,7 @@ type userInfoServiceImpl struct {
 }
 
 func (u *userInfoServiceImpl) SrvImplName() scene.ImplName {
-	return scene.NewSrvImplName("authentication", "UserInfoService", "v1")
+	return authentication.Lens.ImplName("UserInfoService", "v1")
 }
 
 func (u *userInfoServiceImpl) InfoById(userId string) (authentication.UserInfo, error) {

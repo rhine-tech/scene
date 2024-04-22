@@ -7,8 +7,8 @@ import (
 )
 
 type authenticationManageService struct {
-	logger logger.ILogger                                `aperture:""`
-	repo   authentication.AuthenticationManageRepository `aperture:""`
+	logger logger.ILogger                          `aperture:""`
+	repo   authentication.AuthenticationRepository `aperture:""`
 }
 
 func (a *authenticationManageService) Setup() error {
@@ -26,7 +26,7 @@ func (a *authenticationManageService) SrvImplName() scene.ImplName {
 }
 
 func NewAuthenticationService(
-	logger logger.ILogger, repo authentication.AuthenticationManageRepository) authentication.AuthenticationManageService {
+	logger logger.ILogger, repo authentication.AuthenticationRepository) authentication.AuthenticationManageService {
 	s := &authenticationManageService{
 		logger: logger,
 		repo:   repo,
