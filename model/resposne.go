@@ -11,6 +11,8 @@ type PageResult[T any] struct {
 type PaginationResult[T any] struct {
 	Total   int64 `json:"total" bson:"total"`
 	Offset  int64 `json:"offset" bson:"offset"`
-	Results []T `json:"results" bson:"results"`
+	Results []T   `json:"results" bson:"results"`
 	Count   int64 `json:"count" bson:"count"`
 }
+
+type JsonResponse map[string]interface{}
