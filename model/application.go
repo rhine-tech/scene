@@ -21,7 +21,11 @@ func NewErrorResponse(code int, err error) AppResponse {
 }
 
 func NewErrorCodeResponse(err *errcode.Error) AppResponse {
-	return AppResponse{Code: err.Code, Msg: err.Error(), Data: nil}
+	msg := err.Message
+	if err.Detail != "" {
+		msg += " (" + err.Detail + ")"
+	}
+	return AppResponse{Code: err.Code, Msg: msg, Data: nil}
 }
 
 func TryErrorCodeResponse(err error) AppResponse {

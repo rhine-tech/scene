@@ -38,10 +38,10 @@ func (b GinAppGorm) Init() scene.LensInit {
 func (b GinAppGorm) Apps() []any {
 	return []any{
 		func() sgin.GinApplication {
-			return delivery.NewGinApp(
+			return registry.Load(delivery.NewGinApp(
 				registry.Use[authentication.HTTPLoginStatusVerifier](nil),
 				nil,
-				nil)
+				nil))
 		},
 	}
 }
