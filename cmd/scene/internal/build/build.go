@@ -25,6 +25,7 @@ var buildDir string
 var outName string
 var buildVersion string
 var buildHash string
+var env string
 
 func init() {
 	// Build command flags
@@ -33,6 +34,7 @@ func init() {
 	CmdBuild.Flags().StringVar(&outName, "out", "", "Name of the output executable")
 	CmdBuild.Flags().StringVar(&buildVersion, "version", "v0.0.0", "Version of the application")
 	CmdBuild.Flags().StringVar(&buildHash, "build-hash", "", "Git hash of the application, default is the current git hash")
+	CmdBuild.Flags().StringVar(&env, "env", "production", "Environment of the application (development, production, test), default is production")
 }
 
 func build(cmd *cobra.Command, args []string) {
@@ -87,10 +89,11 @@ func executeBuild(goos, packagePath, buildDir, outputName string) {
 		}
 	}
 
-	ldflags := fmt.Sprintf("-ldflags=-X '%s=%d' -X '%s=%s' -X '%s=%s'",
+	ldflags := fmt.Sprintf("-ldflags=-X '%s=%d' -X '%s=%s' -X '%s=%s' -X '%s=%s'",
 		varName("AppBuildTime"), time.Now().Unix(),
 		varName("AppBuildHash"), buildHash,
 		varName("AppBuildVersion"), buildVersion,
+		varName("DEFAULT_ENV"), env,
 	)
 
 	appName := filepath.Base(packagePath)

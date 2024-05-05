@@ -25,10 +25,21 @@ func (e Environment) String() string {
 
 var env Environment = EnvDevelopment
 
+// DEFAULT_ENV is the environment variable that can be set to "production", "test" or "development"
+// this is the default
+var DEFAULT_ENV string = "development"
+
 func init() {
-	switch os.Getenv("SCENE_ENV") {
+	// override the default environment setting
+	envStr := DEFAULT_ENV
+	if os.Getenv("SCENE_ENV") != "" {
+		envStr = os.Getenv("SCENE_ENV")
+	}
+	switch envStr {
 	case "production":
 		env = EnvProduction
+	case "development":
+		env = EnvDevelopment
 	case "test":
 		env = EnvTest
 	default:
