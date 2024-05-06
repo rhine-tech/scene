@@ -2,6 +2,7 @@ package datasources
 
 import (
 	"database/sql"
+	"errors"
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/datasource"
 	"github.com/rhine-tech/scene/infrastructure/logger"
@@ -29,6 +30,10 @@ func (s *sqliteImpl) Dispose() error {
 
 func (s *sqliteImpl) Setup() error {
 	s.log = s.log.WithPrefix(s.DataSourceName().String())
+	if s.cfg.SqliteDSN() == "" {
+		s.log.Errorf("invalid sqlite dsn: sqlite dsn is empty")
+		return errors.New("invalid sqlite dsn")
+	}
 	db, err := sql.Open("sqlite", s.cfg.SqliteDSN())
 	if err != nil {
 		s.log.Errorf("\"%s\" failed to open: %s", s.cfg.SqliteDSN(), err)
