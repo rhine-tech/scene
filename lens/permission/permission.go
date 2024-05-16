@@ -2,6 +2,8 @@ package permission
 
 import "github.com/rhine-tech/scene"
 
+const Lens scene.ModuleName = "permission"
+
 type PermissionService interface {
 	scene.Service
 	HasPermission(owner string, perm *Permission) bool

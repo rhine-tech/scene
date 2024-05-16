@@ -57,3 +57,21 @@ func (b MongoCached) Apps() []any {
 		InitApp,
 	}
 }
+
+type Gorm struct {
+	scene.ModuleFactory
+}
+
+func (b Gorm) Init() scene.LensInit {
+	return func() {
+		_ = registry.Register(repository.NewGormImpl(nil))
+		_ = registry.Register(
+			permission.PermissionService(&service.PermissionManagerImpl{}))
+	}
+}
+
+func (b Gorm) Apps() []any {
+	return []any{
+		InitApp,
+	}
+}
