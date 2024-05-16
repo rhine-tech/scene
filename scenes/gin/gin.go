@@ -3,7 +3,7 @@ package gin
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/rhine-tech/scene"
-	"github.com/rhine-tech/scene/infrastructure/logger"
+	"github.com/rhine-tech/scene/registry"
 )
 
 const SceneName = "scene.app-container.http.gin"
@@ -15,20 +15,28 @@ type GinApplication interface {
 	Destroy() error
 }
 
-type CommonApp struct {
-	AppError  error
-	AppStatus scene.AppStatus
-	Logger    logger.ILogger
+type AppRoutes[T any] struct {
+	AppName  scene.ImplName
+	BasePath string
+	Actions  []Action[*T]
+	Context  T
 }
 
-func (s *CommonApp) Status() scene.AppStatus {
-	return s.AppStatus
+func (a *AppRoutes[T]) Name() scene.ImplName {
+	return a.AppName
 }
 
-func (s *CommonApp) Error() error {
-	return s.AppError
+func (a *AppRoutes[T]) Prefix() string {
+	return a.BasePath
 }
 
-func (s *CommonApp) Destroy() error {
+func (a *AppRoutes[T]) Create(engine *gin.Engine, router gin.IRouter) error {
+	registry.Inject(&a.Context)
+	approuter := NewAppRouter(&a.Context, router)
+	approuter.HandleActions(a.Actions...)
+	return nil
+}
+
+func (a *AppRoutes[T]) Destroy() error {
 	return nil
 }

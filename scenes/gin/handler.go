@@ -9,12 +9,12 @@ import (
 	"reflect"
 )
 
-type Request[T GinApplication] interface {
+type Request[T any] interface {
 	Process(ctx *Context[T]) (data any, err error)
 	Binding() binding.Binding
 }
 
-type ParameterBinder[T GinApplication] interface {
+type ParameterBinder[T any] interface {
 	Bind(ctx *Context[T]) error
 }
 
@@ -46,17 +46,17 @@ type RequestURI struct{}
 
 func (r *RequestURI) Binding() binding.Binding { return uriBindingPlaceHolder{} }
 
-func RequestWrapper[T GinApplication](app T) func(Request[T]) gin.HandlerFunc {
+func RequestWrapper[T any](app T) func(Request[T]) gin.HandlerFunc {
 	return func(request Request[T]) gin.HandlerFunc {
 		return Handle(app, request)
 	}
 }
 
-func WrapReq[A GinApplication, T Request[A]](app A, request T) gin.HandlerFunc {
+func WrapReq[A any, T Request[A]](app A, request T) gin.HandlerFunc {
 	return Handle(app, request)
 }
 
-func Handle[A GinApplication, T Request[A]](app A, request T) gin.HandlerFunc {
+func Handle[A any, T Request[A]](app A, request T) gin.HandlerFunc {
 	// T is a request object, should be a pointer to a struct, and implement Request interface
 	// if not, Request object will not be able to receive bound parameters
 	if reflect.TypeOf(request).Kind() != reflect.Ptr {

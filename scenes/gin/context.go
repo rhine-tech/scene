@@ -5,9 +5,9 @@ import (
 	"github.com/rhine-tech/scene"
 )
 
-type Context[T GinApplication] struct {
+type Context[T any] struct {
 	*gin.Context
-	App T
+	App T // App is the container of current app
 }
 
 func (g *Context[T]) Get(key string) (value any, exists bool) {

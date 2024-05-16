@@ -61,6 +61,11 @@ func Load[T any](val T) T {
 	return TryInject(val)
 }
 
+// Inject is the shortcut for TryInject(val)
+func Inject[T any](val T) T {
+	return TryInject(val)
+}
+
 func Validate() {
 	AcquireInfrastructure()
 }
