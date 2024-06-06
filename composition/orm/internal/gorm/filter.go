@@ -1,88 +1,99 @@
 package gorm
 
 import (
-	sfilter "github.com/rhine-tech/scene/model/filter"
+	sopt "github.com/rhine-tech/scene/model/query"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type filterBuilder struct {
-	fieldMapper sfilter.FieldMapper
+	fieldMapper sopt.FieldMapper
 	basedb      *gorm.DB
 }
 
-func (b *filterBuilder) buildFieldFilter(db *gorm.DB, filter *sfilter.FieldFilter) *gorm.DB {
-	fname := b.fieldMapper.Get(filter.Field)
-	switch filter.Operator {
-	case sfilter.OpEqual:
-		return db.Where(fname+" = ?", filter.Value)
-	case sfilter.OpNotEqual:
-		return db.Not(fname, filter.Value)
-	case sfilter.OpGreater:
-		return db.Where(fname+" > ?", filter.Value)
-	case sfilter.OpGreaterOrEqual:
-		return db.Where(fname+" >= ?", filter.Value)
-	case sfilter.OpLess:
-		return db.Where(fname+" < ?", filter.Value)
-	case sfilter.OpLessOrEqual:
-		return db.Where(fname+" <= ?", filter.Value)
+func (b *filterBuilder) buildFieldFilter(db *gorm.DB, filterOpt *sopt.Filter) *gorm.DB {
+	fname := b.fieldMapper.Get(filterOpt.Field)
+	switch filterOpt.Operator {
+	case sopt.OpEqual:
+		return db.Where(fname+" = ?", filterOpt.Value)
+	case sopt.OpNotEqual:
+		return db.Not(fname, filterOpt.Value)
+	case sopt.OpGreater:
+		return db.Where(fname+" > ?", filterOpt.Value)
+	case sopt.OpGreaterOrEqual:
+		return db.Where(fname+" >= ?", filterOpt.Value)
+	case sopt.OpLess:
+		return db.Where(fname+" < ?", filterOpt.Value)
+	case sopt.OpLessOrEqual:
+		return db.Where(fname+" <= ?", filterOpt.Value)
 	}
 	return db
 }
 
-func (b *filterBuilder) buildLogicalFilter(db *gorm.DB, filter *sfilter.LogicalFilter) *gorm.DB {
-	if len(filter.Filters) == 0 {
+func (b *filterBuilder) buildLogicalFilter(db *gorm.DB, logicalOpt *sopt.Logical) *gorm.DB {
+	if len(logicalOpt.Filters) == 0 {
 		return db
 	}
-	if len(filter.Filters) == 1 && (filter.Operator == sfilter.OpAnd || filter.Operator == sfilter.OpOr) {
-		return b.buildFilter(db, filter.Filters[0])
+	if len(logicalOpt.Filters) == 1 && (logicalOpt.Operator == sopt.OpAnd || logicalOpt.Operator == sopt.OpOr) {
+		return b.buildOption(db, logicalOpt.Filters[0])
 	}
-	if filter.Operator == sfilter.OpNot {
-		return db.Not(b.buildFilter(db, filter.Filters[0]))
+	if logicalOpt.Operator == sopt.OpNot {
+		return db.Not(b.buildOption(db, logicalOpt.Filters[0]))
 	}
-	if filter.Operator == sfilter.OpAnd {
-		for _, f := range filter.Filters {
-			db = db.Where(b.buildFilter(db, f))
+	if logicalOpt.Operator == sopt.OpAnd {
+		for _, f := range logicalOpt.Filters {
+			db = db.Where(b.buildOption(db, f))
 		}
 		return db
 	}
-	if filter.Operator == sfilter.OpOr {
-		for _, f := range filter.Filters {
-			db = db.Or(b.buildFilter(db, f))
+	if logicalOpt.Operator == sopt.OpOr {
+		for _, f := range logicalOpt.Filters {
+			db = db.Or(b.buildOption(db, f))
 		}
 		return db
 	}
 	return db
 }
 
-func (b *filterBuilder) buildFilter(db *gorm.DB, filter sfilter.Filter) *gorm.DB {
-	switch filter.FilterType() {
-	case sfilter.FilterTypeField:
-		return b.buildFieldFilter(db, filter.(*sfilter.FieldFilter))
-	case sfilter.FilterTypeLogical:
-		return b.buildLogicalFilter(db, filter.(*sfilter.LogicalFilter))
+func (b *filterBuilder) buildSort(db *gorm.DB, sortOpt *sopt.Order) *gorm.DB {
+	fname := b.fieldMapper.Get(sortOpt.Field)
+	if sortOpt.Order == sopt.Ascending {
+		return db.Order(clause.OrderByColumn{Column: clause.Column{Name: fname}, Desc: false})
+	}
+	return db.Order(clause.OrderByColumn{Column: clause.Column{Name: fname}, Desc: true})
+}
+
+func (b *filterBuilder) buildOption(db *gorm.DB, filter sopt.Option) *gorm.DB {
+	switch filter.OptionType() {
+	case sopt.OptionTypeFilter:
+		return b.buildFieldFilter(db, filter.(*sopt.Filter))
+	case sopt.OptionTypeLogical:
+		return b.buildLogicalFilter(db, filter.(*sopt.Logical))
+	case sopt.OptionTypeSort:
+		return b.buildSort(db, filter.(*sopt.Order))
 	}
 	return db
 }
 
-func (b *filterBuilder) BuildFilter(filters ...sfilter.Filter) *gorm.DB {
-	return b.buildFilter(b.basedb, sfilter.And(filters...))
+func (b *filterBuilder) Build(options ...sopt.Option) *gorm.DB {
+	return b.buildOption(b.basedb, sopt.And(options...))
 }
 
-func (b *filterBuilder) WithFieldMapper(mapper sfilter.FieldMapper) sfilter.FilterBuilder[*gorm.DB] {
+func (b *filterBuilder) WithFieldMapper(mapper sopt.FieldMapper) sopt.QueryBuilder[*gorm.DB] {
 	return &filterBuilder{
 		fieldMapper: mapper,
 		basedb:      b.basedb,
 	}
 }
 
-func (g *gormImpl) BuildFilter(filters ...sfilter.Filter) *gorm.DB {
-	if len(filters) == 0 {
+func (g *gormImpl) Build(options ...sopt.Option) *gorm.DB {
+	if len(options) == 0 {
 		return g.db
 	}
-	return (&filterBuilder{fieldMapper: sfilter.EmptyFieldMapper, basedb: g.db}).BuildFilter(filters...)
+	return (&filterBuilder{fieldMapper: sopt.EmptyFieldMapper, basedb: g.db}).Build(options...)
 }
 
-func (g *gormImpl) WithFieldMapper(mapper sfilter.FieldMapper) sfilter.FilterBuilder[*gorm.DB] {
+func (g *gormImpl) WithFieldMapper(mapper sopt.FieldMapper) sopt.QueryBuilder[*gorm.DB] {
 	return &filterBuilder{
 		fieldMapper: mapper,
 		basedb:      g.db,
