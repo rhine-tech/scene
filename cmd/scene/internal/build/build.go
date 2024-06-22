@@ -26,6 +26,7 @@ var outName string
 var buildVersion string
 var buildHash string
 var env string
+var staticBinary bool
 
 func init() {
 	// Build command flags
@@ -35,6 +36,7 @@ func init() {
 	CmdBuild.Flags().StringVar(&buildVersion, "version", "v0.0.0", "Version of the application")
 	CmdBuild.Flags().StringVar(&buildHash, "build-hash", "", "Git hash of the application, default is the current git hash")
 	CmdBuild.Flags().StringVar(&env, "env", "production", "Environment of the application (development, production, test), default is production")
+	CmdBuild.Flags().BoolVar(&staticBinary, "static", false, "Build a static binary (CGO_ENABLED=0)")
 }
 
 func build(cmd *cobra.Command, args []string) {
@@ -99,6 +101,9 @@ func executeBuild(goos, packagePath, buildDir, outputName string) {
 	appName := filepath.Base(packagePath)
 	cmd := exec.Command("go", "build", "-o", outputPath, ldflags, packagePath)
 	cmd.Env = append(os.Environ(), "GOOS="+goos, "GOARCH=amd64")
+	if staticBinary {
+		cmd.Env = append(cmd.Env, "CGO_ENABLED=0")
+	}
 	output, err := cmd.CombinedOutput() // Capture both stdout and stderr
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "[Scene Build] failed to build app '%s' for %s: %v\n\n%s\n", appName, goos, err, output)
