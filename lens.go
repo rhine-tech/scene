@@ -81,9 +81,12 @@ const (
 	ImplTypeInfra  = ImplType("infra")     // infrastructure type
 	ImplTypeComp   = ImplType("composite") // composition type
 	ImplTypeModule = ImplType("module")    // module type
-	ImplTypeRepo   = ImplType("repo")      // module repository type
-	ImplTypeSrv    = ImplType("srv")       // module service type
-	ImplTypeApp    = ImplType("app")       // module application type
+	// Deprecated
+	ImplTypeRepo = ImplType("repo") // module repository type
+	// Deprecated
+	ImplTypeSrv = ImplType("srv") // module service type
+	// Deprecated
+	ImplTypeApp = ImplType("app") // module application type
 )
 
 type NamableImplementation interface {
