@@ -8,6 +8,8 @@ import (
 
 var _eg = errcode.NewErrorGroup(4, "cache")
 
+const Lens scene.InfraName = "cache"
+
 var (
 	ErrFailedToSetCache = _eg.CreateError(0, "failed to set cache")
 )
