@@ -25,6 +25,10 @@ type rpcContainer struct {
 	log      logger.ILogger
 }
 
+// NewRpcContainer create a rpc container
+//
+// for now, rpc is only safe to use in the internal network
+// there are no authentication middleware for now.
 func NewRpcContainer(
 	addr string,
 	apps []RpcApplication,
@@ -64,7 +68,7 @@ func (r *rpcContainer) Start() error {
 				case <-r.stopSig:
 					return
 				default:
-					// log error log
+					// todo: log error log (with options maybe)
 					continue
 				}
 			}
@@ -84,5 +88,9 @@ func (r *rpcContainer) Stop(ctx context.Context) error {
 }
 
 func (r *rpcContainer) ListAppNames() []string {
-	return []string{}
+	names := make([]string, 0, len(r.apps))
+	for _, app := range r.apps {
+		names = append(names, app.Name().Identifier())
+	}
+	return names
 }
