@@ -1,6 +1,9 @@
 package scene
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // Lens is an alias for Module
 
@@ -117,6 +120,11 @@ func (i ImplName) EndpointName() string {
 // Identifier returns a string identifier of the implementation name.
 func (i ImplName) Identifier() string {
 	return fmt.Sprintf("(%s)%s:%s:%s", string(i.ImplType), i.Module, i.Implementation, i.Version)
+}
+
+// ExportName return interface name with capitalized module name
+func (i ImplName) ExportName() string {
+	return fmt.Sprintf(strings.ToUpper(i.Module[:1]) + i.Module[1:] + "." + i.Implementation)
 }
 
 func NewImplName(implType ImplType, module, implementation, version string) ImplName {
