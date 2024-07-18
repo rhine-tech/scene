@@ -124,6 +124,29 @@ func typeString(expr ast.Expr, currentPackage string) (string, map[string]string
 		}
 		return fmt.Sprintf("map[%s]%s", keyType, valueType), keyImports
 		//return fmt.Sprintf("map[%s]%s", typeString(t.Key, currentPackage), typeString(t.Value, currentPackage)), imports
+	case *ast.IndexExpr:
+		// Handle single generic type
+		xType, xImports := typeString(t.X, currentPackage)
+		indexType, indexImports := typeString(t.Index, currentPackage)
+		for k, v := range indexImports {
+			xImports[k] = v
+		}
+		return fmt.Sprintf("%s[%s]", xType, indexType), xImports
+	case *ast.IndexListExpr:
+		// Handle multiple generic parameters
+		xType, xImports := typeString(t.X, currentPackage)
+		indexTypes := make([]string, len(t.Indices))
+		for i, index := range t.Indices {
+			indexType, indexImports := typeString(index, currentPackage)
+			for k, v := range indexImports {
+				imports[k] = v
+			}
+			indexTypes[i] = indexType
+		}
+		for k, v := range xImports {
+			imports[k] = v
+		}
+		return fmt.Sprintf("%s[%s]", xType, strings.Join(indexTypes, ", ")), imports
 	default:
 		return exprString(t), imports
 	}
