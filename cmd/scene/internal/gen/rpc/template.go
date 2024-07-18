@@ -9,6 +9,8 @@ import (
 {{- end }}
 )
 
+const RpcName{{UpperFirst $.PackageName}}{{ $.InterfaceName }} = "{{UpperFirst $.PackageName}}.{{ $.InterfaceName }}"
+{{""}}
 {{- range .Methods }}
 type {{ $.InterfaceName }}{{ .Name }}Args struct {
 	{{- range $index, $ret := .Args }}

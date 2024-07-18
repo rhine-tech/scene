@@ -98,8 +98,15 @@ func executeBuild(goos, packagePath, buildDir, outputName string) {
 		varName("DEFAULT_ENV"), env,
 	)
 
+	cmd := exec.Command("go", "generate", "./...")
+	generateOutput, err := cmd.CombinedOutput() // Capture both stdout and stderr
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "[Scene Build] failed to generate code: %v\n\n%s\n", err, generateOutput)
+		os.Exit(1)
+	}
+
 	appName := filepath.Base(packagePath)
-	cmd := exec.Command("go", "build", "-o", outputPath, ldflags, packagePath)
+	cmd = exec.Command("go", "build", "-o", outputPath, ldflags, packagePath)
 	cmd.Env = append(os.Environ(), "GOOS="+goos, "GOARCH=amd64")
 	if staticBinary {
 		cmd.Env = append(cmd.Env, "CGO_ENABLED=0")
