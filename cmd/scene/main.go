@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/cmd/scene/internal/build"
+	"github.com/rhine-tech/scene/cmd/scene/internal/gen"
 	"github.com/spf13/cobra"
 	"log"
 )
@@ -16,6 +17,7 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(build.CmdBuild)
+	rootCmd.AddCommand(gen.CmdGen)
 }
 
 func main() {
