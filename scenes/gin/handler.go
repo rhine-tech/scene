@@ -1,6 +1,7 @@
 package gin
 
 import (
+	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/rhine-tech/scene/errcode"
@@ -107,6 +108,10 @@ func Handle[A any, T Request[A]](app A, request T) gin.HandlerFunc {
 			ec, ok := err.(*errcode.Error)
 			if !ok {
 				ec = errcode.UnknownError.WithDetail(err)
+			}
+			// already rendered
+			if errors.Is(err, ErrAlreadyDone) {
+				return
 			}
 			_ = ctx.Error(ec)
 			ctx.JSON(http.StatusOK, model.NewErrorCodeResponse(ec))
