@@ -62,6 +62,6 @@ func (g *gormImpl) AddPermission(owner string, perm string) (*permission.Permiss
 	return permission.MustParsePermission(perm), nil
 }
 
-func (g gormImpl) RemovePermission(owner string, perm string) error {
+func (g *gormImpl) RemovePermission(owner string, perm string) error {
 	return g.gorm.DB().Delete(&tablePermission{}, "owner = ? AND perm = ?", owner, perm).Error
 }

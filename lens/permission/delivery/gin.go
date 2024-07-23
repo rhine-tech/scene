@@ -4,7 +4,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/errcode"
-	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/rhine-tech/scene/lens/authentication"
 	authMw "github.com/rhine-tech/scene/lens/authentication/delivery/middleware"
 	"github.com/rhine-tech/scene/lens/permission"
@@ -15,17 +14,17 @@ import (
 )
 
 type ginApp struct {
-	sgin.CommonApp
 	permSrv permission.PermissionService
 }
 
-func NewGinApp(logger logger.ILogger, permSrv permission.PermissionService) sgin.GinApplication {
+func NewGinApp(permSrv permission.PermissionService) sgin.GinApplication {
 	return &ginApp{
-		CommonApp: sgin.CommonApp{
-			Logger: logger.WithPrefix("authentication.app.gin"),
-		},
 		permSrv: permSrv,
 	}
+}
+
+func (g *ginApp) Destroy() error {
+	return nil
 }
 
 func (g *ginApp) Name() scene.ImplName {

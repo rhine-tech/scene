@@ -7,8 +7,8 @@ type AuthContext struct {
 
 func NewAuthContext(
 	userID string,
-	srv UserInfoService) *AuthContext {
-	return &AuthContext{
+	srv UserInfoService) AuthContext {
+	return AuthContext{
 		UserID: userID, srv: srv}
 }
 

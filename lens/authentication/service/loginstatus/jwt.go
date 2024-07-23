@@ -22,7 +22,7 @@ func NewJWT(secret []byte, keyName string) authentication.HTTPLoginStatusVerifie
 }
 
 func (j *JWT) SrvImplName() scene.ImplName {
-	return scene.NewSrvImplName("authentication", "HTTPLoginStatusVerifier", "jwt:cookie+header")
+	return scene.NewModuleImplName("authentication", "HTTPLoginStatusVerifier", "jwt:cookie+header")
 }
 
 func (j *JWT) Verify(request *http.Request) (status authentication.LoginStatus, err error) {
