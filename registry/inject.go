@@ -6,7 +6,7 @@ import (
 
 var lazyLoads []any
 
-var UseLazyInject = true
+var UseLazyInject = false
 
 const InjectTag = "aperture"
 
@@ -44,4 +44,16 @@ func LazyInject() {
 	for _, val := range lazyLoads {
 		TryInject(val)
 	}
+}
+
+// WithLazyInjection will do delay inject until all interface registered
+// proc is the function register all interface
+func WithLazyInjection(proc func()) {
+	UseLazyInject = true
+	proc()
+	for _, val := range lazyLoads {
+		TryInject(val)
+	}
+	UseLazyInject = false
+	lazyLoads = make([]any, 0)
 }
