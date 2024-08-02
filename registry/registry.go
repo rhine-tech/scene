@@ -7,7 +7,11 @@ func Register[T any](val T) T {
 		registrant(val)
 	}
 	RegisterSingleton[T](val)
-	TryInject(val)
+	if !UseLazyInject {
+		TryInject(val)
+	} else {
+		lazyLoads = append(lazyLoads, val)
+	}
 	return val
 }
 
@@ -58,7 +62,12 @@ func Load[T any](val T) T {
 	for _, registrant := range registrants {
 		registrant(val)
 	}
-	return TryInject(val)
+	if !UseLazyInject {
+		return TryInject(val)
+	} else {
+		lazyLoads = append(lazyLoads, val)
+	}
+	return val
 }
 
 // Inject is the shortcut for TryInject(val)

@@ -4,6 +4,10 @@ import (
 	"reflect"
 )
 
+var lazyLoads []any
+
+var UseLazyInject = true
+
 const InjectTag = "aperture"
 
 func TryInject[T any](injectable T) T {
@@ -34,4 +38,10 @@ func TryInject[T any](injectable T) T {
 		}
 	}
 	return injectable
+}
+
+func LazyInject() {
+	for _, val := range lazyLoads {
+		TryInject(val)
+	}
 }
