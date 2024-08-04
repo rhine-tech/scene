@@ -14,9 +14,9 @@ type ORM interface {
 
 type GenericRepository[Model any] interface {
 	//Create(model ...*Model) error
+	FindFirst(options ...query.Option) (data Model, found bool, err error)
 	Count(options ...query.Option) (count int64, err error)
 	List(offset, limit int64, options ...query.Option) (model.PaginationResult[Model], error)
 	//Delete(...*Model) (err error)
 	//WithContext(ctx context.Context) RepositoryDriver[Model]
-	//FindOne(options ...query.Option)
 }

@@ -22,6 +22,17 @@ func (g *GormRepository[Model]) Setup() error {
 	return g.db.RegisterModel(new(Model))
 }
 
+func (g *GormRepository[Model]) FindFirst(options ...query.Option) (data Model, found bool, err error) {
+	err = g.db.WithFieldMapper(g.fieldMapper).Build(options...).First(&data).Error
+	if err != nil {
+		//if errors.Is(err,gorm.ErrRecordNotFound) {
+		//	return data,false, err
+		//}
+		return data, false, err
+	}
+	return data, true, nil
+}
+
 func (g *GormRepository[Model]) Count(options ...query.Option) (count int64, err error) {
 	err = g.db.WithFieldMapper(g.fieldMapper).Build(options...).Count(&count).Error
 	return count, err
