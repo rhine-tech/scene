@@ -1,5 +1,7 @@
 package registry
 
+// todo: finish me
+
 type Dependency[T any] interface {
 	Inject(T)
 }
