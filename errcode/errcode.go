@@ -86,3 +86,16 @@ func (e *Error) WithDetailf(format string, a ...interface{}) *Error {
 		fmt.Sprintf(format, a...),
 	}
 }
+
+// Force make sure error is an error code,
+// if it is not an errcode, wrapper with ec
+func Force(err error, ec *Error) error {
+	if err == nil {
+		return nil
+	}
+	_, ok := err.(*Error)
+	if !ok {
+		return ec.WithDetail(err)
+	}
+	return err
+}

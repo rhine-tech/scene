@@ -29,6 +29,18 @@ func (r *RequestJson) Binding() binding.Binding {
 	return binding.JSON
 }
 
+type RequestForm struct{}
+
+func (r *RequestForm) Binding() binding.Binding {
+	return binding.Form
+}
+
+type RequestFormUrlEncoded struct{}
+
+func (r *RequestFormUrlEncoded) Binding() binding.Binding {
+	return binding.FormPost
+}
+
 type RequestQuery struct{}
 
 func (r *RequestQuery) Binding() binding.Binding { return binding.Query }

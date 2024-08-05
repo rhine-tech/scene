@@ -16,3 +16,15 @@ type PaginationResult[T any] struct {
 }
 
 type JsonResponse map[string]interface{}
+
+func PaginationResultTransform[Src any, Dst any](
+	dst *PaginationResult[Dst], src *PaginationResult[Src],
+	f func(dst *Dst, src *Src)) {
+	dst.Total = src.Total
+	dst.Offset = src.Total
+	dst.Count = src.Count
+	dst.Results = make([]Dst, len(src.Results))
+	for idx, val := range src.Results {
+		f(&dst.Results[idx], &val)
+	}
+}
