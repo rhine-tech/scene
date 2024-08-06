@@ -32,7 +32,7 @@ func (c *CommonCronTaskDispatcher) ImplName() scene.ImplName {
 
 func NewCommonCronTaskDispatcher(taskDispatcher asynctask.TaskDispatcher) asynctask.CronTaskDispatcher {
 	return &CommonCronTaskDispatcher{
-		cron:           cron.New(),
+		cron:           cron.New(cron.WithSeconds()),
 		taskDispatcher: taskDispatcher,
 		tasks:          make(map[string]*asynctask.CronTask),
 	}

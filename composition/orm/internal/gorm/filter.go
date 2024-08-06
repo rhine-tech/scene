@@ -71,6 +71,8 @@ func (b *filterBuilder) buildOption(db *gorm.DB, filter sopt.Option) *gorm.DB {
 		return b.buildLogicalFilter(db, filter.(*sopt.Logical))
 	case sopt.OptionTypeSort:
 		return b.buildSort(db, filter.(*sopt.Order))
+	case sopt.OptionTypeDistinct:
+		return db.Distinct(b.fieldMapper.Get(filter.(*sopt.Distinct).Field))
 	}
 	return db
 }

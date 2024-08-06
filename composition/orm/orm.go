@@ -14,6 +14,7 @@ type ORM interface {
 
 type GenericRepository[Model any] interface {
 	Create(data *Model) error
+	Update(data *Model, options ...query.Option) error
 	Delete(options ...query.Option) error
 	FindFirst(options ...query.Option) (data Model, found bool, err error)
 	Count(options ...query.Option) (count int64, err error)

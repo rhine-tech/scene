@@ -6,6 +6,7 @@ const (
 	OptionTypeFilter OptionType = iota
 	OptionTypeLogical
 	OptionTypeSort
+	OptionTypeDistinct
 )
 
 // Option is an interface.

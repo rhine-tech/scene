@@ -4,14 +4,12 @@ import (
 	"embed"
 	"github.com/gin-gonic/gin"
 	"github.com/rhine-tech/scene"
-	sgin "github.com/rhine-tech/scene/scenes/gin"
 	"io/fs"
 	"mime"
 	"path/filepath"
 )
 
 type GinSPA struct {
-	sgin.CommonApp
 	fsEmbed fs.ReadFileFS
 }
 

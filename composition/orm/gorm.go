@@ -45,6 +45,15 @@ func (g *GormRepository[Model]) Create(data *Model) error {
 	return g.db.DB().Create(data).Error
 }
 
+func (g *GormRepository[Model]) Update(updates map[string]interface{}, options ...query.Option) error {
+	db := g.db.WithFieldMapper(g.fieldMapper).Build(options...)
+	if db.Error != nil {
+		return db.Error
+	}
+	// Using UpdateColumns instead of Save to update the fields specified by the options
+	return db.Model(new(Model)).Updates(updates).Error
+}
+
 func (g *GormRepository[Model]) Delete(options ...query.Option) error {
 	db := g.db.WithFieldMapper(g.fieldMapper).Build(options...)
 	if db.Error != nil {
@@ -74,11 +83,11 @@ func (g *GormRepository[Model]) List(offset, limit int64, options ...query.Optio
 		Results: make([]Model, 0),
 	}
 	qry := g.db.WithFieldMapper(g.fieldMapper).Build(options...).Session(&gorm.Session{})
-	err := qry.Offset(int(offset)).Limit(int(limit)).Find(&result.Results).Error
+	err := qry.Model(new(Model)).Count(&result.Total).Error
+	err = qry.Offset(int(offset)).Limit(int(limit)).Find(&result.Results).Error
 	if err != nil {
 		return model.PaginationResult[Model]{}, err
 	}
-	qry.Count(&result.Total)
 	result.Offset = offset
 	result.Count = int64(len(result.Results))
 	return result, nil
