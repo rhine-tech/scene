@@ -12,7 +12,7 @@ type WebsocketUpgraderHandler func(upgrader *websocket.Upgrader, handler Websock
 
 // WebsocketHandler is a function that handles websocket connections
 // clos is a function that can be called to close the connection
-type WebsocketHandler func(conn *websocket.Conn, clos func()) WebsocketMessageHandler
+type WebsocketHandler func(request *http.Request, conn *websocket.Conn, clos func()) WebsocketMessageHandler
 
 // WebsocketMessageHandler is a function that handles websocket messages
 // pass err from ReadMessage to WebsocketMessageHandler

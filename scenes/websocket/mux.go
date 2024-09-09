@@ -14,7 +14,7 @@ func defaultWebsocketUpgraderHandler(upgrader *websocket.Upgrader, handler Webso
 			return
 		}
 		running := true
-		msgHandler := handler(conn, func() {
+		msgHandler := handler(request, conn, func() {
 			running = false
 		})
 		for running {
