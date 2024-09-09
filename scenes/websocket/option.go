@@ -28,7 +28,7 @@ func (v *_wsUpgraderWithLogger) upgraderHandler(upgrader *websocket.Upgrader, ha
 			return
 		}
 		running := true
-		msgHandler := handler(conn, func() {
+		msgHandler := handler(request, conn, func() {
 			running = false
 		})
 		for running {
