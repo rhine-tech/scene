@@ -64,4 +64,5 @@ type CronTaskDispatcher interface {
 	Add(spec string, cmd TaskFunc) (*CronTask, error)
 	AddWithName(spec string, name string, cmd TaskFunc) (*CronTask, error)
 	AddTask(spec string, task *CronTask) error
+	Cancel(id string) error
 }

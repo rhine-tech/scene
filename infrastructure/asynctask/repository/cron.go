@@ -12,6 +12,7 @@ type CommonCronTaskDispatcher struct {
 	cron           *cron.Cron
 	taskDispatcher asynctask.TaskDispatcher
 	tasks          map[string]*asynctask.CronTask
+	taskEntryID    map[string]cron.EntryID
 	logger         logger.ILogger `aperture:""`
 }
 
@@ -55,8 +56,7 @@ func (c *CommonCronTaskDispatcher) AddWithName(spec string, name string, cmd asy
 }
 
 func (c *CommonCronTaskDispatcher) AddTask(spec string, task *asynctask.CronTask) error {
-	c.tasks[task.EntryID()] = task
-	_, err := c.cron.AddFunc(spec, func() {
+	entryId, err := c.cron.AddFunc(spec, func() {
 		c.taskDispatcher.Run(func() error {
 			c.logger.Infof("cron task %s start", task.Name)
 			err := task.Func()
@@ -72,5 +72,20 @@ func (c *CommonCronTaskDispatcher) AddTask(spec string, task *asynctask.CronTask
 			return nil
 		})
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	c.tasks[task.EntryID()] = task
+	c.taskEntryID[task.EntryID()] = entryId
+	return nil
+}
+
+func (c *CommonCronTaskDispatcher) Cancel(id string) error {
+	if entryId, ok := c.taskEntryID[id]; ok {
+		c.cron.Remove(entryId)
+		delete(c.tasks, id)
+		delete(c.taskEntryID, id)
+		c.logger.Infof("cron task %s cancelled", id)
+	}
+	return nil
 }
