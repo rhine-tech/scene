@@ -38,7 +38,7 @@ func (t *Task) Status() TaskStatus {
 }
 
 type TaskDispatcher interface {
-	scene.NamableImplementation
+	scene.Named
 	Run(task TaskFunc) *Task
 	RunTask(task *Task)
 }
@@ -60,7 +60,7 @@ func (t *CronTask) EntryID() string {
 }
 
 type CronTaskDispatcher interface {
-	scene.NamableImplementation
+	scene.Named
 	Add(spec string, cmd TaskFunc) (*CronTask, error)
 	AddWithName(spec string, name string, cmd TaskFunc) (*CronTask, error)
 	AddTask(spec string, task *CronTask) error

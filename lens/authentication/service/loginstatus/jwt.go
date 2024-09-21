@@ -41,7 +41,7 @@ func (j *JWT) Verify(request *http.Request) (status authentication.LoginStatus, 
 		return authentication.LoginStatus{
 			UserID:   claims.UserID,
 			Token:    token.Raw,
-			Verifier: j.SrvImplName().Version,
+			Verifier: j.SrvImplName().Implementation,
 		}, nil
 	} else {
 		return status, err
@@ -64,7 +64,7 @@ func (j *JWT) Login(userId string, resp http.ResponseWriter) (status authenticat
 	return authentication.LoginStatus{
 		UserID:   userId,
 		Token:    tokenString,
-		Verifier: j.SrvImplName().Version,
+		Verifier: j.SrvImplName().Implementation,
 		ExpireAt: -1,
 	}, nil
 }

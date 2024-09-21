@@ -35,8 +35,8 @@ func (l ModuleName) TableName(table string) string {
 	return string(l) + "_" + table
 }
 
-func (l ModuleName) ImplName(implementation, version string) ImplName {
-	return NewImplName(ImplTypeModule, string(l), implementation, version)
+func (l ModuleName) ImplName(iface, implementation string) ImplName {
+	return NewImplName(ImplTypeModule, string(l), iface, implementation)
 }
 
 func (l ModuleName) ImplNameNoVer(implementation string) ImplName {
@@ -92,89 +92,89 @@ const (
 	ImplTypeApp = ImplType("app") // module application type
 )
 
-type NamableImplementation interface {
+type Named interface {
 	ImplName() ImplName
 }
 
 type ImplName struct {
 	ImplType       ImplType
 	Module         string
+	Interface      string
 	Implementation string
-	Version        string
 }
 
 // String returns a string representation of the implementation name.
 // String is a pretty representation of the implementation name.
 // If you want to use the implementation name as an identifier, use Identifier().
 func (i ImplName) String() string {
-	if i.Version == "" {
-		return fmt.Sprintf("(%s)%s:%s", string(i.ImplType), i.Module, i.Implementation)
+	if i.Implementation == "" {
+		return fmt.Sprintf("(%s)%s:%s", string(i.ImplType), i.Module, i.Interface)
 	}
-	return fmt.Sprintf("(%s)%s:%s:%s", string(i.ImplType), i.Module, i.Implementation, i.Version)
+	return fmt.Sprintf("(%s)%s:%s:%s", string(i.ImplType), i.Module, i.Interface, i.Implementation)
 }
 
 func (i ImplName) EndpointName() string {
-	return i.Module + "/" + i.Implementation
+	return i.Module + "/" + i.Interface
 }
 
 // Identifier returns a string identifier of the implementation name.
 func (i ImplName) Identifier() string {
-	return fmt.Sprintf("(%s)%s:%s:%s", string(i.ImplType), i.Module, i.Implementation, i.Version)
+	return fmt.Sprintf("(%s)%s:%s:%s", string(i.ImplType), i.Module, i.Interface, i.Implementation)
 }
 
 // ExportName return interface name with capitalized module name
 func (i ImplName) ExportName() string {
-	return fmt.Sprintf(strings.ToUpper(i.Module[:1]) + i.Module[1:] + "." + i.Implementation)
+	return fmt.Sprintf(strings.ToUpper(i.Module[:1]) + i.Module[1:] + "." + i.Interface)
 }
 
 func NewImplName(implType ImplType, module, implementation, version string) ImplName {
 	return ImplName{
 		ImplType:       implType,
 		Module:         module,
-		Implementation: implementation,
-		Version:        version,
+		Interface:      implementation,
+		Implementation: version,
 	}
 }
 
-func NewImplNameNoVer(implType ImplType, module, implementation string) ImplName {
+func NewImplNameNoVer(implType ImplType, module, iface string) ImplName {
 	return ImplName{
 		ImplType:       implType,
 		Module:         module,
-		Implementation: implementation,
-		Version:        "default",
+		Interface:      iface,
+		Implementation: "default",
 	}
 }
 
-func NewSceneImplName(module, implementation, version string) ImplName {
-	return NewImplName(ImplTypeScene, module, implementation, version)
+func NewSceneImplName(module, iface, version string) ImplName {
+	return NewImplName(ImplTypeScene, module, iface, version)
 }
 
-func NewSceneImplNameNoVer(module, implementation string) ImplName {
-	return NewImplNameNoVer(ImplTypeScene, module, implementation)
+func NewSceneImplNameNoVer(module, iface string) ImplName {
+	return NewImplNameNoVer(ImplTypeScene, module, iface)
 }
 
-func NewCoreImplName(module, implementation, version string) ImplName {
-	return NewImplName(ImplTypeCore, module, implementation, version)
+func NewCoreImplName(module, iface, version string) ImplName {
+	return NewImplName(ImplTypeCore, module, iface, version)
 }
 
-func NewCoreImplNameNoVer(module, implementation string) ImplName {
-	return NewImplNameNoVer(ImplTypeCore, module, implementation)
+func NewCoreImplNameNoVer(module, iface string) ImplName {
+	return NewImplNameNoVer(ImplTypeCore, module, iface)
 }
 
-func NewModuleImplName(module, implementation, version string) ImplName {
-	return NewImplName(ImplTypeModule, module, implementation, version)
+func NewModuleImplName(module, iface, implementation string) ImplName {
+	return NewImplName(ImplTypeModule, module, iface, implementation)
 }
 
-func NewModuleImplNameNoVer(module, implementation string) ImplName {
-	return NewImplNameNoVer(ImplTypeModule, module, implementation)
+func NewModuleImplNameNoVer(module, iface string) ImplName {
+	return NewImplNameNoVer(ImplTypeModule, module, iface)
 }
 
-func NewInfraImplName(module, implementation, version string) ImplName {
-	return NewImplName(ImplTypeInfra, module, implementation, version)
+func NewInfraImplName(module, iface, implementation string) ImplName {
+	return NewImplName(ImplTypeInfra, module, iface, implementation)
 }
 
-func NewInfraImplNameNoVer(module, implementation string) ImplName {
-	return NewImplNameNoVer(ImplTypeInfra, module, implementation)
+func NewInfraImplNameNoVer(module, iface string) ImplName {
+	return NewImplNameNoVer(ImplTypeInfra, module, iface)
 }
 
 // NewModuleImplName creates a new module implementation name.

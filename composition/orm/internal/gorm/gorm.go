@@ -57,7 +57,7 @@ func (g *gormImpl) OrmName() scene.ImplName {
 
 func (g *gormImpl) Setup() error {
 	g.log = g.log.WithPrefix(g.OrmName().Identifier())
-	g.log.Infof("setup gorm with datasource %s", g.ds.DataSourceName().Implementation)
+	g.log.Infof("setup gorm with datasource %s", g.ds.DataSourceName().Interface)
 	gormDb, err := gorm.Open(g.dialector(), &gorm.Config{
 		Logger: &gormLogger{prefix: "GormInternal: ", log: g.log},
 	})
