@@ -33,6 +33,8 @@ func TryInject[T any](injectable T) T {
 				if !exists {
 					panic("scene registry: no instance found for " + tagValue + " when injecting " + field.Name)
 				}
+				// run hooks
+				runHooks(tagValue, val, fieldVal, tagValue, &instance)
 				setUnexportedField(fieldVal, instance)
 			}
 		}
