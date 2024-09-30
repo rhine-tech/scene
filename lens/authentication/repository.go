@@ -3,7 +3,7 @@ package authentication
 import "github.com/rhine-tech/scene"
 
 type AuthenticationRepository interface {
-	scene.Repository
+	scene.Named
 	Authenticate(username string, password string) (userID string, err error)
 	UserById(userId string) (User, error)
 	UserByName(username string) (User, error)
@@ -15,6 +15,6 @@ type AuthenticationRepository interface {
 }
 
 type UserInfoRepository interface {
-	scene.Repository
+	scene.Named
 	InfoById(userId string) (UserInfo, error)
 }

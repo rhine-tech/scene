@@ -12,7 +12,7 @@ type PermissionManagerImpl struct {
 }
 
 func (p *PermissionManagerImpl) SrvImplName() scene.ImplName {
-	return scene.NewSrvImplNameNoVer("permission", "PermissionService")
+	return permission.Lens.ImplName("PermissionManager", "default")
 }
 
 func (p *PermissionManagerImpl) Setup() error {
@@ -20,7 +20,7 @@ func (p *PermissionManagerImpl) Setup() error {
 	//if err := p.repo.Status(); err != nil {
 	//	p.logger.Errorf("Failed to reload permission repository: %s", err.Error())
 	//}
-	p.logger.Infof("Permission service is ready, using: %s", p.repo.RepoImplName())
+	p.logger.Infof("Permission service is ready, using: %s", p.repo.ImplName())
 	return nil
 }
 

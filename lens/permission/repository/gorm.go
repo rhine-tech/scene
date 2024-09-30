@@ -34,7 +34,7 @@ func (m *gormImpl) Setup() error {
 	return nil
 }
 
-func (g *gormImpl) RepoImplName() scene.ImplName {
+func (g *gormImpl) ImplName() scene.ImplName {
 	return permission.Lens.ImplName("PermissionRepository", "gorm")
 }
 

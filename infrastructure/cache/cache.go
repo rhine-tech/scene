@@ -19,7 +19,7 @@ var NoExpiration = time.Duration(-1)
 type CacheKey string
 
 type ICache interface {
-	scene.Repository
+	scene.Named
 	Get(key CacheKey) (string, bool)
 	Set(key CacheKey, value string, expiration time.Duration) error
 	Delete(key CacheKey) error

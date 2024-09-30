@@ -22,7 +22,7 @@ func (a *authenticationManageService) Setup() error {
 }
 
 func (a *authenticationManageService) SrvImplName() scene.ImplName {
-	return scene.NewSrvImplNameNoVer("authentication", "AuthenticationManageService")
+	return authentication.Lens.ImplName("AuthenticationManageService", "default")
 }
 
 func NewAuthenticationService(

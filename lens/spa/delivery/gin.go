@@ -24,7 +24,7 @@ func NewGinSPA(fsEmbed *embed.FS, fsPrefix string) *GinSPA {
 }
 
 func (g *GinSPA) Name() scene.ImplName {
-	return scene.NewAppImplNameNoVer("spa", "gin")
+	return scene.NewModuleImplNameNoVer("spa", "gin")
 }
 
 func (g *GinSPA) Prefix() string {

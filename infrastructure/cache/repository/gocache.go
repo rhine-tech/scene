@@ -17,7 +17,7 @@ func NewGoCache() cache.ICache {
 	}
 }
 
-func (g *GoCache) RepoImplName() scene.ImplName {
+func (g *GoCache) ImplName() scene.ImplName {
 	return cache.Lens.ImplName("ICache", "go-cache")
 }
 

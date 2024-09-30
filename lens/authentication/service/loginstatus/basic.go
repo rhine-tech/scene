@@ -15,7 +15,7 @@ func NewBasicAuth(srv authentication.AuthenticationService) authentication.HTTPL
 }
 
 func (b *basicAuth) SrvImplName() scene.ImplName {
-	return scene.NewSrvImplName("authentication", "HTTPLoginStatusVerifier", "basic")
+	return authentication.Lens.ImplName("HTTPLoginStatusVerifier", "basic")
 }
 
 func (b *basicAuth) Verify(request *http.Request) (status authentication.LoginStatus, err error) {

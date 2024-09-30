@@ -15,10 +15,6 @@ type Application interface {
 	//Error() error
 }
 
-type Repository interface {
-	RepoImplName() ImplName
-}
-
 type Service interface {
 	SrvImplName() ImplName
 }
@@ -84,12 +80,6 @@ const (
 	ImplTypeInfra  = ImplType("infra")     // infrastructure type
 	ImplTypeComp   = ImplType("composite") // composition type
 	ImplTypeModule = ImplType("module")    // module type
-	// Deprecated
-	ImplTypeRepo = ImplType("repo") // module repository type
-	// Deprecated
-	ImplTypeSrv = ImplType("srv") // module service type
-	// Deprecated
-	ImplTypeApp = ImplType("app") // module application type
 )
 
 type Named interface {
@@ -175,36 +165,4 @@ func NewInfraImplName(module, iface, implementation string) ImplName {
 
 func NewInfraImplNameNoVer(module, iface string) ImplName {
 	return NewImplNameNoVer(ImplTypeInfra, module, iface)
-}
-
-// NewModuleImplName creates a new module implementation name.
-// Deprecated: use NewModuleImplNameNoVer instead
-func NewAppImplName(module, implementation, version string) ImplName {
-	return NewImplName(ImplTypeApp, module, implementation, version)
-}
-
-// NewModuleImplName creates a new module implementation name.
-// Deprecated: use NewModuleImplNameNoVer instead
-func NewAppImplNameNoVer(module, implementation string) ImplName {
-	return NewImplNameNoVer(ImplTypeApp, module, implementation)
-}
-
-// Deprecated: use NewModuleImplNameNoVer instead
-func NewSrvImplName(module, implementation, version string) ImplName {
-	return NewImplName(ImplTypeSrv, module, implementation, version)
-}
-
-// Deprecated: use NewModuleImplNameNoVer instead
-func NewSrvImplNameNoVer(module, implementation string) ImplName {
-	return NewImplNameNoVer(ImplTypeSrv, module, implementation)
-}
-
-// Deprecated: use NewModuleImplNameNoVer instead
-func NewRepoImplName(module, implementation, version string) ImplName {
-	return NewImplName(ImplTypeRepo, module, implementation, version)
-}
-
-// Deprecated: use NewModuleImplNameNoVer instead
-func NewRepoImplNameNoVer(module, implementation string) ImplName {
-	return NewImplNameNoVer(ImplTypeRepo, module, implementation)
 }

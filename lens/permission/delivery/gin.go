@@ -28,7 +28,7 @@ func (g *ginApp) Destroy() error {
 }
 
 func (g *ginApp) Name() scene.ImplName {
-	return scene.NewAppImplNameNoVer("permission", "gin")
+	return permission.Lens.ImplName("PermissionDelivery", "gin")
 }
 
 func (g *ginApp) Prefix() string {

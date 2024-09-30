@@ -15,7 +15,7 @@ type mysqlUserInfoImpl struct {
 	gorm orm.Gorm `aperture:""`
 }
 
-func (m *mysqlUserInfoImpl) RepoImplName() scene.ImplName {
+func (m *mysqlUserInfoImpl) ImplName() scene.ImplName {
 	return authentication.Lens.ImplName("UserInfoRepository", "mysql")
 }
 

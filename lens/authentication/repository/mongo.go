@@ -15,8 +15,8 @@ type mongoImpl struct {
 	collection *mongo.Collection
 }
 
-func (m *mongoImpl) RepoImplName() scene.ImplName {
-	return scene.NewRepoImplName("authentication", "AuthenticationManageRepository", "mongo")
+func (m *mongoImpl) ImplName() scene.ImplName {
+	return authentication.Lens.ImplName("AuthenticationManageRepository", "mongo")
 }
 
 func (m *mongoImpl) Status() error {
@@ -120,7 +120,7 @@ type mongoInfoImpl struct {
 	collection *mongo.Collection
 }
 
-func (m *mongoInfoImpl) RepoImplName() scene.ImplName {
+func (m *mongoInfoImpl) ImplName() scene.ImplName {
 	return authentication.Lens.ImplName("UserInfoRepository", "mongo")
 }
 

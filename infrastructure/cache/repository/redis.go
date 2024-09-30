@@ -18,8 +18,8 @@ func NewRedisCache(ds datasource.RedisDataSource) cache.ICache {
 	return &RedisCache{ds: ds}
 }
 
-func (r *RedisCache) RepoImplName() scene.ImplName {
-	return scene.NewRepoImplName("cache", "ICache", "redis")
+func (r *RedisCache) ImplName() scene.ImplName {
+	return cache.Lens.ImplName("ICache", "redis")
 }
 
 func (r *RedisCache) Status() error {
@@ -27,7 +27,7 @@ func (r *RedisCache) Status() error {
 }
 
 func (r *RedisCache) Setup() error {
-	r.log = r.log.WithPrefix(r.RepoImplName().Identifier())
+	r.log = r.log.WithPrefix(r.ImplName().Identifier())
 	if err := r.Status(); err != nil {
 		r.log.Error("setup redis cache failed")
 		return err

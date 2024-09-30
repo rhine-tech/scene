@@ -29,15 +29,15 @@ func NewPermissionMongoRepoCached() permission.PermissionRepository {
 }
 
 func (m *mongoImplCached) Setup() error {
-	m.log = m.log.WithPrefix(m.RepoImplName().Identifier())
+	m.log = m.log.WithPrefix(m.ImplName().Identifier())
 	m.mgDrv = repos.UseMongoDatasourceCollection[permDBModel](
 		registry.Use(datasource.MongoDataSource(nil)), "permissions")
 	m.cache = caches.UseCache[[]string]("permissions", registry.Use(cache.ICache(nil)))
 	return nil
 }
 
-func (m *mongoImplCached) RepoImplName() scene.ImplName {
-	return scene.NewRepoImplName("permission", "PermissionRepository", "mongo_cached")
+func (m *mongoImplCached) ImplName() scene.ImplName {
+	return permission.Lens.ImplName("PermissionRepository", "mongo_cached")
 }
 
 func (m *mongoImplCached) Status() error {

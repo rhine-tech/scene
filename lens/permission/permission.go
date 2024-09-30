@@ -15,7 +15,7 @@ type PermissionService interface {
 }
 
 type PermissionRepository interface {
-	scene.Repository
+	scene.Named
 	//GetOwners() []PermOwner
 	GetPermissions(owner string) []*Permission
 	AddPermission(owner string, perm string) (*Permission, error)

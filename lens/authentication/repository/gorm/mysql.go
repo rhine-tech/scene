@@ -24,7 +24,7 @@ func (m *mysqlImpl) Setup() error {
 	return nil
 }
 
-func (m *mysqlImpl) RepoImplName() scene.ImplName {
+func (m *mysqlImpl) ImplName() scene.ImplName {
 	return authentication.Lens.ImplName("AuthenticationRepository", "mysql")
 }
 
