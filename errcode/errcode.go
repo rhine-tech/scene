@@ -18,6 +18,7 @@ type Error struct {
 	Detail  string
 }
 
+// Is implements errors.Is
 func (e *Error) Is(target error) bool {
 	er, ok := target.(*Error)
 	if !ok {
@@ -87,9 +88,27 @@ func (e *Error) WithDetailf(format string, a ...interface{}) *Error {
 	}
 }
 
-// Force make sure error is an error code,
+// WrapIfNot make sure error is an error code,
+// if it is not an errcode, wrapper with ec,
+// if it is an errcode, return itself,
+// same as Must
+func (e *Error) WrapIfNot(err error) error {
+	return Must(err, e)
+}
+
+// Wrap make sure error is an error code,
 // if it is not an errcode, wrapper with ec
-func Force(err error, ec *Error) error {
+// if it is an errcode, wrap message with ec
+// same as Wrap
+func (e *Error) Wrap(err error) error {
+	return Wrap(err, e)
+}
+
+// Must make sure error is an error code,
+// if it is not an errcode, wrapper with ec,
+// if it is an errcode, return itself,
+// it is different from Wrap, which always wrapper with ec
+func Must(err error, ec *Error) error {
 	if err == nil {
 		return nil
 	}
@@ -98,4 +117,18 @@ func Force(err error, ec *Error) error {
 		return ec.WithDetail(err)
 	}
 	return err
+}
+
+// Wrap make sure error is an error code,
+// if it is not an errcode, wrapper with ec
+// if it is an errcode, wrap message with ec
+func Wrap(err error, ec *Error) error {
+	if err == nil {
+		return nil
+	}
+	e, ok := err.(*Error)
+	if !ok {
+		return ec.WithDetail(err)
+	}
+	return ec.WithDetailStr(e.Message)
 }
