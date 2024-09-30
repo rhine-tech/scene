@@ -23,8 +23,8 @@ func (r Redis) Init() scene.LensInit {
 func (r Redis) Default() Redis {
 	return Redis{
 		Config: model.DatabaseConfig{
-			Host:     registry.Config.GetString("scene.redis.host"),
-			Port:     int(registry.Config.GetInt("scene.redis.port")),
+			Host:     registry.Config.GetString("redis.host"),
+			Port:     int(registry.Config.GetInt("redis.port")),
 			Database: "0",
 		},
 	}

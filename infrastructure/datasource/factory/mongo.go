@@ -24,10 +24,10 @@ func (m MongoDB) Init() scene.LensInit {
 func (m MongoDB) Default() MongoDB {
 	return MongoDB{
 		Config: model.DatabaseConfig{
-			Host:     registry.Config.GetString("scene.db.host"),
-			Port:     int(registry.Config.GetInt("scene.db.port")),
-			Username: registry.Config.GetString("scene.db.username"),
-			Password: registry.Config.GetString("scene.db.password"),
+			Host:     registry.Config.GetString("mongodb.host"),
+			Port:     int(registry.Config.GetInt("mongodb.port")),
+			Username: registry.Config.GetString("mongodb.username"),
+			Password: registry.Config.GetString("mongodb.password"),
 			Database: "scene",
 		},
 		UseApiVer: true,
