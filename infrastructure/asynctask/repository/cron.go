@@ -36,6 +36,7 @@ func NewCommonCronTaskDispatcher(taskDispatcher asynctask.TaskDispatcher) asynct
 		cron:           cron.New(cron.WithSeconds()),
 		taskDispatcher: taskDispatcher,
 		tasks:          make(map[string]*asynctask.CronTask),
+		taskEntryID:    make(map[string]cron.EntryID),
 	}
 }
 
