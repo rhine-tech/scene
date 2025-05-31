@@ -16,6 +16,7 @@ type UserInfo struct {
 	UserID      string `json:"user_id" bson:"user_id"`
 	DisplayName string `json:"display_name" bson:"display_name"`
 	Avatar      string `json:"avatar" bson:"avatar"`
+	Timezone    string `json:"timezone" bson:"timezone"`
 	// Derived value
 	Username string `json:"username" bson:"username,omitempty"` // from User
 	Email    string `json:"email" bson:"email,omitempty"`       // from User
