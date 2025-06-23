@@ -1,6 +1,6 @@
 package scene
 
-const Version = "0.3.5"
+const Version = "0.4.0"
 
 // Application Build Info
 
