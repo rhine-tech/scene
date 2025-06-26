@@ -16,14 +16,14 @@ func (o Order) OptionType() OptionType {
 	return OptionTypeSort
 }
 
-func (f Field) Ascending(value interface{}) *Order {
+func (f Field) Ascending() *Order {
 	return &Order{
 		Field: f,
 		Order: Ascending,
 	}
 }
 
-func (f Field) Descending(value interface{}) *Order {
+func (f Field) Descending() *Order {
 	return &Order{
 		Field: f,
 		Order: Descending,

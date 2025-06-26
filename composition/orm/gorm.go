@@ -13,25 +13,6 @@ type Gorm interface {
 	RegisterModel(model ...any) error
 }
 
-//func UseGormRepository[Model any](
-//	db Gorm,
-//	fieldMapper query.FieldMapper) (GenericRepository[Model], error) {
-//	val := &GormRepository[Model]{
-//		db:          registry.Use(db),
-//		fieldMapper: fieldMapper,
-//	}
-//	err := val.Setup()
-//	return val, err
-//}
-
-func NewGormRepository[Model any](
-	db Gorm, fieldMapper query.FieldMapper) *GormRepository[Model] {
-	return &GormRepository[Model]{
-		db:          db,
-		fieldMapper: fieldMapper,
-	}
-}
-
 func (g *GormRepository[Model]) Setup() error {
 	return g.db.RegisterModel(new(Model))
 }
@@ -39,6 +20,14 @@ func (g *GormRepository[Model]) Setup() error {
 type GormRepository[Model any] struct {
 	db          Gorm `aperture:""`
 	fieldMapper query.FieldMapper
+}
+
+func NewGormRepository[Model any](
+	db Gorm, fieldMapper query.FieldMapper) *GormRepository[Model] {
+	return &GormRepository[Model]{
+		db:          db,
+		fieldMapper: fieldMapper,
+	}
 }
 
 func (g *GormRepository[Model]) Create(data *Model) error {
