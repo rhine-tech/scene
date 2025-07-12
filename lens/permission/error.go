@@ -2,7 +2,7 @@ package permission
 
 import "github.com/rhine-tech/scene/errcode"
 
-var _eg = errcode.NewErrorGroup(1, "permission")
+var _eg = errcode.NewErrorGroup(3, "permission")
 
 var (
 	ErrPermissionDenied        = _eg.CreateError(0, "permission denied")
