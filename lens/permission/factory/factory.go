@@ -14,23 +14,23 @@ func InitApp() sgin.GinApplication {
 	return delivery.NewGinApp(registry.AcquireSingleton(permission.PermissionService(nil)))
 }
 
-type MongoCached struct {
-	scene.ModuleFactory
-}
-
-func (b MongoCached) Init() scene.LensInit {
-	return func() {
-		_ = registry.Register(repository.NewPermissionMongoRepoCached())
-		_ = registry.Register(
-			permission.PermissionService(&service.PermissionManagerImpl{}))
-	}
-}
-
-func (b MongoCached) Apps() []any {
-	return []any{
-		InitApp,
-	}
-}
+//type MongoCached struct {
+//	scene.ModuleFactory
+//}
+//
+//func (b MongoCached) Init() scene.LensInit {
+//	return func() {
+//		_ = registry.Register(repository.NewPermissionMongoRepoCached())
+//		_ = registry.Register(
+//			permission.PermissionService(&service.PermissionManagerImpl{}))
+//	}
+//}
+//
+//func (b MongoCached) Apps() []any {
+//	return []any{
+//		InitApp,
+//	}
+//}
 
 type Gorm struct {
 	scene.ModuleFactory

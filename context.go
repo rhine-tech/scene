@@ -4,6 +4,10 @@ import (
 	"sync"
 )
 
+type WithContext[T any] interface {
+	WithContext(ctx Context) T
+}
+
 // Context should be a "context container" that store module's context
 type Context interface {
 	Get(key string) (value any, exists bool)
