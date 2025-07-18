@@ -13,6 +13,7 @@ type IAuthenticationService interface {
 	UpdateUser(user User) error
 	Authenticate(username string, password string) (userID string, err error)
 	AuthenticateByToken(token string) (userID string, err error)
+	HasUser(userId string) (bool, error)
 	UserById(userId string) (User, error)
 	UserByName(username string) (User, error)
 	UserByEmail(email string) (User, error)
@@ -29,6 +30,7 @@ type IAccessTokenService interface {
 	List(offset, limit int64) (model.PaginationResult[AccessToken], error)
 	// Validate token and return user ID
 	Validate(token string) (userId string, valid bool, err error)
+	Delete(token string) error
 }
 
 type HTTPLoginStatusVerifier interface {

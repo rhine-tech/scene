@@ -1,110 +1,191 @@
 package delivery
 
 import (
-	"github.com/gin-gonic/gin"
 	"github.com/rhine-tech/scene"
-	"github.com/rhine-tech/scene/errcode"
 	"github.com/rhine-tech/scene/lens/authentication"
-	"github.com/rhine-tech/scene/model"
 	sgin "github.com/rhine-tech/scene/scenes/gin"
 	"net/http"
 )
 
-type ginApp struct {
-	lgStSrv authentication.HTTPLoginStatusVerifier `aperture:""`
-	authSrv authentication.IAuthenticationService  `aperture:""`
+type authContext struct {
+	authSrv  authentication.IAuthenticationService  `aperture:""`
+	tokenSrv authentication.IAccessTokenService     `aperture:""`
+	lgStVrf  authentication.HTTPLoginStatusVerifier `aperture:""`
 }
 
-func (g *ginApp) Destroy() error {
-	return nil
-}
+// AuthGinApp creates the Gin application definition for all authentication-related routes.
+func AuthGinApp() sgin.GinApplication {
+	return &sgin.AppRoutes[authContext]{
+		AppName:  authentication.Lens.ImplNameNoVer("GinApplication"),
+		BasePath: "auth", // All routes will be prefixed with /auth
+		// TODO: Add authentication middleware here for protected routes.
+		// For example: Middlewares: []gin.HandlerFunc{middleware.RequireAuthGlobal()},
+		Actions: []sgin.Action[*authContext]{
+			// User and Session Management
+			new(loginRequest),
+			new(logoutRequest),
+			//new(createUserRequest),
+			//new(getUserRequest),
+			//new(deleteUserRequest),
 
-func NewGinApp(
-	lgStSrv authentication.HTTPLoginStatusVerifier,
-	authSrv authentication.IAuthenticationService) sgin.GinApplication {
-	return &ginApp{
-		lgStSrv: lgStSrv,
-		authSrv: authSrv,
+			// Access Token (API Key) Management
+			new(createTokenRequest),
+			new(listTokensRequest),
+			new(deleteTokenRequest),
+		},
+		// The context is initialized empty; DI will populate it.
+		Context: authContext{},
 	}
 }
 
-func (g *ginApp) Create(engine *gin.Engine, router gin.IRouter) error {
-	router.GET("/login", g.handleLogin)
-	router.POST("/login", g.handleLogin)
-	router.GET("/logout", g.handleLogout)
-	//router.GET("/info", middleware.GinRequireAuth(g.lgStSrv), g.handleInfo)
-	//router.POST("/info", middleware.RequireAuthGlobal(), g.handleEditInfo)
-	//router.POST("/info/list", middleware.RequireAuthGlobal(), g.handleListInfo)
-	//router.POST("/info/delete", middleware.RequireAuthGlobal(), g.handleDeleteInfo)
-	//router.POST("/info/update", middleware.RequireAuthGlobal(), g.handleEnableInfo)
-	//router.POST("/info/create", middleware.RequireAuthGlobal(), g.handleCreateInfo)
-	return nil
+// --- User and Session Actions ---
+
+// loginRequest handles user login with username and password.
+type loginRequest struct {
+	sgin.BaseAction
+	sgin.RequestQuery
+	Username string `json:"username" form:"username" binding:"required"`
+	Password string `json:"password" form:"password" binding:"required"`
 }
 
-func (g *ginApp) Name() scene.ImplName {
-	return authentication.Lens.ImplNameNoVer("GinApplication")
+func (l *loginRequest) GetRoute() scene.HttpRouteInfo {
+	return scene.HttpRouteInfo{Method: http.MethodGet, Path: "/login", Methods: scene.HttpMethodGet | scene.HttpMethodPost}
 }
 
-func (g *ginApp) Prefix() string {
-	return "auth"
-}
-
-type loginParam struct {
-	Username string `form:"username" binding:"required" json:"username"`
-	Password string `form:"password" binding:"required" json:"password"`
-}
-
-func (g *ginApp) handleLogin(c *gin.Context) {
-	var param loginParam
-	if err := c.ShouldBind(&param); err != nil {
-		c.JSON(http.StatusBadRequest, model.NewErrorCodeResponse(
-			errcode.ParameterError.WithDetail(err)))
-		return
-	}
-	if userID, err := g.authSrv.Authenticate(param.Username, param.Password); err == nil {
-		var status authentication.LoginStatus
-		if status, err = g.lgStSrv.Login(userID, c.Writer); err != nil {
-			c.JSON(http.StatusInternalServerError, model.TryErrorCodeResponse(err))
-			return
-		}
-		c.JSON(http.StatusOK, model.NewDataResponse(gin.H{"username": param.Username, "user_id": userID, "status": status}))
-		return
-	} else {
-		c.JSON(http.StatusOK, model.TryErrorCodeResponse(err))
-		return
-	}
-}
-
-func (g *ginApp) handleLogout(c *gin.Context) {
-	err := g.lgStSrv.Logout(c.Writer)
+func (l *loginRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
+	userID, err := ctx.App.authSrv.Authenticate(l.Username, l.Password)
 	if err != nil {
-		c.JSON(http.StatusOK, model.TryErrorCodeResponse(err))
-		return
+		return nil, err
 	}
-	c.JSON(http.StatusOK, model.NewOkResponse())
+	status, err := ctx.App.lgStVrf.Login(userID, ctx.Writer)
+	if err != nil {
+		return nil, err
+	}
+	return status, nil
 }
 
-//func (g *ginApp) handleInfo(c *gin.Context) {
-//	ctx, _ := scene.ContextFindValue[authentication.AuthContext](sgin.GetContext(c))
-//	info, err := g.infoSrv.InfoById(ctx.UserID)
-//	if err != nil {
-//		c.JSON(http.StatusOK, model.TryErrorCodeResponse(err))
-//	}
-//	c.JSON(http.StatusOK, model.NewDataResponse(info))
+// logoutRequest handles user logout.
+type logoutRequest struct {
+	sgin.BaseAction
+	sgin.RequestNoParam
+}
+
+func (l *logoutRequest) GetRoute() scene.HttpRouteInfo {
+	return scene.HttpRouteInfo{Method: http.MethodPost, Path: "/logout"}
+}
+
+func (l *logoutRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
+	return nil, ctx.App.lgStVrf.Logout(ctx.Writer)
+}
+
+//// createUserRequest handles the creation of a new user.
+//type createUserRequest struct {
+//	sgin.BaseAction
+//	sgin.RequestQuery
+//	Username string `json:"username" binding:"required"`
+//	Password string `json:"password" binding:"required"`
+//}
+//
+//func (c *createUserRequest) GetRoute() scene.HttpRouteInfo {
+//	return scene.HttpRouteInfo{Method: http.MethodPost, Path: "/users"}
+//}
+//
+//func (c *createUserRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
+//	return ctx.App.authSrv.AddUser(c.Username, c.Password)
 //}
 
-//func (g *ginApp) handleEditInfo(c *gin.Context) {
-//	status := c.MustGet(middleware.ContextKeyStatus).(authentication.LoginStatus)
-//	var info authentication.UserInfo
-//	if err := c.ShouldBind(&info); err != nil {
-//		c.JSON(http.StatusBadRequest, model.NewErrorCodeResponse(
-//			errcode.ParameterError.WithDetail(err)))
-//		return
-//	}
-//	info.UserID = status.UserID
-//	if err := g.infoSrv.EditInfo(info); err != nil {
-//		c.JSON(http.StatusOK, model.TryErrorCodeResponse(err))
-//		return
-//	}
-//	c.JSON(http.StatusOK, model.NewOkResponse())
+//// getUserRequest retrieves a user's information by their ID.
+//type getUserRequest struct {
+//	sgin.BaseAction
+//	sgin.RequestURI
+//	UserID string `uri:"userId" binding:"required"`
 //}
+//
+//func (g *getUserRequest) GetRoute() scene.HttpRouteInfo {
+//	return scene.HttpRouteInfo{Method: http.MethodGet, Path: "/users/:userId"}
+//}
+//
+//func (g *getUserRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
+//	// TODO: Add authorization logic here. A user should only be able to get their own info,
+//	// unless they are an admin.
+//	return ctx.App.authSrv.UserById(g.UserID)
+//}
+//
+//// deleteUserRequest handles deleting a user.
+//type deleteUserRequest struct {
+//	sgin.BaseAction
+//	sgin.RequestURI
+//	UserID string `uri:"userId" binding:"required"`
+//}
+//
+//func (d *deleteUserRequest) GetRoute() scene.HttpRouteInfo {
+//	return scene.HttpRouteInfo{Method: http.MethodDelete, Path: "/users/:userId"}
+//}
+//
+//func (d *deleteUserRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
+//	// TODO: This is a destructive action and requires robust authorization.
+//	// An admin should be able to delete any user.
+//	// A user might be able to delete their own account.
+//	err = ctx.App.authSrv.DeleteUser(d.UserID)
+//	if err != nil {
+//		return nil, err
+//	}
+//	return model.NewOkResponse(), nil
+//}
+
+// --- Access Token Actions ---
+
+// createTokenRequest creates a new persistent access token (API key).
+// This route MUST be protected by authentication middleware.
+type createTokenRequest struct {
+	sgin.BaseAction
+	sgin.RequestQuery
+	Name     string `json:"name" form:"name" binding:"required"`
+	UserID   string `json:"user_id" form:"user_id" binding:"required"`
+	ExpireAt int64  `json:"expire_at" form:"expire_at,default=-1"` // Unix timestamp, 0 for no expiration
+}
+
+func (c *createTokenRequest) GetRoute() scene.HttpRouteInfo {
+	return scene.HttpRouteInfo{Method: http.MethodPost, Path: "/token"}
+}
+
+func (c *createTokenRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
+	if c.ExpireAt == 0 {
+		c.ExpireAt = -1
+	}
+	return ctx.App.tokenSrv.WithSceneContext(ctx).Create(c.UserID, c.Name, c.ExpireAt)
+}
+
+// listTokensRequest lists all tokens for the currently authenticated user.
+// This route MUST be protected by authentication middleware.
+type listTokensRequest struct {
+	sgin.BaseAction
+	sgin.RequestQuery
+	UserID string `json:"user_id" form:"user_id" binding:"required"`
+	Offset int64  `form:"offset,default=0"`
+	Limit  int64  `form:"limit,default=20"`
+}
+
+func (l *listTokensRequest) GetRoute() scene.HttpRouteInfo {
+	return scene.HttpRouteInfo{Method: http.MethodGet, Path: "/tokens"}
+}
+
+func (l *listTokensRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
+	return ctx.App.tokenSrv.WithSceneContext(ctx).ListByUser(l.UserID, l.Offset, l.Limit)
+}
+
+// deleteTokenRequest deletes a specific token owned by the user.
+// This route MUST be protected by authentication middleware.
+type deleteTokenRequest struct {
+	sgin.BaseAction
+	sgin.RequestQuery
+	Token string `form:"token" binding:"required"`
+}
+
+func (d *deleteTokenRequest) GetRoute() scene.HttpRouteInfo {
+	return scene.HttpRouteInfo{Method: http.MethodDelete, Path: "/token"}
+}
+
+func (d *deleteTokenRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
+	return nil, ctx.App.tokenSrv.WithSceneContext(ctx).Delete(d.Token)
+}

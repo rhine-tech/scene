@@ -36,9 +36,7 @@ func (b GinAppGorm) Init() scene.LensInit {
 func (b GinAppGorm) Apps() []any {
 	return []any{
 		func() sgin.GinApplication {
-			return registry.Load(delivery.NewGinApp(
-				b.Verifier.Provide(),
-				nil))
+			return delivery.AuthGinApp()
 		},
 	}
 }

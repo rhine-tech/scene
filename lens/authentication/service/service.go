@@ -15,6 +15,17 @@ type authenticationService struct {
 	tokenRepo authentication.IAccessTokenService       `aperture:""`
 }
 
+func (s *authenticationService) HasUser(userId string) (bool, error) {
+	_, err := s.userRepo.UserById(userId)
+	if err == nil {
+		return true, nil
+	}
+	if errors.Is(err, authentication.ErrUserNotFound) {
+		return false, nil
+	}
+	return false, err
+}
+
 func (s *authenticationService) SrvImplName() scene.ImplName {
 	return authentication.Lens.ImplName("IAuthenticationService", "default")
 }
@@ -87,6 +98,7 @@ func (s *authenticationService) Authenticate(username string, password string) (
 	userId, err := s.userRepo.Authenticate(username, password)
 	if err != nil {
 		s.logger.Debugf("failed to authenticate user", "username", username, "error", err)
+		return "", authentication.ErrAuthenticationFailed.WrapIfNot(err)
 	}
 	return userId, nil
 }

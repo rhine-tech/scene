@@ -15,6 +15,7 @@ import (
 type accessTokenService struct {
 	logger    logger.ILogger                        `aperture:""`
 	tokenRepo authentication.IAccessTokenRepository `aperture:""`
+	authSrv   authentication.IAuthenticationService `aperture:""`
 }
 
 // NewAccessTokenService creates a new instance of IAccessTokenService.
@@ -39,6 +40,16 @@ func (s *accessTokenService) Setup() error {
 // Create generates a new unique token for a specified user.
 func (s *accessTokenService) Create(userId, name string, expireAt int64) (authentication.AccessToken, error) {
 	s.logger.InfoW("creating new access token", "userId", userId, "name", name)
+
+	// check userId exists
+	has, err := s.authSrv.HasUser(userId)
+	if err != nil {
+		return authentication.AccessToken{}, err
+	}
+
+	if !has {
+		return authentication.AccessToken{}, authentication.ErrUserNotFound
+	}
 
 	// Create a new token object
 	newToken := authentication.AccessToken{
@@ -87,8 +98,8 @@ func (s *accessTokenService) List(offset, limit int64) (model.PaginationResult[a
 }
 
 // Delete removes a token, ensuring the user owns it first.
-func (s *accessTokenService) Delete(userId, tokenValue string) error {
-	s.logger.InfoW("deleting token", "userId", userId, "tokenValue", tokenValue)
+func (s *accessTokenService) Delete(tokenValue string) error {
+	s.logger.InfoW("deleting token", "tokenValue", tokenValue)
 
 	// Proceed with deletion
 	if err := s.tokenRepo.DeleteToken(tokenValue); err != nil {
@@ -119,7 +130,7 @@ func (s *accessTokenService) Validate(tokenValue string) (userId string, valid b
 	// Check if the token is expired
 	if token.ExpireAt > 0 && time.Now().Unix() > token.ExpireAt {
 		s.logger.Debugf("token is expired", "token", tokenValue, "expireAt", token.ExpireAt)
-		return token.UserID, false, authentication.ErrTokenExpired
+		return token.UserID, false, nil
 	}
 
 	s.logger.Debugf("token is valid", "token", tokenValue, "userId", token.UserID)
