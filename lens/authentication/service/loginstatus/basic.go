@@ -7,10 +7,10 @@ import (
 )
 
 type basicAuth struct {
-	srv authentication.AuthenticationService `aperture:""`
+	srv authentication.IAuthenticationService `aperture:""`
 }
 
-func NewBasicAuth(srv authentication.AuthenticationService) authentication.HTTPLoginStatusVerifier {
+func NewBasicAuth(srv authentication.IAuthenticationService) authentication.HTTPLoginStatusVerifier {
 	return &basicAuth{srv: srv}
 }
 

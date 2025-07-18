@@ -82,3 +82,12 @@ func (g *gormImpl) RegisterModel(model ...any) error {
 	g.log.Infof("register %d model success", len(model))
 	return nil
 }
+
+func (g *gormImpl) WithDB(db *gorm.DB) orm.Gorm {
+	return &gormImpl{
+		db:        db,
+		dialector: g.dialector,
+		ds:        g.ds,
+		log:       g.log,
+	}
+}

@@ -25,7 +25,7 @@ type IModuleFactory interface {
 
 type IDefaultableModuleFactory[T any] interface {
 	IModuleFactory
-	Default() T
+	Defaultable[T]
 }
 
 type ModuleFactory struct {

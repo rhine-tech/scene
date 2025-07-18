@@ -5,7 +5,6 @@ import (
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/errcode"
 	"github.com/rhine-tech/scene/lens/authentication"
-	"github.com/rhine-tech/scene/lens/authentication/delivery/middleware"
 	"github.com/rhine-tech/scene/model"
 	sgin "github.com/rhine-tech/scene/scenes/gin"
 	"net/http"
@@ -13,8 +12,7 @@ import (
 
 type ginApp struct {
 	lgStSrv authentication.HTTPLoginStatusVerifier `aperture:""`
-	authSrv authentication.AuthenticationService   `aperture:""`
-	infoSrv authentication.UserInfoService         `aperture:""`
+	authSrv authentication.IAuthenticationService  `aperture:""`
 }
 
 func (g *ginApp) Destroy() error {
@@ -23,12 +21,10 @@ func (g *ginApp) Destroy() error {
 
 func NewGinApp(
 	lgStSrv authentication.HTTPLoginStatusVerifier,
-	authSrv authentication.AuthenticationService,
-	infoSrv authentication.UserInfoService) sgin.GinApplication {
+	authSrv authentication.IAuthenticationService) sgin.GinApplication {
 	return &ginApp{
 		lgStSrv: lgStSrv,
 		authSrv: authSrv,
-		infoSrv: infoSrv,
 	}
 }
 
@@ -36,7 +32,7 @@ func (g *ginApp) Create(engine *gin.Engine, router gin.IRouter) error {
 	router.GET("/login", g.handleLogin)
 	router.POST("/login", g.handleLogin)
 	router.GET("/logout", g.handleLogout)
-	router.GET("/info", middleware.GinRequireAuth(g.lgStSrv), g.handleInfo)
+	//router.GET("/info", middleware.GinRequireAuth(g.lgStSrv), g.handleInfo)
 	//router.POST("/info", middleware.RequireAuthGlobal(), g.handleEditInfo)
 	//router.POST("/info/list", middleware.RequireAuthGlobal(), g.handleListInfo)
 	//router.POST("/info/delete", middleware.RequireAuthGlobal(), g.handleDeleteInfo)
@@ -88,14 +84,14 @@ func (g *ginApp) handleLogout(c *gin.Context) {
 	c.JSON(http.StatusOK, model.NewOkResponse())
 }
 
-func (g *ginApp) handleInfo(c *gin.Context) {
-	ctx, _ := scene.ContextFindValue[authentication.AuthContext](sgin.GetContext(c))
-	info, err := g.infoSrv.InfoById(ctx.UserID)
-	if err != nil {
-		c.JSON(http.StatusOK, model.TryErrorCodeResponse(err))
-	}
-	c.JSON(http.StatusOK, model.NewDataResponse(info))
-}
+//func (g *ginApp) handleInfo(c *gin.Context) {
+//	ctx, _ := scene.ContextFindValue[authentication.AuthContext](sgin.GetContext(c))
+//	info, err := g.infoSrv.InfoById(ctx.UserID)
+//	if err != nil {
+//		c.JSON(http.StatusOK, model.TryErrorCodeResponse(err))
+//	}
+//	c.JSON(http.StatusOK, model.NewDataResponse(info))
+//}
 
 //func (g *ginApp) handleEditInfo(c *gin.Context) {
 //	status := c.MustGet(middleware.ContextKeyStatus).(authentication.LoginStatus)

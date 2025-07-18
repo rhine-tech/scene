@@ -5,6 +5,7 @@ import (
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/lens/authentication"
 	"net/http"
+	"time"
 )
 
 type jwtClaims struct {
@@ -57,9 +58,10 @@ func (j *JWT) Login(userId string, resp http.ResponseWriter) (status authenticat
 		return authentication.LoginStatus{}, authentication.ErrNotLogin
 	}
 	http.SetCookie(resp, &http.Cookie{
-		Name:  j.keyName,
-		Value: tokenString,
-		Path:  "/",
+		Name:    j.keyName,
+		Value:   tokenString,
+		Path:    "/",
+		Expires: time.Now().Add(time.Hour * 24 * 30),
 	})
 	return authentication.LoginStatus{
 		UserID:   userId,

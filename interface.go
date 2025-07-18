@@ -7,3 +7,7 @@ type Disposable interface {
 type Setupable interface {
 	Setup() error
 }
+
+type Defaultable[T any] interface {
+	Default() T
+}

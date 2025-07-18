@@ -12,12 +12,11 @@ import (
 
 func GinAuthContext(verifier authentication.HTTPLoginStatusVerifier) gin.HandlerFunc {
 	verifier = registry.Use(verifier)
-	infoSrv := registry.Use(authentication.UserInfoService(nil))
 	return func(context *gin.Context) {
 		ctx := sgin.GetContext(context)
 		status, err := verifier.Verify(context.Request)
 		if err == nil {
-			scene.ContextSetValue(ctx, authentication.NewAuthContext(status.UserID, infoSrv))
+			scene.ContextSetValue(ctx, authentication.NewAuthContext(status.UserID))
 		} else {
 			scene.ContextSetValue(ctx, authentication.AuthContext{})
 		}
