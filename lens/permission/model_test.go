@@ -54,3 +54,13 @@ func TestPermission_Copy(t *testing.T) {
 	perm1.SubPermission.SubPermission.Name = "d"
 	require.False(t, perm.IsEqual(perm1))
 }
+
+func TestPermission_WithSubPermStr(t *testing.T) {
+	perm := MustParsePermission("a:b:c")
+	perm1 := perm.WithSubPermStr("d")
+	perm2 := perm.WithSubPermStr("d").WithSubPermStr("e")
+	perm3 := perm.WithSubPermStr("d").WithSubPermStr("e:f")
+	require.Equal(t, "a:b:c:d", perm1.String())
+	require.Equal(t, "a:b:c:d:e", perm2.String())
+	require.Equal(t, "a:b:c:d:e:f", perm3.String())
+}

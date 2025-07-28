@@ -134,7 +134,11 @@ func (p *Permission) Copy() *Permission {
 // WithSubPerm returns a new permission with sub permission
 func (p *Permission) WithSubPerm(perm *Permission) *Permission {
 	p1 := p.Copy()
-	p1.SubPermission = perm
+	lastSub := p1
+	for lastSub.SubPermission != nil {
+		lastSub = lastSub.SubPermission
+	}
+	lastSub.SubPermission = perm
 	return p1
 }
 
@@ -142,7 +146,11 @@ func (p *Permission) WithSubPerm(perm *Permission) *Permission {
 // - perm must be a valid permission string
 func (p *Permission) WithSubPermStr(perm string) *Permission {
 	p1 := p.Copy()
-	p1.SubPermission = MustParsePermission(perm)
+	lastSub := p1
+	for lastSub.SubPermission != nil {
+		lastSub = lastSub.SubPermission
+	}
+	lastSub.SubPermission = MustParsePermission(perm)
 	return p1
 }
 
