@@ -14,7 +14,7 @@ type authContext struct {
 }
 
 // AuthGinApp creates the Gin application definition for all authentication-related routes.
-func AuthGinApp() sgin.GinApplication {
+func AuthGinApp(lgStVrf authentication.HTTPLoginStatusVerifier) sgin.GinApplication {
 	return &sgin.AppRoutes[authContext]{
 		AppName:  authentication.Lens.ImplNameNoVer("GinApplication"),
 		BasePath: "auth", // All routes will be prefixed with /auth
@@ -34,7 +34,9 @@ func AuthGinApp() sgin.GinApplication {
 			new(deleteTokenRequest),
 		},
 		// The context is initialized empty; DI will populate it.
-		Context: authContext{},
+		Context: authContext{
+			lgStVrf: lgStVrf,
+		},
 	}
 }
 

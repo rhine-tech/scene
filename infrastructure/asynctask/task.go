@@ -52,7 +52,7 @@ type CronTask struct {
 }
 
 // Identifier is the unique identifier getter, if this CronTask already
-// set a name. the name will be the
+// set a name. the name will be the identifier
 func (t *CronTask) Identifier() string {
 	if t.Name != "" {
 		return t.Name

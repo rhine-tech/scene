@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// tokenAuth implements HTTPLoginStatusVerifier for token-based authentication.
+// tokenAuth implements authentication.HTTPLoginStatusVerifier for token-based authentication.
 type tokenAuth struct {
 	srv       authentication.IAccessTokenService `aperture:""`
 	headerKey string

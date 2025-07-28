@@ -10,11 +10,11 @@ import (
 	sgin "github.com/rhine-tech/scene/scenes/gin"
 )
 
-type GinVerifier scene.IModuleDependencyProvider[authentication.HTTPLoginStatusVerifier]
+type HttpVerifier scene.IModuleDependencyProvider[authentication.HTTPLoginStatusVerifier]
 
 type GinAppGorm struct {
 	scene.ModuleFactory
-	Verifier GinVerifier
+	Verifier HttpVerifier
 }
 
 func (b GinAppGorm) Default() GinAppGorm {
@@ -29,14 +29,13 @@ func (b GinAppGorm) Init() scene.LensInit {
 		repo2 := registry.Load(repository.NewGormAccessTokenRepository(nil))
 		srv := registry.Register[authentication.IAccessTokenService](service.NewAccessTokenService(repo2, nil))
 		registry.Register[authentication.IAuthenticationService](service.NewAuthenticationService(nil, repo, srv))
-		registry.Register[authentication.HTTPLoginStatusVerifier](b.Verifier.Provide())
 	}
 }
 
 func (b GinAppGorm) Apps() []any {
 	return []any{
 		func() sgin.GinApplication {
-			return delivery.AuthGinApp()
+			return delivery.AuthGinApp(b.Verifier.Provide())
 		},
 	}
 }
