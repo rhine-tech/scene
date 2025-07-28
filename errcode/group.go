@@ -22,7 +22,7 @@ func NewErrorGroup(groupCode int, name string) *ErrorGroup {
 }
 
 func (e *ErrorGroup) CreateError(code int, message string) *Error {
-	return CreateError(e.Code*1000+code, message)
+	return CreateError(e.Code*errcodeMask+code, message)
 }
 
 func (e *ErrorGroup) IsInGroup(err error) bool {

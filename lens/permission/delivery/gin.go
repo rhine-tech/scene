@@ -36,8 +36,8 @@ func (g *ginApp) Prefix() string {
 }
 
 func (g *ginApp) Create(engine *gin.Engine, router gin.IRouter) error {
-	router.GET("/check", authMw.GinRequireAuth(nil), g.handleCheck)
-	router.GET("/list", authMw.GinRequireAuth(nil), g.handleList)
+	router.GET("/check", authMw.GinRequireAuth(), g.handleCheck)
+	router.GET("/list", authMw.GinRequireAuth(), g.handleList)
 	return nil
 }
 
