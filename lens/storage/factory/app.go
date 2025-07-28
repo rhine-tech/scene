@@ -5,7 +5,6 @@ import (
 	storageApi "github.com/rhine-tech/scene/lens/storage"
 	"github.com/rhine-tech/scene/lens/storage/delivery"
 	"github.com/rhine-tech/scene/lens/storage/repository/meta"
-	"github.com/rhine-tech/scene/lens/storage/repository/sessiontracker"
 	"github.com/rhine-tech/scene/lens/storage/service"
 	"github.com/rhine-tech/scene/registry"
 	sgin "github.com/rhine-tech/scene/scenes/gin"
@@ -14,6 +13,16 @@ import (
 type Service struct {
 	DefaultProvider string
 	Providers       []StorageProvider
+	SessionTracker  SessionTrackerProvider
+}
+
+func (a Service) Default() Service {
+	return Service{
+		Providers: []StorageProvider{
+			Local{}.Default(),
+		},
+		SessionTracker: SessionTrackerRedis{},
+	}
 }
 
 func (a Service) Init() scene.LensInit {
@@ -27,7 +36,7 @@ func (a Service) Init() scene.LensInit {
 		}
 		registry.Register[storageApi.IStorageService](service.NewStorageService(
 			registry.Load(meta.NewGormFileMetaRepository()),
-			registry.Load(sessiontracker.NewRedisUploadSessionTracker()),
+			a.SessionTracker.Provide(),
 			a.DefaultProvider,
 			providers...))
 	}
