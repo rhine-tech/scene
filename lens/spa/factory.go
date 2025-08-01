@@ -8,8 +8,9 @@ import (
 )
 
 type SPA struct {
-	Embed  *embed.FS
-	Prefix string
+	Embed     *embed.FS
+	UrlPrefix string
+	FsPrefix  string
 }
 
 func (S SPA) Init() scene.LensInit {
@@ -20,7 +21,7 @@ func (S SPA) Init() scene.LensInit {
 func (S SPA) Apps() []any {
 	return []any{
 		func() sgin.GinApplication {
-			return delivery.NewGinSPA(S.Embed, S.Prefix)
+			return delivery.NewGinSPA(S.Embed, S.UrlPrefix, S.FsPrefix)
 		},
 	}
 }
