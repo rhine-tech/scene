@@ -9,3 +9,7 @@ var (
 	ErrPermissionNotFound      = _eg.CreateError(1, "permission not found")
 	ErrPermissionAlreadyExists = _eg.CreateError(2, "permission already exists")
 )
+
+var (
+	PermList = Create("permission:list")
+)

@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-
-	mapset "github.com/deckarep/golang-set/v2"
 )
 
 type PermOwner string
@@ -99,6 +97,12 @@ func (p *Permission) HasPermission(perm *Permission) bool {
 }
 
 func (p *Permission) IsEqual(perm *Permission) bool {
+	if (p == nil) && (perm == nil) {
+		return false
+	}
+	if (p == nil) || (perm == nil) {
+		return false
+	}
 	if p.Name != perm.Name {
 		return false
 	}
@@ -111,9 +115,13 @@ func (p *Permission) IsEqual(perm *Permission) bool {
 	return p.SubPermission.IsEqual(perm.SubPermission)
 }
 
-func (p *Permission) Copy() *Permission {
+func (p *Permission) copy(last *Permission) *Permission {
+	if p == nil {
+		return nil
+	}
 	// can be implemented by recursion or ParsePermission
 	// but since it is tail recursion, so I use loop
+	// Base case for the recursion
 
 	// top level permission
 	newPerm := &Permission{Name: "", SubPermission: &Permission{}}
@@ -127,134 +135,228 @@ func (p *Permission) Copy() *Permission {
 		prevPerm.SubPermission = &Permission{}
 	}
 	// last permission should be nil
-	prevPerm.SubPermission = nil
+	prevPerm.SubPermission = last
 	return newPerm.SubPermission
+}
+
+func (p *Permission) Copy() *Permission {
+	return p.copy(nil)
 }
 
 // WithSubPerm returns a new permission with sub permission
 func (p *Permission) WithSubPerm(perm *Permission) *Permission {
-	p1 := p.Copy()
-	lastSub := p1
-	for lastSub.SubPermission != nil {
-		lastSub = lastSub.SubPermission
-	}
-	lastSub.SubPermission = perm
-	return p1
+	return p.copy(perm.Copy())
 }
 
 // WithSubPermStr returns a new permission with sub permission
 // - perm must be a valid permission string
 func (p *Permission) WithSubPermStr(perm string) *Permission {
-	p1 := p.Copy()
-	lastSub := p1
-	for lastSub.SubPermission != nil {
-		lastSub = lastSub.SubPermission
-	}
-	lastSub.SubPermission = MustParsePermission(perm)
-	return p1
+	return p.copy(MustParsePermission(perm))
 }
 
-type PermissionSet []*Permission
-
-func (ps PermissionSet) HasPermission(perm *Permission) bool {
-	for _, p1 := range ps {
-		if p1.HasPermission(perm) {
-			return true
-		}
-	}
-	return false
+// PermissionNode represents a node in the permission Trie.
+type PermissionNode struct {
+	// IsTerminal marks the end of a valid permission.
+	// For the permission "user:edit", the node "edit" would have IsTerminal = true.
+	IsTerminal bool `json:"is_terminal"`
+	// Name is the full name of this permission node
+	Name string `json:"name"`
+	// Children holds the next parts of the permission.
+	// e.g., if this node is "user", a child might be "edit".
+	Children map[string]*PermissionNode `json:"children"`
 }
 
-func (ps PermissionSet) HasPermissionStr(perm string) bool {
-	pm, err := ParsePermission(perm)
-	if err != nil {
-		return false
+func NewPermissionNode() *PermissionNode {
+	return &PermissionNode{
+		Children: make(map[string]*PermissionNode),
 	}
-	for _, p1 := range ps {
-		if p1.HasPermission(pm) {
-			return true
-		}
-	}
-	return false
 }
 
-// Merge merges two permission set
-func (ps PermissionSet) Merge(other PermissionSet) PermissionSet {
-	x := mapset.NewSet[*Permission](ps...).Union(
-		mapset.NewSet[*Permission](other...))
-	return x.ToSlice()
+// PermTree is the main structure that holds all permissions for fast lookups.
+type PermissionTree struct {
+	Root *PermissionNode
 }
 
-// Cleanup cleans up the permission set
-// - if permission set already have a top level permission, then remove all sub permissions
-func (ps PermissionSet) Cleanup() PermissionSet {
-	topPerm := make(map[string]*Permission)
-	childMap := make(map[string]PermissionSet)
-	for _, perm := range ps {
-		permName := perm.Name
-		if perm.SubPermission == nil {
-			topPerm[permName] = perm
-			continue
-		}
-		childMap[permName] = append(childMap[permName], perm.SubPermission)
+// NewPermissionTree creates an empty permission tree.
+func NewPermissionTree() *PermissionTree {
+	return &PermissionTree{
+		Root: NewPermissionNode(),
 	}
-	var newPs PermissionSet
-	for _, perm := range topPerm {
-		newPs = append(newPs, &Permission{
-			Name: perm.Name,
-		})
-	}
-	for key, perms := range childMap {
-		if _, ok := topPerm[key]; ok {
-			continue
-		}
-		var subPerms PermissionSet
-		for _, perm := range perms.Cleanup() {
-			subPerms = append(subPerms, &Permission{
-				Name:          key,
-				SubPermission: perm,
-			})
-		}
-		newPs = append(newPs, subPerms...)
-	}
-	return newPs
 }
 
-func (ps PermissionSet) ToStrSlice() []string {
-	retval := make([]string, len(ps))
-	for i, p := range ps {
-		retval[i] = p.String()
+// BuildTree creates tree from permissions
+func BuildTree(permissions ...*Permission) *PermissionTree {
+	tree := &PermissionTree{
+		Root: NewPermissionNode(),
 	}
-	return retval
-}
-
-type PermTree map[string]PermTree
-
-func BuildTreeFromSet(ps PermissionSet) PermTree { // Root node to hold everything
-	return buildChildren("", ps)
-}
-
-func buildChildren(parent string, ps PermissionSet) PermTree {
-	if len(ps) == 0 {
-		return nil
-	}
-	tree := make(PermTree)
-	childMap := make(map[string][]*Permission)
-
-	for _, perm := range ps {
-		permName := perm.Name
-		if _, ok := childMap[permName]; !ok {
-			childMap[permName] = nil
-		}
-		if perm.SubPermission == nil {
-			continue
-		}
-		childMap[permName] = append(childMap[permName], perm.SubPermission)
-	}
-
-	for key, childs := range childMap {
-		currentKey := parent + key
-		tree[currentKey] = buildChildren(currentKey+":", childs)
-	}
+	tree.Add(permissions...)
 	return tree
 }
+
+// add is internal method inserts a permission into the Trie.
+func (pt *PermissionTree) add(perm *Permission) {
+	node := pt.Root
+	p := perm
+	prefix := ""
+	for p != nil {
+		child, exists := node.Children[p.Name]
+		if !exists {
+			child = NewPermissionNode()
+			child.Name = prefix + p.Name
+			node.Children[p.Name] = child
+		}
+		prefix = child.Name + ":"
+		node = child
+		p = p.SubPermission
+	}
+	node.IsTerminal = true // Mark the last node as the end of a permission
+}
+
+func (pt *PermissionTree) Add(perms ...*Permission) {
+	for _, perm := range perms {
+		pt.add(perm)
+	}
+}
+
+// HasPermission checks if the tree grants the given permission.
+// This is the high-speed replacement for PermissionSet.HasPermission.
+// Complexity: O(D), where D is the depth of the permission being checked.
+func (pt *PermissionTree) HasPermission(perm *Permission) bool {
+	node := pt.Root
+	p := perm
+	for p != nil {
+		// Check for a "wildcard" permission. If a parent path is a valid
+		// permission in the tree, access is granted.
+		// e.g., if the tree has "user", this check will return true for "user:edit".
+		if node.IsTerminal {
+			return true
+		}
+
+		child, exists := node.Children[p.Name]
+		if !exists {
+			// The path does not exist in the tree.
+			return false
+		}
+
+		node = child
+		p = p.SubPermission
+	}
+
+	// The full path was found. We must check if this final node or any of its
+	// ancestors was a terminal node.
+	return node.IsTerminal
+}
+
+// HasPermissionStr is a helper to check using a string, similar to your original API
+func (pt *PermissionTree) HasPermissionStr(perm string) bool {
+	p, err := ParsePermission(perm)
+	if err != nil {
+		return false // Or handle error appropriately
+	}
+	return pt.HasPermission(p)
+}
+
+// ToList returns all terminal nodes in the permission tree.
+func (pt *PermissionTree) ToList() []*Permission {
+	var perms []*Permission
+	var dfs func(*PermissionNode)
+	dfs = func(node *PermissionNode) {
+		if node.IsTerminal {
+			// As the full permission string is stored in the node's Name,
+			// we can parse it directly.
+			p, err := ParsePermission(node.Name)
+			if err == nil { // Should not fail if names are valid
+				perms = append(perms, p)
+			}
+		}
+		for _, child := range node.Children {
+			dfs(child)
+		}
+	}
+	dfs(pt.Root)
+	return perms
+}
+
+//// PermissionSet Depracated
+//// BuildTreeFromSet takes a slice of permissions and builds the efficient Trie structure.
+//func BuildTreeFromSet(perms PermissionSet) *PermissionTree {
+//	tree := NewPermissionTree()
+//	tree.Add(perms...)
+//	return tree
+//}
+//
+//
+//
+//type PermissionSet []*Permission
+//
+//func (ps PermissionSet) HasPermission(perm *Permission) bool {
+//	for _, p1 := range ps {
+//		if p1.HasPermission(perm) {
+//			return true
+//		}
+//	}
+//	return false
+//}
+//
+//func (ps PermissionSet) HasPermissionStr(perm string) bool {
+//	pm, err := ParsePermission(perm)
+//	if err != nil {
+//		return false
+//	}
+//	for _, p1 := range ps {
+//		if p1.HasPermission(pm) {
+//			return true
+//		}
+//	}
+//	return false
+//}
+//
+//// Merge merges two permission set
+//func (ps PermissionSet) Merge(other PermissionSet) PermissionSet {
+//	x := mapset.NewSet[*Permission](ps...).Union(
+//		mapset.NewSet[*Permission](other...))
+//	return x.ToSlice()
+//}
+//
+//// Cleanup cleans up the permission set
+//// - if permission set already have a top level permission, then remove all sub permissions
+//func (ps PermissionSet) Cleanup() PermissionSet {
+//	topPerm := make(map[string]*Permission)
+//	childMap := make(map[string]PermissionSet)
+//	for _, perm := range ps {
+//		permName := perm.Name
+//		if perm.SubPermission == nil {
+//			topPerm[permName] = perm
+//			continue
+//		}
+//		childMap[permName] = append(childMap[permName], perm.SubPermission)
+//	}
+//	var newPs PermissionSet
+//	for _, perm := range topPerm {
+//		newPs = append(newPs, &Permission{
+//			Name: perm.Name,
+//		})
+//	}
+//	for key, perms := range childMap {
+//		if _, ok := topPerm[key]; ok {
+//			continue
+//		}
+//		var subPerms PermissionSet
+//		for _, perm := range perms.Cleanup() {
+//			subPerms = append(subPerms, &Permission{
+//				Name:          key,
+//				SubPermission: perm,
+//			})
+//		}
+//		newPs = append(newPs, subPerms...)
+//	}
+//	return newPs
+//}
+//
+//func (ps PermissionSet) ToStrSlice() []string {
+//	retval := make([]string, len(ps))
+//	for i, p := range ps {
+//		retval[i] = p.String()
+//	}
+//	return retval
+//}

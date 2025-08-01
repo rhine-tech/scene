@@ -36,8 +36,9 @@ func (g *ginApp) Prefix() string {
 }
 
 func (g *ginApp) Create(engine *gin.Engine, router gin.IRouter) error {
-	router.GET("/check", authMw.GinRequireAuth(), g.handleCheck)
-	router.GET("/list", authMw.GinRequireAuth(), g.handleList)
+	router.GET("/myself/check", authMw.GinRequireAuth(), g.handleCheck)
+	router.GET("/myself/list", authMw.GinRequireAuth(), g.handleList)
+	router.GET("/list", g.handleAll)
 	return nil
 }
 
@@ -60,4 +61,26 @@ func (g *ginApp) handleCheck(c *gin.Context) {
 func (g *ginApp) handleList(c *gin.Context) {
 	actx, _ := scene.ContextFindValue[authentication.AuthContext](sgin.GetContext(c))
 	c.JSON(200, model.NewDataResponse(g.permSrv.ListPermissions(actx.UserID)))
+}
+
+func (g *ginApp) handleAll(c *gin.Context) {
+	_, ok := authentication.IsLoginInCtx(c)
+	if !ok {
+		c.JSON(200, model.NewErrorCodeResponse(authentication.ErrNotLogin))
+		return
+	}
+	ok = permission.HasPermissionInCtx(c, permission.PermList)
+	if !ok {
+		c.JSON(200, model.NewErrorCodeResponse(permission.ErrPermissionDenied))
+		return
+	}
+	listType := c.Query("type")
+	if listType != "tree" {
+		listType = "list"
+	}
+	if listType == "list" {
+		c.JSON(200, model.NewDataResponse(permission.RootPermTree.ToList()))
+		return
+	}
+	c.JSON(200, model.NewDataResponse(permission.RootPermTree.Root.Children))
 }

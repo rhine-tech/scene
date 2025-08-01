@@ -51,7 +51,7 @@ func (p *PermissionManagerImpl) HasPermissionStr(owner string, perm string) bool
 //	return names
 //}
 
-func (p *PermissionManagerImpl) ListPermissions(role string) permission.PermissionSet {
+func (p *PermissionManagerImpl) ListPermissions(role string) []*permission.Permission {
 	return p.repo.GetPermissions(role)
 }
 

@@ -29,13 +29,13 @@ func GinRequirePermissionFromRole(srv permission.PermissionService, perm string,
 	}
 }
 
-type GinPermsGetter func(c *gin.Context) permission.PermissionSet
+type GinPermsGetter func(c *gin.Context) []*permission.Permission
 
 func GinRequirePermission(perm string, getter GinPermsGetter) gin.HandlerFunc {
 	requiredPerm := permission.MustParsePermission(perm)
 	return func(c *gin.Context) {
 		perms := getter(c)
-		if perms.HasPermission(requiredPerm) {
+		if permission.BuildTree(perms...).HasPermission(requiredPerm) {
 			c.Next()
 			return
 		}

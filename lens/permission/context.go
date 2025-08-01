@@ -33,9 +33,9 @@ func (c *PermContext) HasPermissionStr(perm string) bool {
 	return c.srv.HasPermissionStr(string(c.Owner), perm)
 }
 
-func (c *PermContext) ListPermissions() PermissionSet {
+func (c *PermContext) ListPermissions() []*Permission {
 	if c.Owner == "" {
-		return PermissionSet{}
+		return []*Permission{}
 	}
 	return c.srv.ListPermissions(string(c.Owner))
 }

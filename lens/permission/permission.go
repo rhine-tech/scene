@@ -9,7 +9,7 @@ type PermissionService interface {
 	HasPermission(owner string, perm *Permission) bool
 	HasPermissionStr(owner string, perm string) bool
 	//ListOwners() []string
-	ListPermissions(owner string) PermissionSet
+	ListPermissions(owner string) []*Permission
 	AddPermission(owner string, perm string) error
 	RemovePermission(owner string, perm string) error
 }
