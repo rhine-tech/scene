@@ -24,7 +24,7 @@ func AuthGinApp(lgStVrf authentication.HTTPLoginStatusVerifier) sgin.GinApplicat
 			// User and Session Management
 			new(loginRequest),
 			new(logoutRequest),
-			//new(createUserRequest),
+			new(getInfoRequest),
 			//new(getUserRequest),
 			//new(deleteUserRequest),
 
@@ -73,7 +73,7 @@ type logoutRequest struct {
 }
 
 func (l *logoutRequest) GetRoute() scene.HttpRouteInfo {
-	return scene.HttpRouteInfo{Method: http.MethodPost, Path: "/logout"}
+	return scene.HttpRouteInfo{Method: http.MethodGet, Path: "/logout", Methods: scene.HttpMethodGet | scene.HttpMethodPost}
 }
 
 func (l *logoutRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
@@ -96,22 +96,25 @@ func (l *logoutRequest) Process(ctx *sgin.Context[*authContext]) (data any, err 
 //	return ctx.App.authSrv.AddUser(c.Username, c.Password)
 //}
 
-//// getUserRequest retrieves a user's information by their ID.
-//type getUserRequest struct {
-//	sgin.BaseAction
-//	sgin.RequestURI
-//	UserID string `uri:"userId" binding:"required"`
-//}
-//
-//func (g *getUserRequest) GetRoute() scene.HttpRouteInfo {
-//	return scene.HttpRouteInfo{Method: http.MethodGet, Path: "/users/:userId"}
-//}
-//
-//func (g *getUserRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
-//	// TODO: Add authorization logic here. A user should only be able to get their own info,
-//	// unless they are an admin.
-//	return ctx.App.authSrv.UserById(g.UserID)
-//}
+// getInfoRequest get current user's info
+type getInfoRequest struct {
+	sgin.BaseAction
+	sgin.RequestNoParam
+}
+
+func (g *getInfoRequest) GetRoute() scene.HttpRouteInfo {
+	return scene.HttpRouteInfo{Method: http.MethodGet, Path: "/user/info"}
+}
+
+func (g *getInfoRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
+	userId, ok := authentication.IsLoginInCtx(ctx)
+	if !ok {
+		return nil, authentication.ErrNotLogin
+	}
+	u, err := ctx.App.authSrv.UserById(userId)
+	return UserNoPassword{}.FromUser(u), err
+}
+
 //
 //// deleteUserRequest handles deleting a user.
 //type deleteUserRequest struct {

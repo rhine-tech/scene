@@ -19,6 +19,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.3
 	github.com/joho/godotenv v1.5.1
+	github.com/k0kubun/pp/v3 v3.5.0
 	github.com/mattn/go-colorable v0.1.14
 	github.com/minio/minio-go/v7 v7.0.95
 	github.com/panjf2000/ants/v2 v2.11.3
