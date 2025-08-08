@@ -23,8 +23,8 @@ type websocketContainer struct {
 	server *http.Server
 }
 
-func (g *websocketContainer) Name() scene.ImplName {
-	return scene.NewSceneImplNameNoVer("websocket", "container")
+func (g *websocketContainer) ImplName() scene.ImplName {
+	return scene.NewSceneImplNameNoVer("websocket", "Scene")
 }
 
 func (c *websocketContainer) startApps() error {
@@ -113,7 +113,7 @@ func (g *websocketContainer) ListAppNames() []string {
 	return names
 }
 
-func NewContainer(addr string, apps []WebsocketApplication, opts ...WsOption) scene.ApplicationContainer {
+func NewContainer(addr string, apps []WebsocketApplication, opts ...WsOption) scene.Scene {
 	wsMux := NewWebSocketMux()
 	for _, opt := range opts {
 		_ = opt(wsMux)
@@ -123,6 +123,6 @@ func NewContainer(addr string, apps []WebsocketApplication, opts ...WsOption) sc
 		apps: apps,
 		mux:  wsMux,
 	}
-	container.logger = registry.Logger.WithPrefix(container.Name().Identifier())
+	container.logger = registry.Logger.WithPrefix(container.ImplName().Identifier())
 	return container
 }

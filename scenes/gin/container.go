@@ -32,8 +32,8 @@ type ginContainer struct {
 	server *http.Server
 }
 
-func (c *ginContainer) Name() scene.ImplName {
-	return scene.NewSceneImplNameNoVer("gin", "container")
+func (c *ginContainer) ImplName() scene.ImplName {
+	return scene.NewSceneImplNameNoVer("gin", "Scene")
 }
 
 func (c *ginContainer) startApps() error {
@@ -119,7 +119,7 @@ func NewAppContainerWithPrefix(
 	prefix string,
 	apps []GinApplication,
 	options ...GinOption,
-) scene.ApplicationContainer {
+) scene.Scene {
 	ginEngine := createGinEngine()
 	for _, opt := range options {
 		if err := opt(ginEngine); err != nil {
@@ -132,7 +132,7 @@ func NewAppContainerWithPrefix(
 		engine: ginEngine,
 		apps:   apps,
 	}
-	container.logger = registry.Logger.WithPrefix(container.Name().Identifier())
+	container.logger = registry.Logger.WithPrefix(container.ImplName().Identifier())
 	return container
 }
 
@@ -140,6 +140,6 @@ func NewAppContainer(
 	addr string,
 	apps []GinApplication,
 	options ...GinOption,
-) scene.ApplicationContainer {
+) scene.Scene {
 	return NewAppContainerWithPrefix(addr, "/", apps, options...)
 }

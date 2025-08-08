@@ -19,13 +19,13 @@ var (
 
 type BasicEngine struct {
 	logger     logger.ILogger
-	containers map[string]scene.ApplicationContainer
+	containers map[string]scene.Scene
 }
 
-func NewEngine(logger logger.ILogger, containers ...scene.ApplicationContainer) scene.Engine {
+func NewEngine(logger logger.ILogger, containers ...scene.Scene) scene.Engine {
 	e := &BasicEngine{
 		logger:     logger.WithPrefix("scene.engine"),
-		containers: make(map[string]scene.ApplicationContainer),
+		containers: make(map[string]scene.Scene),
 	}
 	for _, container := range containers {
 		_ = e.AddContainer(container)
@@ -75,7 +75,7 @@ func (eg *BasicEngine) Start() error {
 	}
 	for _, container := range eg.containers {
 		if err := container.Start(); err != nil {
-			eg.logger.Errorf("start container %s error: %s", container.Name(), err)
+			eg.logger.Errorf("start container %s error: %s", container.ImplName(), err)
 			return err
 		}
 	}
@@ -86,7 +86,7 @@ func (eg *BasicEngine) Stop() {
 	ctx := context.Background()
 	for _, container := range eg.containers {
 		if err := container.Stop(ctx); err != nil {
-			eg.logger.Errorf("stop container %s error: %s", container.Name(), err)
+			eg.logger.Errorf("stop container %s error: %s", container.ImplName(), err)
 		}
 	}
 	for _, disposable := range registry.Disposable.AcquireAll() {
@@ -98,24 +98,24 @@ func (eg *BasicEngine) Stop() {
 	return
 }
 
-func (eg *BasicEngine) ListContainers() []scene.ApplicationContainer {
-	var containers []scene.ApplicationContainer
+func (eg *BasicEngine) ListContainers() []scene.Scene {
+	var containers []scene.Scene
 	for _, container := range eg.containers {
 		containers = append(containers, container)
 	}
 	return containers
 }
 
-func (eg *BasicEngine) GetContainer(name string) scene.ApplicationContainer {
+func (eg *BasicEngine) GetContainer(name string) scene.Scene {
 	return eg.containers[name]
 }
 
-func (eg *BasicEngine) AddContainer(container scene.ApplicationContainer) error {
-	if _, exists := eg.containers[container.Name().Identifier()]; exists {
-		panic(fmt.Sprintf("container %s already exists", container.Name()))
+func (eg *BasicEngine) AddContainer(container scene.Scene) error {
+	if _, exists := eg.containers[container.ImplName().Identifier()]; exists {
+		panic(fmt.Sprintf("container %s already exists", container.ImplName()))
 	}
-	eg.logger.Infof("add container %s", container.Name())
-	eg.containers[container.Name().Identifier()] = container
+	eg.logger.Infof("add container %s", container.ImplName())
+	eg.containers[container.ImplName().Identifier()] = container
 	return nil
 }
 

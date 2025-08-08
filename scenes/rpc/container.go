@@ -32,18 +32,18 @@ type rpcContainer struct {
 func NewRpcContainer(
 	addr string,
 	apps []RpcApplication,
-	opts ...RpcOption) scene.ApplicationContainer {
+	opts ...RpcOption) scene.Scene {
 	return &rpcContainer{
 		addr:    addr,
 		server:  rpc.NewServer(),
 		apps:    apps,
 		stopSig: make(chan int),
-		log:     registry.Logger.WithPrefix((&rpcContainer{}).Name().Identifier()),
+		log:     registry.Logger.WithPrefix((&rpcContainer{}).ImplName().Identifier()),
 	}
 }
 
-func (r *rpcContainer) Name() scene.ImplName {
-	return scene.NewSceneImplNameNoVer("rpc", "Container")
+func (r *rpcContainer) ImplName() scene.ImplName {
+	return scene.NewSceneImplNameNoVer("rpc", "Scene")
 }
 
 func (r *rpcContainer) Start() error {

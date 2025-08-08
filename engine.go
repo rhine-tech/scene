@@ -5,8 +5,8 @@ type Engine interface {
 	Start() error
 	Stop()
 
-	ListContainers() []ApplicationContainer
-	GetContainer(name string) ApplicationContainer
+	ListContainers() []Scene
+	GetContainer(name string) Scene
 	//AddContainer(container ApplicationContainer) error
 	//
 	//StopContainer(name string) error
