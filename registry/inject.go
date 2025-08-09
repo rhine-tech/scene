@@ -2,6 +2,7 @@ package registry
 
 import (
 	"reflect"
+	"unsafe"
 )
 
 var lazyLoads []any
@@ -31,6 +32,7 @@ func inject[T any](indirectVal reflect.Value) {
 				if !exists {
 					panic("scene registry: no instance found for " + tagValue + " when injecting " + field.Name)
 				}
+
 				// run hooks
 				runHooks(tagValue, indirectVal.Addr(), fieldVal, tagValue, &instance)
 				setUnexportedField(fieldVal, instance)
@@ -38,15 +40,21 @@ func inject[T any](indirectVal reflect.Value) {
 			}
 			// if field is Anonymous field and has the tag or has the embed tag, inject the embed field
 			if field.Anonymous || tagValue == EmbedValue {
-				// fmt.Println("injecting embed", field.Type.String(), "for", getInterfaceName[T]())
+				//fmt.Println("injecting embed", field.Type.String(), "for", getInterfaceName[T]())
 				// The value to recurse into is the field we just processed.
 				targetForRecursion := fieldVal
+				// make targetForRecursion modifiable unexport to export
+				targetForRecursion = reflect.NewAt(fieldVal.Type(), unsafe.Pointer(fieldVal.UnsafeAddr())).Elem()
 
 				// if it is an interface, get value of the interface
 				if targetForRecursion.Kind() == reflect.Interface {
-					targetForRecursion = targetForRecursion.Elem()
+					if targetForRecursion.Kind() == reflect.Interface {
+						if targetForRecursion.IsNil() {
+							panic("scene registry: failed to inject into a nil interface when injecting " + field.Name)
+						}
+						targetForRecursion = targetForRecursion.Elem()
+					}
 				}
-
 				// If it's a pointer, we need to get the element it points to.
 				if targetForRecursion.Kind() == reflect.Ptr {
 					if targetForRecursion.IsNil() {
@@ -57,7 +65,6 @@ func inject[T any](indirectVal reflect.Value) {
 					}
 					targetForRecursion = targetForRecursion.Elem()
 				}
-				// Finally, make the recursive call on the embedded struct value.
 				inject[T](targetForRecursion)
 			}
 		}

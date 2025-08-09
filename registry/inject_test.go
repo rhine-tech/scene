@@ -104,7 +104,8 @@ type IFaceB interface {
 }
 
 type StructImplB struct {
-	a IFaceA `aperture:""`
+	a   IFaceA `aperture:""`
+	Val string
 }
 
 func (s *StructImplB) B() string {
@@ -122,7 +123,8 @@ func TestTryInject_Interface_Embed(t *testing.T) {
 	require.Panics(t, func() {
 		TryInject(&c)
 	})
-	c = StructEmbedIFace{iface: IFaceB(&StructImplB{})}
+	c = StructEmbedIFace{iface: IFaceB(&StructImplB{Val: "BBB"})}
 	TryInject(&c)
 	require.Equal(t, a.A(), c.iface.B())
+	require.Equal(t, "BBB", c.iface.(*StructImplB).Val)
 }
