@@ -98,3 +98,31 @@ func TestTryInject_Pointer_Embed(t *testing.T) {
 	require.NotNil(t, c.bp.a)
 	require.Equal(t, a.A(), c.bp.a.A())
 }
+
+type IFaceB interface {
+	B() string
+}
+
+type StructImplB struct {
+	a IFaceA `aperture:""`
+}
+
+func (s *StructImplB) B() string {
+	return s.a.A()
+}
+
+type StructEmbedIFace struct {
+	iface IFaceB `aperture:"embed"`
+}
+
+func TestTryInject_Interface_Embed(t *testing.T) {
+	a := &StructA{}
+	Register[IFaceA](a)
+	c := StructEmbedIFace{}
+	require.Panics(t, func() {
+		TryInject(&c)
+	})
+	c = StructEmbedIFace{iface: IFaceB(&StructImplB{})}
+	TryInject(&c)
+	require.Equal(t, a.A(), c.iface.B())
+}

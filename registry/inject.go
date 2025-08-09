@@ -42,6 +42,11 @@ func inject[T any](indirectVal reflect.Value) {
 				// The value to recurse into is the field we just processed.
 				targetForRecursion := fieldVal
 
+				// if it is an interface, get value of the interface
+				if targetForRecursion.Kind() == reflect.Interface {
+					targetForRecursion = targetForRecursion.Elem()
+				}
+
 				// If it's a pointer, we need to get the element it points to.
 				if targetForRecursion.Kind() == reflect.Ptr {
 					if targetForRecursion.IsNil() {
