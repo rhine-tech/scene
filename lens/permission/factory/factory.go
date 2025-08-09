@@ -4,9 +4,11 @@ import (
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/lens/permission"
 	"github.com/rhine-tech/scene/lens/permission/delivery"
+	"github.com/rhine-tech/scene/lens/permission/gen/arpcimpl"
 	"github.com/rhine-tech/scene/lens/permission/repository"
 	"github.com/rhine-tech/scene/lens/permission/service"
 	"github.com/rhine-tech/scene/registry"
+	sarpc "github.com/rhine-tech/scene/scenes/arpc"
 	sgin "github.com/rhine-tech/scene/scenes/gin"
 )
 
@@ -29,5 +31,8 @@ func (b Gorm) Init() scene.LensInit {
 func (b Gorm) Apps() []any {
 	return []any{
 		InitApp,
+		func() sarpc.ARpcApp {
+			return registry.Load[sarpc.ARpcApp](new(arpcimpl.ARpcAppPermissionService))
+		},
 	}
 }

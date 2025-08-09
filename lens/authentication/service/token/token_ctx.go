@@ -27,10 +27,6 @@ func (a *accessTokenServiceCtx) SrvImplName() scene.ImplName {
 	return a.s.SrvImplName()
 }
 
-func (a *accessTokenServiceCtx) WithSceneContext(ctx scene.Context) authentication.IAccessTokenService {
-	return a.s.WithSceneContext(ctx)
-}
-
 func (a *accessTokenServiceCtx) Create(userId, name string, expireAt int64) (authentication.AccessToken, error) {
 	pctx, ok := permission.GetPermContext(a.ctx)
 	if !ok {

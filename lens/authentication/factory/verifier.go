@@ -1,10 +1,13 @@
 package factory
 
 import (
+	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/lens/authentication"
 	"github.com/rhine-tech/scene/lens/authentication/service/loginstatus"
 	"github.com/rhine-tech/scene/registry"
 )
+
+type HttpVerifier scene.IModuleDependencyProvider[authentication.HTTPLoginStatusVerifier]
 
 type JWTVerifier struct {
 	Key    string

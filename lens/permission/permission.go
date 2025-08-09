@@ -1,3 +1,4 @@
+//go:generate scene gen arpc PermissionService
 package permission
 
 import "github.com/rhine-tech/scene"
