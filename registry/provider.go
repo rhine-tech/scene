@@ -1,5 +1,7 @@
 package registry
 
+import "sync"
+
 // todo: finish me
 
 type Dependency[T any] interface {
@@ -11,6 +13,7 @@ type Provider[T any] interface {
 }
 
 type SingletonProvider[T any] struct {
+	once     sync.Once
 	instance T
 }
 
@@ -21,6 +24,9 @@ func NewSingletonProvider[T any](instance T) *SingletonProvider[T] {
 }
 
 func (p *SingletonProvider[T]) Provide() T {
+	p.once.Do(func() {
+		p.instance = Use(p.instance)
+	})
 	return p.instance
 }
 

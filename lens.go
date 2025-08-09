@@ -7,18 +7,6 @@ import (
 
 // Lens is an alias for Module
 
-// Module Component
-
-type Application interface {
-	Name() ImplName // return scene
-	//Status() AppStatus
-	//Error() error
-}
-
-type Service interface {
-	SrvImplName() ImplName
-}
-
 // Lens Definition
 
 type ModuleName string

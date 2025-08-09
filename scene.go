@@ -13,3 +13,15 @@ type Scene interface {
 	// GetAppInfo(appID string) Application // return application info
 	ListAppNames() []string // return application names
 }
+
+// Module Component
+
+type Application interface {
+	Name() ImplName // return scene
+	//Status() AppStatus
+	//Error() error
+}
+
+type Service interface {
+	SrvImplName() ImplName
+}

@@ -1,3 +1,4 @@
+//go:generate scene gen arpc IAuthenticationService IAccessTokenService
 package authentication
 
 import (
@@ -21,7 +22,6 @@ type IAuthenticationService interface {
 
 type IAccessTokenService interface {
 	scene.Service
-	scene.WithContext[IAccessTokenService]
 	// Create a new token for user
 	Create(userId, name string, expireAt int64) (AccessToken, error)
 	// ListByUser 分页列出某个用户的所有 AccessToken

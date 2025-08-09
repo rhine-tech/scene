@@ -1,3 +1,4 @@
 dist
 .idea
 go.sum
+*.gen.go

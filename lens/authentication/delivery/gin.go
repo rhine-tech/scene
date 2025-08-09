@@ -3,14 +3,15 @@ package delivery
 import (
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/lens/authentication"
+	"github.com/rhine-tech/scene/lens/authentication/service/token"
 	sgin "github.com/rhine-tech/scene/scenes/gin"
 	"net/http"
 )
 
 type authContext struct {
-	authSrv  authentication.IAuthenticationService  `aperture:""`
-	tokenSrv authentication.IAccessTokenService     `aperture:""`
-	lgStVrf  authentication.HTTPLoginStatusVerifier `aperture:""`
+	authSrv  authentication.IAuthenticationService                 `aperture:""`
+	tokenSrv scene.WithContext[authentication.IAccessTokenService] `aperture:""`
+	lgStVrf  authentication.HTTPLoginStatusVerifier                `aperture:""`
 }
 
 // AuthGinApp creates the Gin application definition for all authentication-related routes.
@@ -35,7 +36,8 @@ func AuthGinApp(lgStVrf authentication.HTTPLoginStatusVerifier) sgin.GinApplicat
 		},
 		// The context is initialized empty; DI will populate it.
 		Context: authContext{
-			lgStVrf: lgStVrf,
+			lgStVrf:  lgStVrf,
+			tokenSrv: new(token.CtxProxy),
 		},
 	}
 }

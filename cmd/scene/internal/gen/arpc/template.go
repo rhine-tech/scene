@@ -65,6 +65,7 @@ func (r *arpcClient{{ .InterfaceName }}) SrvImplName() scene.ImplName {
 	return {{ $.PackageName }}.Lens.ImplName("{{ .InterfaceName }}", "arpc")
 }
 
+// Deprecated: no longer used
 func (r *arpcClient{{ .InterfaceName }}) WithSceneContext(ctx scene.Context) {{ $.PackageName }}.{{ .InterfaceName }} {
 	return r
 }
