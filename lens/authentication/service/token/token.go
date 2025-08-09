@@ -119,7 +119,7 @@ func (s *accessTokenService) Validate(tokenValue string) (userId string, valid b
 	if err != nil {
 		// If the token is not found in the repository
 		if errors.Is(err, authentication.ErrTokenNotFound) {
-			s.logger.Debugf("token not found", "token", tokenValue)
+			s.logger.DebugW("token not found", "token", tokenValue)
 			return "", false, authentication.ErrTokenNotFound
 		}
 		// For other repository errors
@@ -129,11 +129,11 @@ func (s *accessTokenService) Validate(tokenValue string) (userId string, valid b
 
 	// Check if the token is expired
 	if token.ExpireAt > 0 && time.Now().Unix() > token.ExpireAt {
-		s.logger.Debugf("token is expired", "token", tokenValue, "expireAt", token.ExpireAt)
+		s.logger.DebugW("token is expired", "token", tokenValue, "expireAt", token.ExpireAt)
 		return token.UserID, false, nil
 	}
 
-	s.logger.Debugf("token is valid", "token", tokenValue, "userId", token.UserID)
+	s.logger.DebugW("token is valid", "token", tokenValue, "userId", token.UserID)
 	return token.UserID, true, nil
 }
 
