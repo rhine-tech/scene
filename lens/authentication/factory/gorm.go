@@ -42,7 +42,7 @@ func (b AppGorm) Apps() []any {
 			return registry.Load[sarpc.ARpcApp](&arpcimpl.ARpcAppIAuthenticationService{})
 		},
 		func() sarpc.ARpcApp {
-			return registry.Load[sarpc.ARpcApp](&arpcimpl.ARpcAppIAuthenticationService{})
+			return registry.Load[sarpc.ARpcApp](&arpcimpl.ARpcAppIAccessTokenService{})
 		},
 	}
 }
