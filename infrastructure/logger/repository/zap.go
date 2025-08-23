@@ -42,6 +42,10 @@ func customNamedEncoder(loggerName string, enc zapcore.PrimitiveArrayEncoder) {
 	enc.AppendString(logger.LogColorMagenta.Add("[" + loggerName + "]"))
 }
 
+func customCallerEncoder(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {
+	enc.AppendString(logger.LogColorBlue.Add("[" + caller.TrimmedPath() + "]"))
+}
+
 type zapLoggerImpl struct {
 	*zap.SugaredLogger
 	level zap.AtomicLevel
@@ -105,12 +109,13 @@ func NewZapColoredLogger() logger.ILogger {
 	cfg.EncodeLevel = customLevelEncoder
 	cfg.EncodeTime = syslogTimeEncoder
 	cfg.EncodeName = customNamedEncoder
+	cfg.EncodeCaller = customCallerEncoder
 	cfg.ConsoleSeparator = " "
 	zapLog := zap.New(zapcore.NewCore(
 		zapcore.NewConsoleEncoder(cfg),
 		zapcore.AddSync(colorable.NewColorableStdout()),
 		level,
-	))
+	), zap.AddCaller(), zap.AddCallerSkip(0))
 	sugar := zapLog.Sugar()
 	return &zapLoggerImpl{SugaredLogger: sugar, level: level}
 }

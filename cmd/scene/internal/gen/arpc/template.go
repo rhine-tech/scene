@@ -65,6 +65,10 @@ func (r *arpcClient{{ .InterfaceName }}) SrvImplName() scene.ImplName {
 	return {{ $.PackageName }}.Lens.ImplName("{{ .InterfaceName }}", "arpc")
 }
 
+func (r *arpcClient{{ .InterfaceName }}) ImplName() scene.ImplName {
+	return {{ $.PackageName }}.Lens.ImplName("{{ .InterfaceName }}", "arpc")
+}
+
 // Deprecated: no longer used
 func (r *arpcClient{{ .InterfaceName }}) WithSceneContext(ctx scene.Context) {{ $.PackageName }}.{{ .InterfaceName }} {
 	return r
@@ -93,6 +97,10 @@ type ARpcServer{{ .InterfaceName }} struct {
 	srv {{ $.PackageName }}.{{ .InterfaceName }} ` + apertureTag + `
 }
 
+type ARpcServer{{ .InterfaceName }}WithContext struct {
+	srv scene.WithContext[{{ $.PackageName }}.{{ .InterfaceName }}]
+}
+
 func Handle{{ .InterfaceName }}(srv {{ $.PackageName }}.{{ .InterfaceName }}, handler arpc.Handler) {
 	svr := NewARpcServer{{ .InterfaceName }}(srv)
 	HandleARpcServer{{ .InterfaceName }}(svr,handler)
@@ -104,8 +112,20 @@ func HandleARpcServer{{ .InterfaceName }}(svr *ARpcServer{{ .InterfaceName }}, h
 {{- end }}
 } 
 
+func HandleARpcServer{{ .InterfaceName }}WithContext(svr *ARpcServer{{ .InterfaceName }}WithContext, handler arpc.Handler) {
+{{- range .Methods }}
+	handler.Handle(ARpcName{{UpperFirst $.PackageName}}{{ $.InterfaceName }}{{ .Name }} , svr.{{ .Name }})
+{{- end }}
+} 
+
 func NewARpcServer{{ .InterfaceName }}(srv {{ $.PackageName }}.{{ .InterfaceName }}) *ARpcServer{{ .InterfaceName }} {
 	return &ARpcServer{{ .InterfaceName }}{
+		srv: srv,
+	}
+}
+
+func NewARpcServer{{ .InterfaceName }}WithContext(srv scene.WithContext[{{ $.PackageName }}.{{ .InterfaceName }}]) *ARpcServer{{ .InterfaceName }}WithContext {
+	return &ARpcServer{{ .InterfaceName }}WithContext{
 		srv: srv,
 	}
 }
@@ -119,6 +139,27 @@ func (r *ARpcServer{{ $.InterfaceName }}) {{ .Name }}(c *arpc.Context) {
 		return
 	}
 	{{range $index, $arg := .Returns }}{{ if $index }},{{ end }} a{{ $index }}{{end }} := r.srv.{{ .Name }}(
+		{{- range $index, $ret := .Args }}
+		req.Val{{ $index }},
+		{{- end }}
+	)
+	{{- range $index, $ret := .Returns }}
+	resp.Val{{ $index }} = a{{ $index }}
+	{{- end }}
+	_ = c.Write(&resp)
+	return
+}
+{{- end }}
+
+{{- range .Methods }}
+func (r *ARpcServer{{ $.InterfaceName }}WithContext) {{ .Name }}(c *arpc.Context) {
+	var req {{ $.InterfaceName }}{{ .Name }}Args
+	var resp {{ $.InterfaceName }}{{ .Name }}Result
+	err := c.Bind(&req)
+	if err != nil {
+		return
+	}
+	{{range $index, $arg := .Returns }}{{ if $index }},{{ end }} a{{ $index }}{{end }} := r.srv.WithSceneContext(sarpc.Context(c)).{{ .Name }}(
 		{{- range $index, $ret := .Args }}
 		req.Val{{ $index }},
 		{{- end }}

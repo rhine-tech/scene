@@ -80,3 +80,23 @@ func NewClient(network string, addr string, options ...ClientOption) Client {
 		options: options,
 	}
 }
+
+type ARpcClient struct {
+	client *arpc.Client
+}
+
+func NewClientFromArpc(client *arpc.Client) Client {
+	return &ARpcClient{client: client}
+}
+
+func (c *ARpcClient) ImplName() scene.ImplName {
+	return scene.NewSceneImplName("arpc", "Client", "Raw")
+}
+
+func (c *ARpcClient) Client() *arpc.Client {
+	return c.client
+}
+
+func (A ARpcClient) Call(method string, req interface{}, rsp interface{}, timeout time.Duration, args ...interface{}) error {
+	return A.client.Call(method, req, rsp, timeout, args...)
+}
