@@ -87,3 +87,7 @@ func (l *DummyLogger) WithPrefix(prefix string) logger.ILogger {
 func (l *DummyLogger) SetLogLevel(level logger.LogLevel) {
 
 }
+
+func (l *DummyLogger) WithOptions(opts ...logger.Option) logger.ILogger {
+	return l
+}

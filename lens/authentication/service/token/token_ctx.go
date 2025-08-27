@@ -17,6 +17,10 @@ func (s *CtxProxy) WithSceneContext(ctx scene.Context) authentication.IAccessTok
 	return &accessTokenServiceCtx{ctx: ctx, s: s.srv, logger: s.log.WithPrefix(s.srv.SrvImplName().Identifier())}
 }
 
+func (s *CtxProxy) NoContext() authentication.IAccessTokenService {
+	return s.srv
+}
+
 type accessTokenServiceCtx struct {
 	s      authentication.IAccessTokenService
 	ctx    scene.Context

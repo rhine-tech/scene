@@ -38,6 +38,7 @@ type ILogger interface {
 	ErrorS(message string, fields LogField)
 	WithPrefix(prefix string) ILogger
 	SetLogLevel(level LogLevel)
+	WithOptions(opts ...Option) ILogger // new api, can replace WithPrefix and SetLogLevel in the future
 }
 
 type LogMessage struct {

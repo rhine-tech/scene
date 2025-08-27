@@ -1,9 +1,7 @@
 package errcode
 
 import (
-	"errors"
 	"fmt"
-	"strconv"
 )
 
 const errcodeMask = 1000
@@ -27,25 +25,25 @@ func (e *Error) Is(target error) bool {
 	return e.Code == er.Code
 }
 
-func (e *Error) MarshalJSON() ([]byte, error) {
-	return []byte(fmt.Sprintf("err%d", e.Code)), nil
-}
-
-func (e *Error) UnmarshalJSON(b []byte) (err error) {
-	if len(b) < 4 {
-		return errors.New("invalid error code")
-	}
-	code, err := strconv.Atoi(string(b[3:]))
-	if err != nil {
-		return err
-	}
-	if x, ok := _codes[code]; ok {
-		e.Code = code
-		e.Message = x
-		return nil
-	}
-	return errors.New("invalid error code")
-}
+//func (e *Error) MarshalJSON() ([]byte, error) {
+//	return []byte(fmt.Sprintf("\"err%d\"", e.Code)), nil
+//}
+//
+//func (e *Error) UnmarshalJSON(b []byte) (err error) {
+//	if len(b) < 6 {
+//		return errors.New("invalid error code")
+//	}
+//	code, err := strconv.Atoi(string(b[4 : len(b)-1]))
+//	if err != nil {
+//		return err
+//	}
+//	if x, ok := _codes[code]; ok {
+//		e.Code = code
+//		e.Message = x
+//		return nil
+//	}
+//	return errors.New("invalid error code")
+//}
 
 var _codes = map[int]string{}
 

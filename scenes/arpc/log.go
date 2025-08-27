@@ -17,7 +17,10 @@ type logDelegate struct {
 
 func (l *logDelegate) setupLogger() bool {
 	if l.log == nil && registry.Logger != nil {
-		l.log = registry.Logger.WithPrefix(scene.NewSceneImplNameNoVer("arpc", "internal").Identifier())
+		l.log = registry.Logger.WithOptions(
+			logger.WithPrefix(scene.NewSceneImplNameNoVer("arpc", "internal").Identifier()),
+			logger.WithCallerSkip(2),
+		)
 	}
 	return l.log != nil
 }

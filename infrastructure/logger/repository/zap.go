@@ -48,11 +48,13 @@ func customCallerEncoder(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayE
 
 type zapLoggerImpl struct {
 	*zap.SugaredLogger
+	skip1 *zap.SugaredLogger
 	level zap.AtomicLevel
 }
 
 type namedZapLoggerImpl struct {
 	*zap.SugaredLogger
+	skip1  *zap.SugaredLogger
 	parent *zapLoggerImpl
 }
 
@@ -60,40 +62,44 @@ func (n *namedZapLoggerImpl) WithPrefix(prefix string) logger.ILogger {
 	return n.parent.WithPrefix(prefix)
 }
 
+func (n *namedZapLoggerImpl) WithOptions(options ...logger.Option) logger.ILogger {
+	return n.parent.WithOptions(options...)
+}
+
 func (n *namedZapLoggerImpl) SetLogLevel(level logger.LogLevel) {
 	n.parent.SetLogLevel(level)
 }
 
 func (z *namedZapLoggerImpl) DebugW(message string, keysAndValues ...interface{}) {
-	z.Debugw(message, keysAndValues...)
+	z.skip1.Debugw(message, keysAndValues...)
 }
 
 func (z *namedZapLoggerImpl) InfoW(message string, keysAndValues ...interface{}) {
-	z.Infow(message, keysAndValues...)
+	z.skip1.Infow(message, keysAndValues...)
 }
 
 func (z *namedZapLoggerImpl) WarnW(message string, keysAndValues ...interface{}) {
-	z.Warnw(message, keysAndValues...)
+	z.skip1.Warnw(message, keysAndValues...)
 }
 
 func (z *namedZapLoggerImpl) ErrorW(message string, keysAndValues ...interface{}) {
-	z.Errorw(message, keysAndValues...)
+	z.skip1.Errorw(message, keysAndValues...)
 }
 
 func (z *namedZapLoggerImpl) DebugS(message string, fields logger.LogField) {
-	z.Debugw(message, fields.Flatten()...)
+	z.skip1.Debugw(message, fields.Flatten()...)
 }
 
 func (z *namedZapLoggerImpl) InfoS(message string, fields logger.LogField) {
-	z.Infow(message, fields.Flatten()...)
+	z.skip1.Infow(message, fields.Flatten()...)
 }
 
 func (z *namedZapLoggerImpl) WarnS(message string, fields logger.LogField) {
-	z.Warnw(message, fields.Flatten()...)
+	z.skip1.Warnw(message, fields.Flatten()...)
 }
 
 func (z *namedZapLoggerImpl) ErrorS(message string, fields logger.LogField) {
-	z.Errorw(message, fields.Flatten()...)
+	z.skip1.Errorw(message, fields.Flatten()...)
 }
 
 func NewZapLogger() logger.ILogger {
@@ -117,7 +123,7 @@ func NewZapColoredLogger() logger.ILogger {
 		level,
 	), zap.AddCaller(), zap.AddCallerSkip(0))
 	sugar := zapLog.Sugar()
-	return &zapLoggerImpl{SugaredLogger: sugar, level: level}
+	return &zapLoggerImpl{SugaredLogger: sugar, skip1: sugar.WithOptions(zap.AddCallerSkip(1)), level: level}
 }
 
 func (z *zapLoggerImpl) Dispose() error {
@@ -126,7 +132,24 @@ func (z *zapLoggerImpl) Dispose() error {
 }
 
 func (z *zapLoggerImpl) WithPrefix(prefix string) logger.ILogger {
-	return &namedZapLoggerImpl{SugaredLogger: z.SugaredLogger.Named(prefix), parent: z}
+	return &namedZapLoggerImpl{SugaredLogger: z.SugaredLogger.Named(prefix), skip1: z.skip1.Named(prefix), parent: z}
+}
+
+func (z *zapLoggerImpl) WithOptions(options ...logger.Option) logger.ILogger {
+	named := &namedZapLoggerImpl{SugaredLogger: z.SugaredLogger, skip1: z.skip1, parent: z}
+	for _, option := range options {
+		switch option.Name {
+		case logger.OptionCallerSkip:
+			named.SugaredLogger = named.SugaredLogger.WithOptions(zap.AddCallerSkip(option.Value.(int)))
+			named.skip1 = z.skip1.WithOptions(zap.AddCallerSkip(option.Value.(int)))
+		case logger.OptionWithPrefix:
+			named.SugaredLogger = named.SugaredLogger.Named(option.Value.(string))
+			named.skip1 = z.skip1.Named(option.Value.(string))
+		default:
+			// do nothing
+		}
+	}
+	return named
 }
 
 func (z *zapLoggerImpl) SetLogLevel(level logger.LogLevel) {
@@ -135,33 +158,33 @@ func (z *zapLoggerImpl) SetLogLevel(level logger.LogLevel) {
 }
 
 func (z *zapLoggerImpl) DebugW(message string, keysAndValues ...interface{}) {
-	z.Debugw(message, keysAndValues...)
+	z.skip1.Debugw(message, keysAndValues...)
 }
 
 func (z *zapLoggerImpl) InfoW(message string, keysAndValues ...interface{}) {
-	z.Infow(message, keysAndValues...)
+	z.skip1.Infow(message, keysAndValues...)
 }
 
 func (z *zapLoggerImpl) WarnW(message string, keysAndValues ...interface{}) {
-	z.Warnw(message, keysAndValues...)
+	z.skip1.Warnw(message, keysAndValues...)
 }
 
 func (z *zapLoggerImpl) ErrorW(message string, keysAndValues ...interface{}) {
-	z.Errorw(message, keysAndValues...)
+	z.skip1.Errorw(message, keysAndValues...)
 }
 
 func (z *zapLoggerImpl) DebugS(message string, fields logger.LogField) {
-	z.Debugw(message, fields.Flatten()...)
+	z.skip1.Debugw(message, fields.Flatten()...)
 }
 
 func (z *zapLoggerImpl) InfoS(message string, fields logger.LogField) {
-	z.Infow(message, fields.Flatten()...)
+	z.skip1.Infow(message, fields.Flatten()...)
 }
 
 func (z *zapLoggerImpl) WarnS(message string, fields logger.LogField) {
-	z.Warnw(message, fields.Flatten()...)
+	z.skip1.Warnw(message, fields.Flatten()...)
 }
 
 func (z *zapLoggerImpl) ErrorS(message string, fields logger.LogField) {
-	z.Errorw(message, fields.Flatten()...)
+	z.skip1.Errorw(message, fields.Flatten()...)
 }

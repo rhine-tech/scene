@@ -8,6 +8,7 @@ const serviceTemplate = `
 import (
 	"github.com/lesismal/arpc"
 	"github.com/rhine-tech/scene"
+	"github.com/rhine-tech/scene/errcode"
 	"github.com/rhine-tech/scene/infrastructure/logger"
 	sarpc "github.com/rhine-tech/scene/scenes/arpc"
 	"time"
@@ -15,6 +16,9 @@ import (
 	"{{ $path }}"
 {{- end }}
 )
+
+// make sure errcode used
+type _ = errcode.Error
 
 // Method definition
 
@@ -33,7 +37,7 @@ type {{ $.InterfaceName }}{{ .Name }}Args struct {
 
 type {{ $.InterfaceName }}{{ .Name }}Result struct {
 	{{- range $index, $ret := .Returns }}
-	Val{{ $index }} {{ $ret.Type }}
+	Val{{ $index }} {{ if eq $ret.Type "error" }}errcode.UnmarshalError{{ else }}{{ $ret.Type }}{{ end }}
 	{{- end }}
 }
 {{- end }}
@@ -87,7 +91,7 @@ func (r *arpcClient{{ $.InterfaceName }}) {{ .Name }}({{ range .Args }}{{ .Name 
 		r.log.ErrorW("remote call error", "method", ARpcName{{UpperFirst $.PackageName}}{{ $.InterfaceName }}{{ .Name }}, "err", err)
 		return   {{- range $index, $ret := .Returns }}{{ if $index }},{{ end }} {{ if eq $ret.Type "error" }}err{{ else }}*new({{ $ret.Type }}){{ end }}{{- end }}
 	}
-	return    {{- range $index, $ret := .Returns }}{{ if $index }},{{ end }} resp.Val{{ $index }}{{- end }}
+	return {{- range $index, $ret := .Returns }}{{ if $index }},{{ end }} resp.Val{{ $index }}{{ if eq $ret.Type "error" }}.Error{{ end }}{{- end }}
 }
 {{- end }}
 
@@ -144,7 +148,7 @@ func (r *ARpcServer{{ $.InterfaceName }}) {{ .Name }}(c *arpc.Context) {
 		{{- end }}
 	)
 	{{- range $index, $ret := .Returns }}
-	resp.Val{{ $index }} = a{{ $index }}
+	resp.Val{{ $index }} = {{ if eq $ret.Type "error" }}errcode.UnmarshalError{Error:a{{ $index }}}{{ else }}a{{ $index }}{{ end }}
 	{{- end }}
 	_ = c.Write(&resp)
 	return
@@ -165,7 +169,7 @@ func (r *ARpcServer{{ $.InterfaceName }}WithContext) {{ .Name }}(c *arpc.Context
 		{{- end }}
 	)
 	{{- range $index, $ret := .Returns }}
-	resp.Val{{ $index }} = a{{ $index }}
+	resp.Val{{ $index }} = {{ if eq $ret.Type "error" }}errcode.UnmarshalError{Error:a{{ $index }}}{{ else }}a{{ $index }}{{ end }}
 	{{- end }}
 	_ = c.Write(&resp)
 	return

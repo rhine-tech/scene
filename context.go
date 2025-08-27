@@ -6,6 +6,7 @@ import (
 
 type WithContext[T any] interface {
 	WithSceneContext(ctx Context) T
+	NoContext() T
 }
 
 // Context should be a "context container" that store module's context
