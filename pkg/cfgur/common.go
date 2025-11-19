@@ -47,7 +47,7 @@ func getFieldWithTag(val interface{}) ([]fieldWithTag, error) {
 
 	for i := 0; i < e.NumField(); i++ {
 		f := e.Field(i)
-		tagVal := t.Field(i).Tag.Get("cfgur")
+		tagVal := t.Field(i).Tag.Get(TagName)
 		if tagVal != "" {
 			tagParts := strings.Split(tagVal, ",")
 			tagKey := tagParts[0]

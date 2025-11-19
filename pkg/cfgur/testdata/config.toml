@@ -1,0 +1,12 @@
+[server]
+host = "localhost"
+port = 8080
+debug = true
+
+[database]
+user = "root"
+password = "secret"
+port = 3306
+
+[feature]
+flag = false
