@@ -10,7 +10,6 @@ type Scene interface {
 	Start() error                   // start container
 	Stop(ctx context.Context) error // stop container
 
-	// GetAppInfo(appID string) Application // return application info
 	ListAppNames() []string // return application names
 }
 
