@@ -30,7 +30,7 @@ func WithPassword(password string) ClientOption {
 	}
 }
 
-func UsePassword(password string) ARpcOption {
+func UsePassword(password string) ServerOption {
 	return func(server *arpc.Server) error {
 		server.Handler.Use(func(ctx *arpc.Context) {
 			method := ctx.Message.Method()

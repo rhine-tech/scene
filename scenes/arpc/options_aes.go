@@ -24,7 +24,7 @@ func WithAesEncryption(key []byte) ClientOption {
 // --- Server Side ---
 
 // UseAesEncryption enables automatic AES decryption for all messages after a successful handshake.
-func UseAesEncryption(key []byte) ARpcOption {
+func UseAesEncryption(key []byte) ServerOption {
 	return func(server *arpc.Server) error {
 		log := registry.Logger.WithPrefix((&arpcContainer{}).ImplName().Identifier())
 		coder := helper.NewAesCoder(key, log)

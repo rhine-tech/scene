@@ -5,7 +5,7 @@ import (
 	"github.com/lesismal/arpc/util"
 )
 
-func UseRecover() ARpcOption {
+func UseRecover() ServerOption {
 	return func(server *arpc.Server) error {
 		server.Handler.Use(func(ctx *arpc.Context) {
 			defer util.Recover()

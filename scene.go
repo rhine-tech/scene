@@ -17,8 +17,6 @@ type Scene interface {
 
 type Application interface {
 	Name() ImplName // return scene
-	//Status() AppStatus
-	//Error() error
 }
 
 type Service interface {

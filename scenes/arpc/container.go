@@ -25,7 +25,7 @@ type arpcContainer struct {
 func NewARpcContainer(
 	addr string,
 	apps []ARpcApp,
-	opts ...ARpcOption) scene.Scene {
+	opts ...ServerOption) scene.Scene {
 	server := arpc.NewServer()
 	for _, opt := range opts {
 		if err := opt(server); err != nil {
