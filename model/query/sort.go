@@ -29,3 +29,13 @@ func (f Field) Descending() *Order {
 		Order: Descending,
 	}
 }
+
+// Asc creates an ascending order option without constructing Field manually.
+func Asc(field string) *Order {
+	return Field(field).Ascending()
+}
+
+// Desc creates a descending order option without constructing Field manually.
+func Desc(field string) *Order {
+	return Field(field).Descending()
+}

@@ -21,20 +21,20 @@ func (g *GoCache) ImplName() scene.ImplName {
 	return cache.Lens.ImplName("ICache", "go-cache")
 }
 
-func (g *GoCache) Get(key cache.CacheKey) (string, bool) {
-	foo, found := g.c.Get(string(key))
+func (g *GoCache) Get(key string) (string, bool) {
+	foo, found := g.c.Get(key)
 	if found {
 		return foo.(string), found
 	}
 	return "", false
 }
 
-func (g *GoCache) Set(key cache.CacheKey, value string, expiration time.Duration) error {
-	g.c.Set(string(key), value, expiration)
+func (g *GoCache) Set(key string, value string, expiration time.Duration) error {
+	g.c.Set(key, value, expiration)
 	return nil
 }
 
-func (g *GoCache) Delete(key cache.CacheKey) error {
-	g.c.Delete(string(key))
+func (g *GoCache) Delete(key string) error {
+	g.c.Delete(key)
 	return nil
 }

@@ -68,3 +68,33 @@ func (f Field) LessOrEqual(value interface{}) *Filter {
 		Value:    value,
 	}
 }
+
+// Eq creates an equality filter without manually constructing Field.
+func Eq(field string, value interface{}) *Filter {
+	return Field(field).Equal(value)
+}
+
+// Ne creates a not-equal filter.
+func Ne(field string, value interface{}) *Filter {
+	return Field(field).NotEqual(value)
+}
+
+// Gt creates a greater-than filter.
+func Gt(field string, value interface{}) *Filter {
+	return Field(field).GreaterThan(value)
+}
+
+// Gte creates a greater-or-equal filter.
+func Gte(field string, value interface{}) *Filter {
+	return Field(field).GreaterOrEqual(value)
+}
+
+// Lt creates a less-than filter.
+func Lt(field string, value interface{}) *Filter {
+	return Field(field).LessThan(value)
+}
+
+// Lte creates a less-or-equal filter.
+func Lte(field string, value interface{}) *Filter {
+	return Field(field).LessOrEqual(value)
+}

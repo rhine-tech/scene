@@ -26,7 +26,7 @@ type GormRepository[Model any] struct {
 }
 
 func NewGormRepository[Model any](
-	db Gorm, fieldMapper query.FieldMapper) *GormRepository[Model] {
+	db Gorm, fieldMapper query.FieldMapper) GenericRepository[Model] {
 	return &GormRepository[Model]{
 		db:          db,
 		fieldMapper: fieldMapper,
@@ -37,7 +37,7 @@ func (g *GormRepository[Model]) Create(data *Model) error {
 	return g.db.DB().Create(data).Error
 }
 
-func (g *GormRepository[Model]) Update(updates map[string]interface{}, options ...query.Option) error {
+func (g *GormRepository[Model]) Update(updates any, options ...query.Option) error {
 	db := g.db.WithFieldMapper(g.fieldMapper).Build(options...)
 	if db.Error != nil {
 		return db.Error

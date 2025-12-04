@@ -15,7 +15,7 @@ type ORM interface {
 
 type GenericRepository[Model any] interface {
 	Create(data *Model) error
-	Update(updates map[string]interface{}, options ...query.Option) error
+	Update(updates any, options ...query.Option) error
 	Upsert(data *Model, conflictKeys []query.Field, updateKeys []query.Field) error
 	Delete(options ...query.Option) error
 	FindFirst(options ...query.Option) (data Model, found bool, err error)

@@ -36,21 +36,21 @@ func (r *RedisCache) Setup() error {
 	return nil
 }
 
-func (r *RedisCache) Get(key cache.CacheKey) (string, bool) {
-	val, err := r.ds.Get(registry.EmptyContext, string(key))
+func (r *RedisCache) Get(key string) (string, bool) {
+	val, err := r.ds.Get(registry.EmptyContext, key)
 	if err != nil {
 		return val, false
 	}
 	return val, true
 }
 
-func (r *RedisCache) Set(key cache.CacheKey, value string, expiration time.Duration) error {
-	if err := r.ds.Set(registry.EmptyContext, string(key), value, expiration); err != nil {
+func (r *RedisCache) Set(key string, value string, expiration time.Duration) error {
+	if err := r.ds.Set(registry.EmptyContext, key, value, expiration); err != nil {
 		return cache.ErrFailedToSetCache.WithDetail(err)
 	}
 	return nil
 }
 
-func (r *RedisCache) Delete(key cache.CacheKey) error {
-	return r.ds.Delete(registry.EmptyContext, string(key))
+func (r *RedisCache) Delete(key string) error {
+	return r.ds.Delete(registry.EmptyContext, key)
 }
