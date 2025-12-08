@@ -26,7 +26,7 @@ type GormRepository[Model any] struct {
 }
 
 func NewGormRepository[Model any](
-	db Gorm, fieldMapper query.FieldMapper) GenericRepository[Model] {
+	db Gorm, fieldMapper query.FieldMapper) *GormRepository[Model] {
 	return &GormRepository[Model]{
 		db:          db,
 		fieldMapper: fieldMapper,

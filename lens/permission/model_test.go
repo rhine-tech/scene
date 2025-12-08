@@ -15,12 +15,7 @@ func TestPermission_ParseAndString(t *testing.T) {
 		p, err := ParsePermission("user:edit:profile")
 		require.NoError(t, err)
 		require.NotNil(t, p)
-		require.Equal(t, "user", p.Name)
-		require.NotNil(t, p.SubPermission)
-		require.Equal(t, "edit", p.SubPermission.Name)
-		require.NotNil(t, p.SubPermission.SubPermission)
-		require.Equal(t, "profile", p.SubPermission.SubPermission.Name)
-		require.Nil(t, p.SubPermission.SubPermission.SubPermission)
+		require.Equal(t, []string{"user", "edit", "profile"}, p.parts)
 		// Test the String() method for reconstruction
 		require.Equal(t, "user:edit:profile", p.String())
 	})
@@ -29,8 +24,7 @@ func TestPermission_ParseAndString(t *testing.T) {
 		p, err := ParsePermission("admin")
 		require.NoError(t, err)
 		require.NotNil(t, p)
-		require.Equal(t, "admin", p.Name)
-		require.Nil(t, p.SubPermission)
+		require.Equal(t, []string{"admin"}, p.parts)
 		require.Equal(t, "admin", p.String())
 	})
 
@@ -100,7 +94,7 @@ func TestPermission_Copy(t *testing.T) {
 	require.NotSame(t, perm, perm1)
 
 	// Ensure it's a deep copy by modifying the copy
-	perm1.SubPermission.SubPermission.Name = "d"
+	perm1.parts[2] = "d"
 	require.False(t, perm.IsEqual(perm1), "modifying copy should not affect original")
 	require.Equal(t, "a:b:c", perm.String())
 	require.Equal(t, "a:b:d", perm1.String())
@@ -118,7 +112,8 @@ func TestPermission_WithSubPerm(t *testing.T) {
 	require.Equal(t, "a:b", perm.String())
 
 	// Sub-permission should be a copy
-	require.NotSame(t, subPerm, perm1.SubPermission.SubPermission)
+	subPerm.parts[0] = "x"
+	require.Equal(t, "a:b:c:d", perm1.String())
 }
 
 func TestPermission_WithSubPermStr(t *testing.T) {
