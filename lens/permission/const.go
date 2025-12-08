@@ -11,5 +11,6 @@ var (
 )
 
 var (
-	PermList = Create("permission:list")
+	PermList   = Create("permission:list")
+	PermManage = Create("permission:manage")
 )

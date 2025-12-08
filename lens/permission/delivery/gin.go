@@ -39,6 +39,9 @@ func (g *ginApp) Create(engine *gin.Engine, router gin.IRouter) error {
 	router.GET("/myself/check", authMw.GinRequireAuth(), g.handleCheck)
 	router.GET("/myself/list", authMw.GinRequireAuth(), g.handleList)
 	router.GET("/list", g.handleAll)
+	router.GET("/manage/add", authMw.GinRequireAuth(), g.handleManageAdd)
+	router.GET("/manage/delete", authMw.GinRequireAuth(), g.handleManageDelete)
+	router.GET("/manage/list", authMw.GinRequireAuth(), g.handleManageList)
 	return nil
 }
 
@@ -83,4 +86,56 @@ func (g *ginApp) handleAll(c *gin.Context) {
 		return
 	}
 	c.JSON(200, model.NewDataResponse(permission.RootPermTree.Root.Children))
+}
+
+type managePermParam struct {
+	Owner string `json:"owner" form:"owner" binding:"required"`
+	Perm  string `json:"perm" form:"perm"`
+}
+
+func (g *ginApp) handleManageAdd(c *gin.Context) {
+	var param managePermParam
+	if err := c.ShouldBindQuery(&param); err != nil || param.Perm == "" {
+		c.JSON(http.StatusBadRequest, model.NewErrorCodeResponse(errcode.ParameterError.WithDetail(err)))
+		return
+	}
+	if _, ok := authentication.IsLoginInCtx(c); !ok || !permission.HasPermissionInCtx(c, permission.PermManage) {
+		c.JSON(http.StatusUnauthorized, model.NewErrorCodeResponse(permission.ErrPermissionDenied))
+		return
+	}
+	if err := g.permSrv.AddPermission(param.Owner, param.Perm); err != nil {
+		c.JSON(http.StatusOK, model.NewErrorCodeResponse(errcode.InternalError.WithDetail(err)))
+		return
+	}
+	c.JSON(http.StatusOK, model.NewOkResponse())
+}
+
+func (g *ginApp) handleManageDelete(c *gin.Context) {
+	var param managePermParam
+	if err := c.ShouldBindQuery(&param); err != nil || param.Perm == "" {
+		c.JSON(http.StatusBadRequest, model.NewErrorCodeResponse(errcode.ParameterError.WithDetail(err)))
+		return
+	}
+	if _, ok := authentication.IsLoginInCtx(c); !ok || !permission.HasPermissionInCtx(c, permission.PermManage) {
+		c.JSON(http.StatusUnauthorized, model.NewErrorCodeResponse(permission.ErrPermissionDenied))
+		return
+	}
+	if err := g.permSrv.RemovePermission(param.Owner, param.Perm); err != nil {
+		c.JSON(http.StatusOK, model.NewErrorCodeResponse(errcode.InternalError.WithDetail(err)))
+		return
+	}
+	c.JSON(http.StatusOK, model.NewOkResponse())
+}
+
+func (g *ginApp) handleManageList(c *gin.Context) {
+	var param managePermParam
+	if err := c.ShouldBindQuery(&param); err != nil {
+		c.JSON(http.StatusBadRequest, model.NewErrorCodeResponse(errcode.ParameterError.WithDetail(err)))
+		return
+	}
+	if _, ok := authentication.IsLoginInCtx(c); !ok || !permission.HasPermissionInCtx(c, permission.PermManage) {
+		c.JSON(http.StatusUnauthorized, model.NewErrorCodeResponse(permission.ErrPermissionDenied))
+		return
+	}
+	c.JSON(http.StatusOK, model.NewDataResponse(g.permSrv.ListPermissions(param.Owner)))
 }

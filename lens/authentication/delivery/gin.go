@@ -10,7 +10,7 @@ import (
 
 type authContext struct {
 	authSrv  authentication.IAuthenticationService                 `aperture:""`
-	tokenSrv scene.WithContext[authentication.IAccessTokenService] `aperture:""`
+	tokenSrv scene.WithContext[authentication.IAccessTokenService] `aperture:"embed"`
 	lgStVrf  authentication.HTTPLoginStatusVerifier                `aperture:""`
 }
 
