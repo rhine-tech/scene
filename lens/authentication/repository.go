@@ -15,6 +15,7 @@ type IAuthenticationRepository interface {
 	AddUser(user User) (User, error)
 	DeleteUser(userId string) error
 	UpdateUser(user User) error
+	ListUsers(offset, limit int64) (model.PaginationResult[User], error)
 }
 
 // IAccessTokenRepository 定义了 AccessToken 的持久化存储接口

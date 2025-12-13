@@ -7,4 +7,5 @@ var (
 	PermTokenCreate = permission.Create("authentication:token:create")
 	PermTokenList   = permission.Create("authentication:token:list")
 	PermTokenDelete = permission.Create("authentication:token:delete")
+	PermUserManage  = permission.Create("authentication:user:manage")
 )

@@ -5,6 +5,7 @@ import (
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/rhine-tech/scene/lens/authentication"
+	"github.com/rhine-tech/scene/model"
 	sarpc "github.com/rhine-tech/scene/scenes/arpc"
 	"time"
 )
@@ -21,6 +22,7 @@ const (
 	ARpcNameAuthenticationIAuthenticationServiceUserById            = "authentication.IAuthenticationService.UserById"
 	ARpcNameAuthenticationIAuthenticationServiceUserByName          = "authentication.IAuthenticationService.UserByName"
 	ARpcNameAuthenticationIAuthenticationServiceUserByEmail         = "authentication.IAuthenticationService.UserByEmail"
+	ARpcNameAuthenticationIAuthenticationServiceListUsers           = "authentication.IAuthenticationService.ListUsers"
 )
 
 type IAuthenticationServiceAddUserArgs struct {
@@ -93,6 +95,15 @@ type IAuthenticationServiceUserByEmailArgs struct {
 
 type IAuthenticationServiceUserByEmailResult struct {
 	Val0 authentication.User
+	Val1 error
+}
+type IAuthenticationServiceListUsersArgs struct {
+	Val0 int64
+	Val1 int64
+}
+
+type IAuthenticationServiceListUsersResult struct {
+	Val0 model.PaginationResult[authentication.User]
 	Val1 error
 }
 
@@ -229,6 +240,19 @@ func (r *arpcClientIAuthenticationService) UserByEmail(email string) (authentica
 	return resp.Val0, resp.Val1
 }
 
+func (r *arpcClientIAuthenticationService) ListUsers(offset int64, limit int64) (model.PaginationResult[authentication.User], error) {
+	var resp IAuthenticationServiceListUsersResult
+	err := r.client.Call(ARpcNameAuthenticationIAuthenticationServiceListUsers, &IAuthenticationServiceListUsersArgs{
+		Val0: offset,
+		Val1: limit,
+	}, &resp, r.timeout)
+	if err != nil {
+		r.log.ErrorW("remote call error", "method", ARpcNameAuthenticationIAuthenticationServiceListUsers, "err", err)
+		return *new(model.PaginationResult[authentication.User]), err
+	}
+	return resp.Val0, resp.Val1
+}
+
 // Server Implementation
 
 type ARpcServerIAuthenticationService struct {
@@ -250,6 +274,7 @@ func HandleARpcServerIAuthenticationService(svr *ARpcServerIAuthenticationServic
 	handler.Handle(ARpcNameAuthenticationIAuthenticationServiceUserById, svr.UserById)
 	handler.Handle(ARpcNameAuthenticationIAuthenticationServiceUserByName, svr.UserByName)
 	handler.Handle(ARpcNameAuthenticationIAuthenticationServiceUserByEmail, svr.UserByEmail)
+	handler.Handle(ARpcNameAuthenticationIAuthenticationServiceListUsers, svr.ListUsers)
 }
 
 func NewARpcServerIAuthenticationService(srv authentication.IAuthenticationService) *ARpcServerIAuthenticationService {
@@ -386,6 +411,22 @@ func (r *ARpcServerIAuthenticationService) UserByEmail(c *arpc.Context) {
 	}
 	a0, a1 := r.srv.UserByEmail(
 		req.Val0,
+	)
+	resp.Val0 = a0
+	resp.Val1 = a1
+	_ = c.Write(&resp)
+	return
+}
+func (r *ARpcServerIAuthenticationService) ListUsers(c *arpc.Context) {
+	var req IAuthenticationServiceListUsersArgs
+	var resp IAuthenticationServiceListUsersResult
+	err := c.Bind(&req)
+	if err != nil {
+		return
+	}
+	a0, a1 := r.srv.ListUsers(
+		req.Val0,
+		req.Val1,
 	)
 	resp.Val0 = a0
 	resp.Val1 = a1

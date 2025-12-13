@@ -18,6 +18,7 @@ type IAuthenticationService interface {
 	UserById(userId string) (User, error)
 	UserByName(username string) (User, error)
 	UserByEmail(email string) (User, error)
+	ListUsers(offset, limit int64) (model.PaginationResult[User], error)
 }
 
 type IAccessTokenService interface {

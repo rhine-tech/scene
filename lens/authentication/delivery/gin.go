@@ -4,6 +4,8 @@ import (
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/lens/authentication"
 	"github.com/rhine-tech/scene/lens/authentication/service/token"
+	"github.com/rhine-tech/scene/lens/permission"
+	"github.com/rhine-tech/scene/model"
 	sgin "github.com/rhine-tech/scene/scenes/gin"
 	"net/http"
 )
@@ -26,8 +28,10 @@ func AuthGinApp(lgStVrf authentication.HTTPLoginStatusVerifier) sgin.GinApplicat
 			new(loginRequest),
 			new(logoutRequest),
 			new(getInfoRequest),
-			//new(getUserRequest),
-			//new(deleteUserRequest),
+			new(updateProfileRequest),
+			new(listUsersRequest),
+			new(createUserRequest),
+			new(deleteUserRequest),
 
 			// Access Token (API Key) Management
 			new(createTokenRequest),
@@ -117,28 +121,138 @@ func (g *getInfoRequest) Process(ctx *sgin.Context[*authContext]) (data any, err
 	return UserNoPassword{}.FromUser(u), err
 }
 
-//
-//// deleteUserRequest handles deleting a user.
-//type deleteUserRequest struct {
-//	sgin.BaseAction
-//	sgin.RequestURI
-//	UserID string `uri:"userId" binding:"required"`
-//}
-//
-//func (d *deleteUserRequest) GetRoute() scene.HttpRouteInfo {
-//	return scene.HttpRouteInfo{Method: http.MethodDelete, Path: "/users/:userId"}
-//}
-//
-//func (d *deleteUserRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
-//	// TODO: This is a destructive action and requires robust authorization.
-//	// An admin should be able to delete any user.
-//	// A user might be able to delete their own account.
-//	err = ctx.App.authSrv.DeleteUser(d.UserID)
-//	if err != nil {
-//		return nil, err
-//	}
-//	return model.NewOkResponse(), nil
-//}
+// updateProfileRequest allows a logged-in user to update their own profile
+type updateProfileRequest struct {
+	sgin.BaseAction
+	sgin.RequestJson
+	DisplayName string `json:"display_name"`
+	Email       string `json:"email"`
+	Avatar      string `json:"avatar"`
+	Timezone    string `json:"timezone"`
+	Password    string `json:"password"`
+}
+
+func (u *updateProfileRequest) GetRoute() scene.HttpRouteInfo {
+	return scene.HttpRouteInfo{Method: http.MethodPut, Path: "/user/profile"}
+}
+
+func (u *updateProfileRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
+	userId, ok := authentication.IsLoginInCtx(ctx)
+	if !ok {
+		return nil, authentication.ErrNotLogin
+	}
+	user, err := ctx.App.authSrv.UserById(userId)
+	if err != nil {
+		return nil, err
+	}
+
+	if u.DisplayName != "" {
+		user.DisplayName = u.DisplayName
+	}
+	if u.Email != "" {
+		user.Email = u.Email
+	}
+	if u.Avatar != "" {
+		user.Avatar = u.Avatar
+	}
+	if u.Timezone != "" {
+		user.Timezone = u.Timezone
+	}
+	if u.Password != "" {
+		user.Password = u.Password
+	}
+
+	if err := ctx.App.authSrv.UpdateUser(user); err != nil {
+		return nil, err
+	}
+	return UserNoPassword{}.FromUser(user), nil
+}
+
+// listUsersRequest lists users (admin only)
+type listUsersRequest struct {
+	sgin.BaseAction
+	sgin.RequestQuery
+	Offset int64 `form:"offset,default=0"`
+	Limit  int64 `form:"limit,default=20"`
+}
+
+func (l *listUsersRequest) GetRoute() scene.HttpRouteInfo {
+	return scene.HttpRouteInfo{Method: http.MethodGet, Path: "/users"}
+}
+
+func (l *listUsersRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
+	if _, ok := authentication.IsLoginInCtx(ctx); !ok {
+		return nil, authentication.ErrNotLogin
+	}
+	if !permission.HasPermissionInCtx(ctx, authentication.PermUserManage) {
+		return nil, permission.ErrPermissionDenied
+	}
+	result, err := ctx.App.authSrv.ListUsers(l.Offset, l.Limit)
+	if err != nil {
+		return nil, err
+	}
+	users := make([]UserNoPassword, 0, len(result.Results))
+	for _, u := range result.Results {
+		users = append(users, UserNoPassword{}.FromUser(u))
+	}
+	return model.PaginationResult[UserNoPassword]{
+		Offset:  result.Offset,
+		Results: users,
+		Count:   result.Count,
+		Total:   result.Total,
+	}, nil
+}
+
+// createUserRequest handles the creation of a new user.
+type createUserRequest struct {
+	sgin.BaseAction
+	sgin.RequestQuery
+	Username string `json:"username" form:"username" binding:"required"`
+	Password string `json:"password" form:"password" binding:"required"`
+}
+
+func (c *createUserRequest) GetRoute() scene.HttpRouteInfo {
+	return scene.HttpRouteInfo{Method: http.MethodPost, Path: "/users"}
+}
+
+func (c *createUserRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
+	if _, ok := authentication.IsLoginInCtx(ctx); !ok {
+		return nil, authentication.ErrNotLogin
+	}
+	if !permission.HasPermissionInCtx(ctx, authentication.PermUserManage) {
+		return nil, permission.ErrPermissionDenied
+	}
+	user, err := ctx.App.authSrv.AddUser(c.Username, c.Password)
+	if err != nil {
+		return nil, err
+	}
+	return UserNoPassword{}.FromUser(user), nil
+}
+
+// deleteUserRequest handles deleting a user.
+type deleteUserRequest struct {
+	sgin.BaseAction
+	sgin.RequestURI
+	UserID string `uri:"userId" binding:"required"`
+}
+
+func (d *deleteUserRequest) GetRoute() scene.HttpRouteInfo {
+	return scene.HttpRouteInfo{Method: http.MethodDelete, Path: "/users/:userId"}
+}
+
+func (d *deleteUserRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
+	if _, ok := authentication.IsLoginInCtx(ctx); !ok {
+		return nil, authentication.ErrNotLogin
+	}
+	if !permission.HasPermissionInCtx(ctx, authentication.PermUserManage) {
+		return nil, permission.ErrPermissionDenied
+	}
+	err = ctx.App.authSrv.DeleteUser(d.UserID)
+	if err != nil {
+		return nil, err
+	}
+	return model.NewOkResponse(), nil
+}
 
 // --- Access Token Actions ---
 

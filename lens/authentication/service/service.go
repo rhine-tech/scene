@@ -6,6 +6,7 @@ import (
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/rhine-tech/scene/lens/authentication"
+	"github.com/rhine-tech/scene/model"
 	"strings"
 )
 
@@ -148,4 +149,8 @@ func (s *authenticationService) UserByEmail(email string) (authentication.User, 
 		return authentication.User{}, authentication.ErrInternalError.WrapIfNot(err)
 	}
 	return user, nil
+}
+
+func (s *authenticationService) ListUsers(offset, limit int64) (model.PaginationResult[authentication.User], error) {
+	return s.userRepo.ListUsers(offset, limit)
 }

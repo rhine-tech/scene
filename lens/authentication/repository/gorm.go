@@ -106,6 +106,10 @@ func (r *gormAuthRepo) UpdateUser(user authentication.User) error {
 	return r.Update(updates, query.Field("user_id").Equal(user.UserID))
 }
 
+func (r *gormAuthRepo) ListUsers(offset, limit int64) (model.PaginationResult[authentication.User], error) {
+	return r.List(offset, limit)
+}
+
 // --- IAccessTokenRepository 实现 ---
 
 // gormAccessTokenRepo 实现了 IAccessTokenRepository
