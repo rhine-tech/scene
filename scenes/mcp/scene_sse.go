@@ -11,19 +11,20 @@ import (
 	"net/http"
 )
 
-type McpScene struct {
+type SSEScene struct {
 	addr   string
 	server *server.MCPServer
+	sse    *server.SSEServer
 	clos   func(ctx context.Context) error
 	apps   []McpApp
 	logger logger.ILogger `aperture:""`
 }
 
-func (m *McpScene) ImplName() scene.ImplName {
-	return scene.NewSceneImplNameNoVer("mcp", "Scene")
+func (m *SSEScene) ImplName() scene.ImplName {
+	return scene.NewSceneImplName("mcp", "Scene", "sse")
 }
 
-func (m *McpScene) Start() error {
+func (m *SSEScene) Start() error {
 	if !utils.IsValidAddress(m.addr) {
 		registry.Logger.Errorf("invalid address: %s", m.addr)
 		return errors.New("invalid address " + m.addr)
@@ -33,42 +34,43 @@ func (m *McpScene) Start() error {
 			return err
 		}
 	}
-	// todo: options
-	srv := server.NewSSEServer(m.server)
 	m.clos = func(ctx context.Context) error {
-		return srv.Shutdown(ctx)
+		return m.sse.Shutdown(ctx)
 	}
 	go func() {
 		m.logger.Infof("mcp sse server started, listen on 'http://%s'", utils.PrettyAddress(m.addr))
-		if err := srv.Start(m.addr); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := m.sse.Start(m.addr); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			m.logger.Errorf("listen failed: %s\n", err)
 		}
 	}()
 	return nil
 }
 
-func (m *McpScene) Stop(ctx context.Context) error {
+func (m *SSEScene) Stop(ctx context.Context) error {
 	return m.clos(ctx)
 }
 
-func (m *McpScene) ListAppNames() []string {
+func (m *SSEScene) ListAppNames() []string {
 	return nil
 }
 
-func NewMcpScene(
+func NewSSEScene(
 	name string,
 	version string,
 	addr string,
-	apps []McpApp) scene.Scene {
+	apps []McpApp,
+	sseOpts []SSEOption,
+	serverOpts []ServerOption) scene.Scene {
 	s := server.NewMCPServer(
-		name, version,
-		// todo: mcp server options
+		name, version, serverOpts...,
 	)
-	return &McpScene{
+	sseServer := server.NewSSEServer(s, sseOpts...)
+	return &SSEScene{
 		server: s,
+		sse:    sseServer,
 		addr:   addr,
 		apps:   apps,
-		clos:   func(ctx context.Context) error { return nil },
-		logger: registry.Logger.WithPrefix((&McpScene{}).ImplName().Identifier()),
+		clos:   func(ctx context.Context) error { return sseServer.Shutdown(ctx) },
+		logger: registry.Logger.WithPrefix((&SSEScene{}).ImplName().Identifier()),
 	}
 }

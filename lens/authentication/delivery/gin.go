@@ -56,8 +56,8 @@ type loginRequest struct {
 	Password string `json:"password" form:"password" binding:"required"`
 }
 
-func (l *loginRequest) GetRoute() scene.HttpRouteInfo {
-	return scene.HttpRouteInfo{Method: http.MethodGet, Path: "/login", Methods: scene.HttpMethodGet | scene.HttpMethodPost}
+func (l *loginRequest) GetRoute() sgin.HttpRouteInfo {
+	return sgin.HttpRouteInfo{Method: http.MethodGet, Path: "/login", Methods: sgin.HttpMethodGet | sgin.HttpMethodPost}
 }
 
 func (l *loginRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
@@ -78,8 +78,8 @@ type logoutRequest struct {
 	sgin.RequestNoParam
 }
 
-func (l *logoutRequest) GetRoute() scene.HttpRouteInfo {
-	return scene.HttpRouteInfo{Method: http.MethodGet, Path: "/logout", Methods: scene.HttpMethodGet | scene.HttpMethodPost}
+func (l *logoutRequest) GetRoute() sgin.HttpRouteInfo {
+	return sgin.HttpRouteInfo{Method: http.MethodGet, Path: "/logout", Methods: sgin.HttpMethodGet | sgin.HttpMethodPost}
 }
 
 func (l *logoutRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
@@ -108,8 +108,8 @@ type getInfoRequest struct {
 	sgin.RequestNoParam
 }
 
-func (g *getInfoRequest) GetRoute() scene.HttpRouteInfo {
-	return scene.HttpRouteInfo{Method: http.MethodGet, Path: "/user/info"}
+func (g *getInfoRequest) GetRoute() sgin.HttpRouteInfo {
+	return sgin.HttpRouteInfo{Method: http.MethodGet, Path: "/user/info"}
 }
 
 func (g *getInfoRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
@@ -132,8 +132,8 @@ type updateProfileRequest struct {
 	Password    string `json:"password"`
 }
 
-func (u *updateProfileRequest) GetRoute() scene.HttpRouteInfo {
-	return scene.HttpRouteInfo{Method: http.MethodPut, Path: "/user/profile"}
+func (u *updateProfileRequest) GetRoute() sgin.HttpRouteInfo {
+	return sgin.HttpRouteInfo{Method: http.MethodPut, Path: "/user/profile"}
 }
 
 func (u *updateProfileRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
@@ -176,8 +176,8 @@ type listUsersRequest struct {
 	Limit  int64 `form:"limit,default=20"`
 }
 
-func (l *listUsersRequest) GetRoute() scene.HttpRouteInfo {
-	return scene.HttpRouteInfo{Method: http.MethodGet, Path: "/users"}
+func (l *listUsersRequest) GetRoute() sgin.HttpRouteInfo {
+	return sgin.HttpRouteInfo{Method: http.MethodGet, Path: "/users"}
 }
 
 func (l *listUsersRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
@@ -211,8 +211,8 @@ type createUserRequest struct {
 	Password string `json:"password" form:"password" binding:"required"`
 }
 
-func (c *createUserRequest) GetRoute() scene.HttpRouteInfo {
-	return scene.HttpRouteInfo{Method: http.MethodPost, Path: "/users"}
+func (c *createUserRequest) GetRoute() sgin.HttpRouteInfo {
+	return sgin.HttpRouteInfo{Method: http.MethodPost, Path: "/users"}
 }
 
 func (c *createUserRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
@@ -236,8 +236,8 @@ type deleteUserRequest struct {
 	UserID string `uri:"userId" binding:"required"`
 }
 
-func (d *deleteUserRequest) GetRoute() scene.HttpRouteInfo {
-	return scene.HttpRouteInfo{Method: http.MethodDelete, Path: "/users/:userId"}
+func (d *deleteUserRequest) GetRoute() sgin.HttpRouteInfo {
+	return sgin.HttpRouteInfo{Method: http.MethodDelete, Path: "/users/:userId"}
 }
 
 func (d *deleteUserRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
@@ -266,8 +266,8 @@ type createTokenRequest struct {
 	ExpireAt int64  `json:"expire_at" form:"expire_at,default=-1"` // Unix timestamp, 0 for no expiration
 }
 
-func (c *createTokenRequest) GetRoute() scene.HttpRouteInfo {
-	return scene.HttpRouteInfo{Method: http.MethodPost, Path: "/token"}
+func (c *createTokenRequest) GetRoute() sgin.HttpRouteInfo {
+	return sgin.HttpRouteInfo{Method: http.MethodPost, Path: "/token"}
 }
 
 func (c *createTokenRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
@@ -287,8 +287,8 @@ type listTokensRequest struct {
 	Limit  int64  `form:"limit,default=20"`
 }
 
-func (l *listTokensRequest) GetRoute() scene.HttpRouteInfo {
-	return scene.HttpRouteInfo{Method: http.MethodGet, Path: "/tokens"}
+func (l *listTokensRequest) GetRoute() sgin.HttpRouteInfo {
+	return sgin.HttpRouteInfo{Method: http.MethodGet, Path: "/tokens"}
 }
 
 func (l *listTokensRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
@@ -303,8 +303,8 @@ type deleteTokenRequest struct {
 	Token string `form:"token" binding:"required"`
 }
 
-func (d *deleteTokenRequest) GetRoute() scene.HttpRouteInfo {
-	return scene.HttpRouteInfo{Method: http.MethodDelete, Path: "/token"}
+func (d *deleteTokenRequest) GetRoute() sgin.HttpRouteInfo {
+	return sgin.HttpRouteInfo{Method: http.MethodDelete, Path: "/token"}
 }
 
 func (d *deleteTokenRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {

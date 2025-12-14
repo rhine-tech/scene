@@ -15,7 +15,7 @@ package repository
 //)
 //
 //type permDBModel struct {
-//	Owner       permission.PermOwner
+//	Owner       permission.string
 //	Permissions []string
 //}
 //

@@ -3,7 +3,7 @@ package factory
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/rhine-tech/scene/lens/authentication"
-	authMw "github.com/rhine-tech/scene/lens/authentication/delivery/middleware"
+	authMw "github.com/rhine-tech/scene/lens/authentication/middleware"
 	sgin "github.com/rhine-tech/scene/scenes/gin"
 )
 

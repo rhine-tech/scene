@@ -1,7 +1,6 @@
 package delivery
 
 import (
-	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/lens/storage"
 	sgin "github.com/rhine-tech/scene/scenes/gin"
 	"net/http"
@@ -36,10 +35,10 @@ type getDataRequest struct {
 	FileID   string `uri:"fileid" binding:"required"`
 }
 
-func (l *getDataRequest) GetRoute() scene.HttpRouteInfo {
-	return scene.HttpRouteInfo{
+func (l *getDataRequest) GetRoute() sgin.HttpRouteInfo {
+	return sgin.HttpRouteInfo{
 		Method:  http.MethodGet,
-		Methods: scene.HttpMethodGet | scene.HttpMethodHead | scene.HttpMethodOptions,
+		Methods: sgin.HttpMethodGet | sgin.HttpMethodHead | sgin.HttpMethodOptions,
 		Path:    "/data/:provider/*fileid",
 	}
 }
@@ -60,11 +59,11 @@ type putDataRequest struct {
 	FileID   string `uri:"fileid" binding:"required"`
 }
 
-func (p *putDataRequest) GetRoute() scene.HttpRouteInfo {
-	return scene.HttpRouteInfo{
+func (p *putDataRequest) GetRoute() sgin.HttpRouteInfo {
+	return sgin.HttpRouteInfo{
 		Method:  http.MethodPut,
 		Path:    "/data/:provider/*fileid",
-		Methods: scene.HttpMethodPut | scene.HttpMethodPost,
+		Methods: sgin.HttpMethodPut | sgin.HttpMethodPost,
 	}
 }
 
@@ -131,8 +130,8 @@ type listMetaRequest struct {
 	Limit  int64 `form:"limit,default=20" binding:"required"`
 }
 
-func (l *listMetaRequest) GetRoute() scene.HttpRouteInfo {
-	return scene.HttpRouteInfo{
+func (l *listMetaRequest) GetRoute() sgin.HttpRouteInfo {
+	return sgin.HttpRouteInfo{
 		Method: http.MethodGet,
 		Path:   "/list/:provider",
 	}
@@ -148,8 +147,8 @@ type listProviderRequest struct {
 	sgin.RequestNoParam
 }
 
-func (l *listProviderRequest) GetRoute() scene.HttpRouteInfo {
-	return scene.HttpRouteInfo{
+func (l *listProviderRequest) GetRoute() sgin.HttpRouteInfo {
+	return sgin.HttpRouteInfo{
 		Method: http.MethodGet,
 		Path:   "/providers",
 	}

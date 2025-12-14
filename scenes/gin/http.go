@@ -1,4 +1,4 @@
-package scene
+package gin
 
 const (
 	HttpMethodGet     uint16 = 0b1
@@ -41,7 +41,7 @@ func HttpMethod(method string) uint16 {
 type HttpRouteInfo struct {
 	Method  string // Method specify a single method, might be deprecated in the future
 	Methods uint16 // Methods aim to handle same route with multiple method
-	Path    string
+	Path    string // Path is gin router path
 }
 
 type HttpRoute interface {

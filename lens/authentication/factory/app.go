@@ -7,6 +7,7 @@ import (
 	"github.com/rhine-tech/scene/registry"
 	sarpc "github.com/rhine-tech/scene/scenes/arpc"
 	sgin "github.com/rhine-tech/scene/scenes/gin"
+	smcp "github.com/rhine-tech/scene/scenes/mcp"
 )
 
 type AppGin struct {
@@ -39,6 +40,18 @@ func (b AppArpc) Apps() []any {
 		},
 		func() sarpc.ARpcApp {
 			return registry.Load[sarpc.ARpcApp](&arpcimpl.ARpcAppIAccessTokenService{})
+		},
+	}
+}
+
+type AppMcp struct {
+	scene.ModuleFactory
+}
+
+func (b AppMcp) Apps() []any {
+	return []any{
+		func() smcp.McpApp {
+			return registry.Load(delivery.NewMcpApp())
 		},
 	}
 }

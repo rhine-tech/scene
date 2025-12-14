@@ -6,12 +6,6 @@ import (
 	"strings"
 )
 
-type PermOwner string
-
-func (p PermOwner) String() string {
-	return string(p)
-}
-
 type Permission struct {
 	parts []string
 }

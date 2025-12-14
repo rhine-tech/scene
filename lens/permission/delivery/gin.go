@@ -5,7 +5,7 @@ import (
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/errcode"
 	"github.com/rhine-tech/scene/lens/authentication"
-	authMw "github.com/rhine-tech/scene/lens/authentication/delivery/middleware"
+	authMw "github.com/rhine-tech/scene/lens/authentication/middleware"
 	"github.com/rhine-tech/scene/lens/permission"
 	"github.com/rhine-tech/scene/model"
 	"net/http"
