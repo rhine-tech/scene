@@ -186,8 +186,8 @@ func (r *ARpcApp{{ .InterfaceName }}) Name() scene.ImplName {
 	return {{ $.PackageName }}.Lens.ImplNameNoVer("ARpcApplication")
 }
 
-func (r *ARpcApp{{ .InterfaceName }}) RegisterService(server *arpc.Server) error {
-	Handle{{ .InterfaceName }}(r.srv, server.Handler)
+func (r *ARpcApp{{ .InterfaceName }}) RegisterService(handler arpc.Handler) error {
+	Handle{{ .InterfaceName }}(r.srv, handler)
 	return nil
 }
 

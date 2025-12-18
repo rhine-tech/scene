@@ -48,7 +48,7 @@ func (a *arpcContainer) ImplName() scene.ImplName {
 func (a *arpcContainer) Start() error {
 	for _, app := range a.apps {
 		// todo: handle register service error
-		_ = app.RegisterService(a.server)
+		_ = app.RegisterService(a.server.Handler)
 	}
 	var err error
 	if !utils.IsValidAddress(a.addr) {

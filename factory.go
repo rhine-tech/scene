@@ -12,6 +12,7 @@ func (inits InitArray) Inits() {
 	}
 }
 
+// AppInit is a function initialize an app
 type AppInit[T Application] func() T
 
 type IModuleDependencyProvider[T any] interface {

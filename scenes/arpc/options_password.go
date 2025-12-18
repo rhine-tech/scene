@@ -3,28 +3,25 @@ package arpc
 import (
 	"errors"
 	"github.com/lesismal/arpc"
-	"github.com/rhine-tech/scene/infrastructure/logger"
-	"github.com/rhine-tech/scene/utils/must"
 	"time"
 )
 
 const rpcNameBasicPasswordAuth = "scene.arpc.auth.password"
 
 func WithPassword(password string) ClientOption {
-	return func(client *arpc.Client) error {
-		log := must.Must(client.Get("logger.ILogger")).(logger.ILogger)
-		client.Handler.HandleConnected(func(c *arpc.Client) {
+	return func(client Client) error {
+		client.AddConnectedHandler(func(c *arpc.Client) {
 			var data string
 			err := c.Call(rpcNameBasicPasswordAuth, &password, &data, time.Second*5)
 			if err != nil {
-				log.Error("WithPassword: fail to call scene.arpc.auth.password", err.Error())
+				client.Logger().Error("WithPassword: fail to call scene.arpc.auth.password", err.Error())
 				return
 			}
 			if data == "ok" {
-				log.Info("WithPassword: auth with password success")
+				client.Logger().Info("WithPassword: auth with password success")
 				return
 			}
-			log.Warn("WithPassword: auth with password failed, reason:", data)
+			client.Logger().Warn("WithPassword: auth with password failed, reason:", data)
 		})
 		return nil
 	}

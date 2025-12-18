@@ -5,18 +5,15 @@ import (
 	"github.com/rhine-tech/scene/scenes/arpc/helper"
 
 	"github.com/lesismal/arpc"
-	"github.com/rhine-tech/scene/infrastructure/logger"
-	"github.com/rhine-tech/scene/utils/must"
 )
 
 // --- Client Side ---
 
 // WithAesEncryption enables automatic AES encryption for all messages on the client after a successful handshake.
 func WithAesEncryption(key []byte) ClientOption {
-	return func(client *arpc.Client) error {
-		log := must.Must(client.Get("logger.ILogger")).(logger.ILogger)
-		coder := helper.NewAesCoder(key, log)
-		client.Handler.UseCoder(coder)
+	return func(client Client) error {
+		coder := helper.NewAesCoder(key, client.Logger())
+		client.Client().Handler.UseCoder(coder)
 		return nil
 	}
 }

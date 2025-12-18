@@ -7,4 +7,4 @@ import (
 type ServerOption func(server *arpc.Server) error
 
 // ClientOption is initialization option for arpc Client
-type ClientOption func(server *arpc.Client) error
+type ClientOption func(server Client) error

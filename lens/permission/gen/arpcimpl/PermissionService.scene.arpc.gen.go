@@ -2,11 +2,15 @@ package arpcimpl
 import (
 	"github.com/lesismal/arpc"
 	"github.com/rhine-tech/scene"
+	"github.com/rhine-tech/scene/errcode"
 	"github.com/rhine-tech/scene/infrastructure/logger"
 	sarpc "github.com/rhine-tech/scene/scenes/arpc"
 	"time"
 	"github.com/rhine-tech/scene/lens/permission"
 )
+
+// make sure errcode used
+type _ = errcode.Error
 
 // Method definition
 
@@ -47,7 +51,7 @@ type PermissionServiceAddPermissionArgs struct {
 }
 
 type PermissionServiceAddPermissionResult struct {
-	Val0 error
+	Val0 errcode.UnmarshalError
 }
 type PermissionServiceRemovePermissionArgs struct {
 	Val0 string
@@ -55,7 +59,7 @@ type PermissionServiceRemovePermissionArgs struct {
 }
 
 type PermissionServiceRemovePermissionResult struct {
-	Val0 error
+	Val0 errcode.UnmarshalError
 }
 
 // Service (Client) Implementation
@@ -82,6 +86,10 @@ func NewARpcPermissionServiceWithTimeout(client sarpc.Client, timeout time.Durat
 }
 
 func (r *arpcClientPermissionService) SrvImplName() scene.ImplName {
+	return permission.Lens.ImplName("PermissionService", "arpc")
+}
+
+func (r *arpcClientPermissionService) ImplName() scene.ImplName {
 	return permission.Lens.ImplName("PermissionService", "arpc")
 }
 
@@ -135,7 +143,7 @@ func (r *arpcClientPermissionService) AddPermission(owner string, perm string, )
 		r.log.ErrorW("remote call error", "method", ARpcNamePermissionPermissionServiceAddPermission, "err", err)
 		return err
 	}
-	return resp.Val0
+	return resp.Val0.Error
 }
 func (r *arpcClientPermissionService) RemovePermission(owner string, perm string, ) (error) {
 	var resp PermissionServiceRemovePermissionResult
@@ -147,13 +155,17 @@ func (r *arpcClientPermissionService) RemovePermission(owner string, perm string
 		r.log.ErrorW("remote call error", "method", ARpcNamePermissionPermissionServiceRemovePermission, "err", err)
 		return err
 	}
-	return resp.Val0
+	return resp.Val0.Error
 }
 
 // Server Implementation
 
 type ARpcServerPermissionService struct {
 	srv permission.PermissionService `aperture:""`
+}
+
+type ARpcServerPermissionServiceWithContext struct {
+	srv scene.WithContext[permission.PermissionService]
 }
 
 func HandlePermissionService(srv permission.PermissionService, handler arpc.Handler) {
@@ -169,8 +181,22 @@ func HandleARpcServerPermissionService(svr *ARpcServerPermissionService, handler
 	handler.Handle(ARpcNamePermissionPermissionServiceRemovePermission , svr.RemovePermission)
 } 
 
+func HandleARpcServerPermissionServiceWithContext(svr *ARpcServerPermissionServiceWithContext, handler arpc.Handler) {
+	handler.Handle(ARpcNamePermissionPermissionServiceHasPermission , svr.HasPermission)
+	handler.Handle(ARpcNamePermissionPermissionServiceHasPermissionStr , svr.HasPermissionStr)
+	handler.Handle(ARpcNamePermissionPermissionServiceListPermissions , svr.ListPermissions)
+	handler.Handle(ARpcNamePermissionPermissionServiceAddPermission , svr.AddPermission)
+	handler.Handle(ARpcNamePermissionPermissionServiceRemovePermission , svr.RemovePermission)
+} 
+
 func NewARpcServerPermissionService(srv permission.PermissionService) *ARpcServerPermissionService {
 	return &ARpcServerPermissionService{
+		srv: srv,
+	}
+}
+
+func NewARpcServerPermissionServiceWithContext(srv scene.WithContext[permission.PermissionService]) *ARpcServerPermissionServiceWithContext {
+	return &ARpcServerPermissionServiceWithContext{
 		srv: srv,
 	}
 }
@@ -229,7 +255,7 @@ func (r *ARpcServerPermissionService) AddPermission(c *arpc.Context) {
 		req.Val0,
 		req.Val1,
 	)
-	resp.Val0 = a0
+	resp.Val0 = errcode.UnmarshalError{Error:a0}
 	_ = c.Write(&resp)
 	return
 }
@@ -244,7 +270,81 @@ func (r *ARpcServerPermissionService) RemovePermission(c *arpc.Context) {
 		req.Val0,
 		req.Val1,
 	)
+	resp.Val0 = errcode.UnmarshalError{Error:a0}
+	_ = c.Write(&resp)
+	return
+}
+func (r *ARpcServerPermissionServiceWithContext) HasPermission(c *arpc.Context) {
+	var req PermissionServiceHasPermissionArgs
+	var resp PermissionServiceHasPermissionResult
+	err := c.Bind(&req)
+	if err != nil {
+		return
+	}
+	 a0 := r.srv.WithSceneContext(sarpc.Context(c)).HasPermission(
+		req.Val0,
+		req.Val1,
+	)
 	resp.Val0 = a0
+	_ = c.Write(&resp)
+	return
+}
+func (r *ARpcServerPermissionServiceWithContext) HasPermissionStr(c *arpc.Context) {
+	var req PermissionServiceHasPermissionStrArgs
+	var resp PermissionServiceHasPermissionStrResult
+	err := c.Bind(&req)
+	if err != nil {
+		return
+	}
+	 a0 := r.srv.WithSceneContext(sarpc.Context(c)).HasPermissionStr(
+		req.Val0,
+		req.Val1,
+	)
+	resp.Val0 = a0
+	_ = c.Write(&resp)
+	return
+}
+func (r *ARpcServerPermissionServiceWithContext) ListPermissions(c *arpc.Context) {
+	var req PermissionServiceListPermissionsArgs
+	var resp PermissionServiceListPermissionsResult
+	err := c.Bind(&req)
+	if err != nil {
+		return
+	}
+	 a0 := r.srv.WithSceneContext(sarpc.Context(c)).ListPermissions(
+		req.Val0,
+	)
+	resp.Val0 = a0
+	_ = c.Write(&resp)
+	return
+}
+func (r *ARpcServerPermissionServiceWithContext) AddPermission(c *arpc.Context) {
+	var req PermissionServiceAddPermissionArgs
+	var resp PermissionServiceAddPermissionResult
+	err := c.Bind(&req)
+	if err != nil {
+		return
+	}
+	 a0 := r.srv.WithSceneContext(sarpc.Context(c)).AddPermission(
+		req.Val0,
+		req.Val1,
+	)
+	resp.Val0 = errcode.UnmarshalError{Error:a0}
+	_ = c.Write(&resp)
+	return
+}
+func (r *ARpcServerPermissionServiceWithContext) RemovePermission(c *arpc.Context) {
+	var req PermissionServiceRemovePermissionArgs
+	var resp PermissionServiceRemovePermissionResult
+	err := c.Bind(&req)
+	if err != nil {
+		return
+	}
+	 a0 := r.srv.WithSceneContext(sarpc.Context(c)).RemovePermission(
+		req.Val0,
+		req.Val1,
+	)
+	resp.Val0 = errcode.UnmarshalError{Error:a0}
 	_ = c.Write(&resp)
 	return
 }
@@ -259,8 +359,8 @@ func (r *ARpcAppPermissionService) Name() scene.ImplName {
 	return permission.Lens.ImplNameNoVer("ARpcApplication")
 }
 
-func (r *ARpcAppPermissionService) RegisterService(server *arpc.Server) error {
-	HandlePermissionService(r.srv, server.Handler)
+func (r *ARpcAppPermissionService) RegisterService(handler arpc.Handler) error {
+	HandlePermissionService(r.srv, handler)
 	return nil
 }
 

@@ -7,5 +7,5 @@ import (
 
 type ARpcApp interface {
 	scene.Application
-	RegisterService(server *arpc.Server) error
+	RegisterService(handler arpc.Handler) error
 }

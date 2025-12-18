@@ -10,15 +10,18 @@ import (
 
 type Client interface {
 	scene.Named
+	Logger() logger.ILogger
 	Client() *arpc.Client
 	Call(method string, req interface{}, rsp interface{}, timeout time.Duration, args ...interface{}) error
+	AddConnectedHandler(func(c *arpc.Client))
 }
 
 type defaultClient struct {
-	client  *arpc.Client
-	dialer  arpc.DialerFunc
-	options []ClientOption
-	log     logger.ILogger `aperture:""`
+	client              *arpc.Client
+	dialer              arpc.DialerFunc
+	options             []ClientOption
+	onConnectedHandlers []func(c *arpc.Client)
+	log                 logger.ILogger `aperture:""`
 }
 
 func (c *defaultClient) ImplName() scene.ImplName {
@@ -35,6 +38,10 @@ func (c *defaultClient) Setup() error {
 	return nil
 }
 
+func (c *defaultClient) Logger() logger.ILogger {
+	return c.log
+}
+
 func (c *defaultClient) Client() *arpc.Client {
 	return c.client
 }
@@ -49,13 +56,14 @@ func (c *defaultClient) setupClient() error {
 		return err
 	}
 	client.Set("logger.ILogger", c.log)
+	c.client = client
 	for _, option := range c.options {
-		if err = option(client); err != nil {
+		if err = option(c); err != nil {
 			return err
 		}
 	}
 	client.Handler.SetLogTag("[Client]")
-	c.client = client
+	client.Handler.HandleConnected(c.onConnectedHandler)
 	return nil
 }
 
@@ -71,6 +79,16 @@ func (c *defaultClient) Call(method string, req interface{}, rsp interface{}, ti
 	return err
 }
 
+func (c *defaultClient) AddConnectedHandler(f func(c *arpc.Client)) {
+	c.onConnectedHandlers = append(c.onConnectedHandlers, f)
+}
+
+func (c *defaultClient) onConnectedHandler(client *arpc.Client) {
+	for _, handler := range c.onConnectedHandlers {
+		handler(client)
+	}
+}
+
 func NewClient(network string, addr string, options ...ClientOption) Client {
 	return &defaultClient{
 		client: nil,
@@ -81,22 +99,22 @@ func NewClient(network string, addr string, options ...ClientOption) Client {
 	}
 }
 
-type ARpcClient struct {
-	client *arpc.Client
-}
-
-func NewClientFromArpc(client *arpc.Client) Client {
-	return &ARpcClient{client: client}
-}
-
-func (c *ARpcClient) ImplName() scene.ImplName {
-	return scene.NewSceneImplName("arpc", "Client", "Raw")
-}
-
-func (c *ARpcClient) Client() *arpc.Client {
-	return c.client
-}
-
-func (A ARpcClient) Call(method string, req interface{}, rsp interface{}, timeout time.Duration, args ...interface{}) error {
-	return A.client.Call(method, req, rsp, timeout, args...)
-}
+//type ARpcClient struct {
+//	client *arpc.Client
+//}
+//
+//func NewClientFromArpc(client *arpc.Client) Client {
+//	return &ARpcClient{client: client}
+//}
+//
+//func (c *ARpcClient) ImplName() scene.ImplName {
+//	return scene.NewSceneImplName("arpc", "Client", "Raw")
+//}
+//
+//func (c *ARpcClient) Client() *arpc.Client {
+//	return c.client
+//}
+//
+//func (A ARpcClient) Call(method string, req interface{}, rsp interface{}, timeout time.Duration, args ...interface{}) error {
+//	return A.client.Call(method, req, rsp, timeout, args...)
+//}
