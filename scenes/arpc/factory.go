@@ -34,6 +34,6 @@ func (c NexusClientFactory) Init() scene.LensInit {
 		for _, init := range c.UseApps {
 			apps = append(apps, init())
 		}
-		registry.Register[Client](NewNexusProxyClient(NewClient(c.Network, c.Addr, append(c.Options, WithNexusGateway(apps...))...)))
+		registry.Register[Client](NewClient(c.Network, c.Addr, append(c.Options, WithNexusGateway(apps...))...))
 	}
 }

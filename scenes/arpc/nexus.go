@@ -15,8 +15,8 @@ import (
 )
 
 const (
-	nexusRegisterMethod = "__nexus.register"
-	nexusDiscoverMethod = "__nexus.discover"
+	nexusRegisterMethod = "scene.arpc.nexus.register"
+	nexusDiscoverMethod = "scene.arpc.nexus.discover"
 )
 
 type NexusGateway struct {
