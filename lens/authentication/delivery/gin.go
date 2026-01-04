@@ -8,12 +8,18 @@ import (
 	"github.com/rhine-tech/scene/model"
 	sgin "github.com/rhine-tech/scene/scenes/gin"
 	"net/http"
+	"strings"
 )
 
 type authContext struct {
 	authSrv  authentication.IAuthenticationService                 `aperture:""`
 	tokenSrv scene.WithContext[authentication.IAccessTokenService] `aperture:"embed"`
 	lgStVrf  authentication.HTTPLoginStatusVerifier                `aperture:""`
+}
+
+func hasUserManagePermission(ctx *sgin.Context[*authContext]) bool {
+	return permission.HasPermissionInCtx(ctx, authentication.PermUserManage) ||
+		permission.HasPermissionInCtx(ctx, authentication.PermAdmin)
 }
 
 // AuthGinApp creates the Gin application definition for all authentication-related routes.
@@ -31,6 +37,7 @@ func AuthGinApp(lgStVrf authentication.HTTPLoginStatusVerifier) sgin.GinApplicat
 			new(updateProfileRequest),
 			new(listUsersRequest),
 			new(createUserRequest),
+			new(updateUserRequest),
 			new(deleteUserRequest),
 
 			// Access Token (API Key) Management
@@ -85,22 +92,6 @@ func (l *logoutRequest) GetRoute() sgin.HttpRouteInfo {
 func (l *logoutRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
 	return nil, ctx.App.lgStVrf.Logout(ctx.Writer)
 }
-
-//// createUserRequest handles the creation of a new user.
-//type createUserRequest struct {
-//	sgin.BaseAction
-//	sgin.RequestQuery
-//	Username string `json:"username" binding:"required"`
-//	Password string `json:"password" binding:"required"`
-//}
-//
-//func (c *createUserRequest) GetRoute() scene.HttpRouteInfo {
-//	return scene.HttpRouteInfo{Method: http.MethodPost, Path: "/users"}
-//}
-//
-//func (c *createUserRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
-//	return ctx.App.authSrv.AddUser(c.Username, c.Password)
-//}
 
 // getInfoRequest get current user's info
 type getInfoRequest struct {
@@ -184,7 +175,7 @@ func (l *listUsersRequest) Process(ctx *sgin.Context[*authContext]) (data any, e
 	if _, ok := authentication.IsLoginInCtx(ctx); !ok {
 		return nil, authentication.ErrNotLogin
 	}
-	if !permission.HasPermissionInCtx(ctx, authentication.PermUserManage) {
+	if !hasUserManagePermission(ctx) {
 		return nil, permission.ErrPermissionDenied
 	}
 	result, err := ctx.App.authSrv.ListUsers(l.Offset, l.Limit)
@@ -219,11 +210,69 @@ func (c *createUserRequest) Process(ctx *sgin.Context[*authContext]) (data any, 
 	if _, ok := authentication.IsLoginInCtx(ctx); !ok {
 		return nil, authentication.ErrNotLogin
 	}
-	if !permission.HasPermissionInCtx(ctx, authentication.PermUserManage) {
+	if !hasUserManagePermission(ctx) {
 		return nil, permission.ErrPermissionDenied
 	}
 	user, err := ctx.App.authSrv.AddUser(c.Username, c.Password)
 	if err != nil {
+		return nil, err
+	}
+	return UserNoPassword{}.FromUser(user), nil
+}
+
+// updateUserRequest allows admins to update another user's profile.
+type updateUserRequest struct {
+	sgin.BaseAction
+	sgin.RequestJson
+	UserID      string  `uri:"userId" binding:"required"`
+	Username    *string `json:"username"`
+	DisplayName *string `json:"display_name"`
+	Email       *string `json:"email"`
+	Avatar      *string `json:"avatar"`
+	Timezone    *string `json:"timezone"`
+	Password    *string `json:"password"`
+}
+
+func (u *updateUserRequest) GetRoute() sgin.HttpRouteInfo {
+	return sgin.HttpRouteInfo{Method: http.MethodPut, Path: "/users/:userId"}
+}
+
+func (u *updateUserRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
+	if _, ok := authentication.IsLoginInCtx(ctx); !ok {
+		return nil, authentication.ErrNotLogin
+	}
+	if !hasUserManagePermission(ctx) {
+		return nil, permission.ErrPermissionDenied
+	}
+
+	user, err := ctx.App.authSrv.UserById(ctx.Param("userId"))
+	if err != nil {
+		return nil, err
+	}
+
+	if u.Username != nil {
+		next := strings.TrimSpace(*u.Username)
+		if next != "" {
+			user.Username = next
+		}
+	}
+	if u.DisplayName != nil {
+		user.DisplayName = *u.DisplayName
+	}
+	if u.Email != nil {
+		user.Email = *u.Email
+	}
+	if u.Avatar != nil {
+		user.Avatar = *u.Avatar
+	}
+	if u.Timezone != nil {
+		user.Timezone = *u.Timezone
+	}
+	if u.Password != nil {
+		user.Password = *u.Password
+	}
+
+	if err := ctx.App.authSrv.UpdateUser(user); err != nil {
 		return nil, err
 	}
 	return UserNoPassword{}.FromUser(user), nil
@@ -244,7 +293,7 @@ func (d *deleteUserRequest) Process(ctx *sgin.Context[*authContext]) (data any, 
 	if _, ok := authentication.IsLoginInCtx(ctx); !ok {
 		return nil, authentication.ErrNotLogin
 	}
-	if !permission.HasPermissionInCtx(ctx, authentication.PermUserManage) {
+	if !hasUserManagePermission(ctx) {
 		return nil, permission.ErrPermissionDenied
 	}
 	err = ctx.App.authSrv.DeleteUser(d.UserID)

@@ -23,12 +23,16 @@ func GinPermContextFromAuth(srv permission.PermissionService) gin.HandlerFunc {
 	}
 }
 
-func GinRequirePermission(perm string) gin.HandlerFunc {
+func GinRequirePermissionFromStr(perm string) gin.HandlerFunc {
 	requiredPerm := permission.MustParsePermission(perm)
+	return GinRequirePermission(requiredPerm)
+}
+
+func GinRequirePermission(requiredPerm *permission.Permission) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		permCtx, ok := permission.GetPermContext(sgin.GetContext(c))
 		if !ok || !permCtx.HasPermission(requiredPerm) {
-			c.AbortWithStatusJSON(http.StatusForbidden, model.NewErrorCodeResponse(permission.ErrPermissionDenied.WithDetailStr(perm)))
+			c.AbortWithStatusJSON(http.StatusForbidden, model.NewErrorCodeResponse(permission.ErrPermissionDenied.WithDetailStr(requiredPerm.String())))
 			return
 		}
 		c.Next()

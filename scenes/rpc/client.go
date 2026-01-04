@@ -1,3 +1,4 @@
+// Deprecated: using arpc instead
 package rpc
 
 import (
