@@ -18,7 +18,6 @@ func (l SessionTrackerRedis) Provide() storageApi.IUploadSessionTracker {
 }
 
 type SessionTrackerMemory struct {
-	Root string
 }
 
 func (l SessionTrackerMemory) Provide() storageApi.IUploadSessionTracker {

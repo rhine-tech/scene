@@ -21,7 +21,7 @@ func (a Service) Default() Service {
 		Providers: []StorageProvider{
 			Local{}.Default(),
 		},
-		SessionTracker: SessionTrackerRedis{},
+		SessionTracker: SessionTrackerMemory{},
 	}
 }
 
@@ -47,7 +47,7 @@ func (a Service) Apps() []any {
 }
 
 type App struct {
-	Service
+	scene.ModuleFactory
 }
 
 func (a App) Apps() []any {

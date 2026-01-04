@@ -23,4 +23,5 @@ var (
 	ErrFailToAbortMultipartStore = _eg.CreateError(16, "fail to abort")
 	ErrMetaNotFound              = _eg.CreateError(17, "meta not found")
 	ErrFailToListMeta            = _eg.CreateError(18, "fail to list meta")
+	ErrFileIDExists              = _eg.CreateError(19, "file id exists")
 )

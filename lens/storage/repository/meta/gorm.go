@@ -14,7 +14,10 @@ type GormFileMetaRepository struct {
 }
 
 func (r *GormFileMetaRepository) List(provider string, offset, limit int64) (model.PaginationResult[storage.FileMeta], error) {
-	return r.internal.List(offset, limit)
+	if provider == "" {
+		return r.internal.List(offset, limit)
+	}
+	return r.internal.List(offset, limit, query.Field("provider").Equal(provider))
 }
 
 func (r *GormFileMetaRepository) Setup() error {

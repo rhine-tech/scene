@@ -3,6 +3,7 @@ package storage
 import (
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/model"
+	"github.com/google/uuid"
 	"io"
 	"strings"
 	"time"
@@ -18,6 +19,10 @@ type FileID string
 
 func NewFileID(provider string, path ...string) FileID {
 	return FileID(provider + "://" + strings.TrimPrefix(strings.Join(path, "/"), "/"))
+}
+
+func NewFileIDWithUUID(provider string) FileID {
+	return FileID(provider + "://" + strings.ReplaceAll(uuid.NewString(), "-", ""))
 }
 
 func ParseFileID(fileId string) (FileID, bool) {
@@ -130,6 +135,8 @@ type IStorageService interface {
 	StorePartReader(uploadId string, partNumber int, data io.Reader) error
 	CompleteMultipartStore(uploadId string) error
 	AbortMultiPartStore(uploadId string) error
+	// GetPublicURL get public url which can be access in public network
+	GetPublicURL(fileId FileID) (url string, err error)
 	// todo ListMultipartParts(uploadId)
 }
 

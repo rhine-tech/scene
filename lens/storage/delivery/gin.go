@@ -1,6 +1,7 @@
 package delivery
 
 import (
+	"github.com/rhine-tech/scene/lens/permission"
 	"github.com/rhine-tech/scene/lens/storage"
 	sgin "github.com/rhine-tech/scene/scenes/gin"
 	"net/http"
@@ -19,6 +20,8 @@ func GinApp() sgin.GinApplication {
 		Actions: []sgin.Action[*appContext]{
 			new(getDataRequest),
 			new(putDataRequest),
+			new(deleteDataRequest),
+			new(getPublicURLRequest),
 			new(listMetaRequest),
 			new(listProviderRequest),
 		},
@@ -26,6 +29,14 @@ func GinApp() sgin.GinApplication {
 			srv: nil,
 		},
 	}
+}
+
+func hasManagePermission(ctx *sgin.Context[*appContext]) bool {
+	return permission.HasPermissionInCtx(ctx, storage.PermFileManage)
+}
+
+func hasUploadPermission(ctx *sgin.Context[*appContext]) bool {
+	return permission.HasPermissionInCtx(ctx, storage.PermFileUpload) || hasManagePermission(ctx)
 }
 
 type getDataRequest struct {
@@ -44,6 +55,9 @@ func (l *getDataRequest) GetRoute() sgin.HttpRouteInfo {
 }
 
 func (l *getDataRequest) Process(ctx *sgin.Context[*appContext]) (data any, err error) {
+	if !hasManagePermission(ctx) {
+		return nil, permission.ErrPermissionDenied
+	}
 	reader, meta, err := storage.NewIoInterface(ctx.App.srv, storage.NewFileID(l.Provider, l.FileID))
 	if err != nil {
 		return nil, err
@@ -68,14 +82,20 @@ func (p *putDataRequest) GetRoute() sgin.HttpRouteInfo {
 }
 
 func (p *putDataRequest) Process(ctx *sgin.Context[*appContext]) (data any, err error) {
+	if !hasUploadPermission(ctx) {
+		return nil, permission.ErrPermissionDenied
+	}
 	p.FileID = strings.TrimPrefix(p.FileID, "/")
 	fileId := storage.NewFileID(p.Provider, p.FileID)
+	if !hasManagePermission(ctx) {
+		fileId = storage.NewFileIDWithUUID(p.Provider)
+	}
 	fileName := ctx.Query("filename")
 	if fileName == "" {
-		ctx.Request.Header.Get("filename")
+		fileName = ctx.Request.Header.Get("filename")
 	}
 	if fileName == "" {
-		fileName = p.FileID
+		fileName = fileId.ID()
 	}
 	contentType := ctx.Query("content_type")
 	if contentType == "" {
@@ -99,7 +119,17 @@ func (p *putDataRequest) Process(ctx *sgin.Context[*appContext]) (data any, err 
 	// Init multipart session
 	uploadId, err := ctx.App.srv.InitMultipartStore(fileId, meta)
 	if err != nil {
-		return nil, err
+		if err == storage.ErrFileIDExists && !hasManagePermission(ctx) {
+			fileId = storage.NewFileIDWithUUID(p.Provider)
+			meta.FileID = fileId
+			meta.Provider = fileId.Provider()
+			meta.Identifier = fileId.ID()
+			meta.OriginalFilename = fileName
+			uploadId, err = ctx.App.srv.InitMultipartStore(fileId, meta)
+		}
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Store single part from body
@@ -123,6 +153,55 @@ func (p *putDataRequest) Process(ctx *sgin.Context[*appContext]) (data any, err 
 	return meta, nil
 }
 
+type deleteDataRequest struct {
+	sgin.BaseAction
+	sgin.RequestURI
+	Provider string `uri:"provider" binding:"required"`
+	FileID   string `uri:"fileid" binding:"required"`
+}
+
+func (d *deleteDataRequest) GetRoute() sgin.HttpRouteInfo {
+	return sgin.HttpRouteInfo{
+		Method: http.MethodDelete,
+		Path:   "/data/:provider/*fileid",
+	}
+}
+
+func (d *deleteDataRequest) Process(ctx *sgin.Context[*appContext]) (data any, err error) {
+	if !hasManagePermission(ctx) {
+		return nil, permission.ErrPermissionDenied
+	}
+	d.FileID = strings.TrimPrefix(d.FileID, "/")
+	fileId := storage.NewFileID(d.Provider, d.FileID)
+	if err := ctx.App.srv.Delete(fileId); err != nil {
+		return nil, err
+	}
+	return storage.FileMeta{FileID: fileId}, nil
+}
+
+type getPublicURLRequest struct {
+	sgin.BaseAction
+	sgin.RequestURI
+	Provider string `uri:"provider" binding:"required"`
+	FileID   string `uri:"fileid" binding:"required"`
+}
+
+func (g *getPublicURLRequest) GetRoute() sgin.HttpRouteInfo {
+	return sgin.HttpRouteInfo{
+		Method: http.MethodGet,
+		Path:   "/url/:provider/*fileid",
+	}
+}
+
+func (g *getPublicURLRequest) Process(ctx *sgin.Context[*appContext]) (data any, err error) {
+	if !hasManagePermission(ctx) {
+		return nil, permission.ErrPermissionDenied
+	}
+	g.FileID = strings.TrimPrefix(g.FileID, "/")
+	fileId := storage.NewFileID(g.Provider, g.FileID)
+	return ctx.App.srv.GetPublicURL(fileId)
+}
+
 type listMetaRequest struct {
 	sgin.BaseAction
 	sgin.RequestQuery
@@ -138,6 +217,9 @@ func (l *listMetaRequest) GetRoute() sgin.HttpRouteInfo {
 }
 
 func (l *listMetaRequest) Process(ctx *sgin.Context[*appContext]) (data any, err error) {
+	if !hasManagePermission(ctx) {
+		return nil, permission.ErrPermissionDenied
+	}
 	provider := ctx.Param("provider")
 	return ctx.App.srv.ListMeta(provider, l.Offset, l.Limit)
 }
@@ -155,5 +237,8 @@ func (l *listProviderRequest) GetRoute() sgin.HttpRouteInfo {
 }
 
 func (l *listProviderRequest) Process(ctx *sgin.Context[*appContext]) (data any, err error) {
+	if !hasManagePermission(ctx) {
+		return nil, permission.ErrPermissionDenied
+	}
 	return ctx.App.srv.ListProviders(), nil
 }

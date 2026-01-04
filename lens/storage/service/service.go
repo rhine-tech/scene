@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/md5"
 	"encoding/hex"
+	"errors"
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/errcode"
 	"github.com/rhine-tech/scene/infrastructure/logger"
@@ -92,6 +93,9 @@ func (s *StorageService) StoreAt(provider string, data []byte, meta storage.File
 		return "", storage.ErrFailToStore
 	}
 	meta.Finished = true
+	meta.FileID = fileId
+	meta.Provider = provider
+	meta.Identifier = fileId.ID()
 	meta.FillMissing()
 	meta.Md5Checksum = hex.EncodeToString(md5Sum[:])
 	err = s.metaRepo.Store(meta)
@@ -105,9 +109,11 @@ func (s *StorageService) StoreAt(provider string, data []byte, meta storage.File
 // Meta retrieves the metadata of a file based on fileId.
 func (s *StorageService) Meta(fileId storage.FileID) (meta storage.FileMeta, err error) {
 	meta, err = s.metaRepo.Load(fileId)
-	if err != nil {
-		s.log.ErrorW("failed to load meta, fallback to provider meta", "fileId", fileId, "err", err)
+	if err == nil {
+		meta.FillMissing()
+		return meta, nil
 	}
+	s.log.ErrorW("failed to load meta, fallback to provider meta", "fileId", fileId, "err", err)
 	storager, exists := s.providers[fileId.Provider()]
 	if !exists {
 		return meta, storage.ErrLoadingMeta.WrapIfNot(err)
@@ -133,6 +139,9 @@ func (s *StorageService) Load(fileId storage.FileID, offset, length int64) ([]by
 		s.log.ErrorW("failed to load file", "fileId", fileId, "err", err)
 		return nil, errcode.Must(err, storage.ErrFailToLoad)
 	}
+	if closer, ok := reader.(io.Closer); ok {
+		defer closer.Close()
+	}
 
 	data, err := io.ReadAll(reader)
 	if err != nil {
@@ -154,6 +163,9 @@ func (s *StorageService) LoadAll(fileId storage.FileID) ([]byte, error) {
 	if err != nil {
 		s.log.ErrorW("failed to load file", "fileId", fileId, "err", err)
 		return nil, errcode.Must(err, storage.ErrFailToLoad)
+	}
+	if closer, ok := reader.(io.Closer); ok {
+		defer closer.Close()
 	}
 
 	data, err := io.ReadAll(reader)
@@ -188,6 +200,13 @@ func (s *StorageService) InitMultipartStore(fileId storage.FileID, meta storage.
 	if !ok {
 		return "", storage.ErrStorageNotFound
 	}
+	_, err := s.metaRepo.Load(fileId)
+	if err == nil {
+		return "", storage.ErrFileIDExists
+	}
+	if !errors.Is(err, storage.ErrMetaNotFound) {
+		return "", err
+	}
 	uploadId, err := pvd.InitMultipartStore(fileId)
 	if err != nil {
 		s.log.ErrorW("failed to initiate multipart upload", "fileId", fileId, "err", err)
@@ -205,6 +224,9 @@ func (s *StorageService) InitMultipartStore(fileId storage.FileID, meta storage.
 		return "", err
 	}
 	meta.Finished = false
+	meta.FileID = fileId
+	meta.Provider = fileId.Provider()
+	meta.Identifier = fileId.ID()
 	meta.FillMissing()
 	err = s.metaRepo.Store(meta)
 	if err != nil {
@@ -310,4 +332,12 @@ func (s *StorageService) ListMeta(provider string, offset, limit int64) (model.P
 	}
 	reuslt, err := s.metaRepo.List(provider, offset, limit)
 	return reuslt, storage.ErrFailToListMeta.WrapIfNot(err)
+}
+
+func (s *StorageService) GetPublicURL(fileId storage.FileID) (string, error) {
+	storager, exists := s.providers[fileId.Provider()]
+	if !exists {
+		return "", storage.ErrStorageNotFound
+	}
+	return storager.GetPublicURL(fileId)
 }
