@@ -1,7 +1,9 @@
 package delivery
 
 import (
+	"github.com/gin-gonic/gin"
 	"github.com/rhine-tech/scene/lens/permission"
+	permMdw "github.com/rhine-tech/scene/lens/permission/middleware"
 	"github.com/rhine-tech/scene/lens/storage"
 	sgin "github.com/rhine-tech/scene/scenes/gin"
 	"net/http"
@@ -31,14 +33,6 @@ func GinApp() sgin.GinApplication {
 	}
 }
 
-func hasManagePermission(ctx *sgin.Context[*appContext]) bool {
-	return permission.HasPermissionInCtx(ctx, storage.PermFileManage)
-}
-
-func hasUploadPermission(ctx *sgin.Context[*appContext]) bool {
-	return permission.HasPermissionInCtx(ctx, storage.PermFileUpload) || hasManagePermission(ctx)
-}
-
 type getDataRequest struct {
 	sgin.BaseAction
 	sgin.RequestURI
@@ -55,9 +49,6 @@ func (l *getDataRequest) GetRoute() sgin.HttpRouteInfo {
 }
 
 func (l *getDataRequest) Process(ctx *sgin.Context[*appContext]) (data any, err error) {
-	if !hasManagePermission(ctx) {
-		return nil, permission.ErrPermissionDenied
-	}
 	reader, meta, err := storage.NewIoInterface(ctx.App.srv, storage.NewFileID(l.Provider, l.FileID))
 	if err != nil {
 		return nil, err
@@ -81,13 +72,16 @@ func (p *putDataRequest) GetRoute() sgin.HttpRouteInfo {
 	}
 }
 
-func (p *putDataRequest) Process(ctx *sgin.Context[*appContext]) (data any, err error) {
-	if !hasUploadPermission(ctx) {
-		return nil, permission.ErrPermissionDenied
+func (p *putDataRequest) Middleware() gin.HandlersChain {
+	return gin.HandlersChain{
+		permMdw.GinRequirePermission(storage.PermFileUpload),
 	}
+}
+
+func (p *putDataRequest) Process(ctx *sgin.Context[*appContext]) (data any, err error) {
 	p.FileID = strings.TrimPrefix(p.FileID, "/")
 	fileId := storage.NewFileID(p.Provider, p.FileID)
-	if !hasManagePermission(ctx) {
+	if !permission.HasPermissionInCtx(ctx, storage.PermFileNaming) {
 		fileId = storage.NewFileIDWithUUID(p.Provider)
 	}
 	fileName := ctx.Query("filename")
@@ -119,17 +113,7 @@ func (p *putDataRequest) Process(ctx *sgin.Context[*appContext]) (data any, err 
 	// Init multipart session
 	uploadId, err := ctx.App.srv.InitMultipartStore(fileId, meta)
 	if err != nil {
-		if err == storage.ErrFileIDExists && !hasManagePermission(ctx) {
-			fileId = storage.NewFileIDWithUUID(p.Provider)
-			meta.FileID = fileId
-			meta.Provider = fileId.Provider()
-			meta.Identifier = fileId.ID()
-			meta.OriginalFilename = fileName
-			uploadId, err = ctx.App.srv.InitMultipartStore(fileId, meta)
-		}
-		if err != nil {
-			return nil, err
-		}
+		return nil, err
 	}
 
 	// Store single part from body
@@ -167,10 +151,13 @@ func (d *deleteDataRequest) GetRoute() sgin.HttpRouteInfo {
 	}
 }
 
-func (d *deleteDataRequest) Process(ctx *sgin.Context[*appContext]) (data any, err error) {
-	if !hasManagePermission(ctx) {
-		return nil, permission.ErrPermissionDenied
+func (d *deleteDataRequest) Middleware() gin.HandlersChain {
+	return gin.HandlersChain{
+		permMdw.GinRequirePermission(storage.PermFileDelete),
 	}
+}
+
+func (d *deleteDataRequest) Process(ctx *sgin.Context[*appContext]) (data any, err error) {
 	d.FileID = strings.TrimPrefix(d.FileID, "/")
 	fileId := storage.NewFileID(d.Provider, d.FileID)
 	if err := ctx.App.srv.Delete(fileId); err != nil {
@@ -193,10 +180,13 @@ func (g *getPublicURLRequest) GetRoute() sgin.HttpRouteInfo {
 	}
 }
 
-func (g *getPublicURLRequest) Process(ctx *sgin.Context[*appContext]) (data any, err error) {
-	if !hasManagePermission(ctx) {
-		return nil, permission.ErrPermissionDenied
+func (g *getPublicURLRequest) Middleware() gin.HandlersChain {
+	return gin.HandlersChain{
+		permMdw.GinRequirePermission(storage.PermFileDownload),
 	}
+}
+
+func (g *getPublicURLRequest) Process(ctx *sgin.Context[*appContext]) (data any, err error) {
 	g.FileID = strings.TrimPrefix(g.FileID, "/")
 	fileId := storage.NewFileID(g.Provider, g.FileID)
 	return ctx.App.srv.GetPublicURL(fileId)
@@ -216,10 +206,13 @@ func (l *listMetaRequest) GetRoute() sgin.HttpRouteInfo {
 	}
 }
 
-func (l *listMetaRequest) Process(ctx *sgin.Context[*appContext]) (data any, err error) {
-	if !hasManagePermission(ctx) {
-		return nil, permission.ErrPermissionDenied
+func (l *listMetaRequest) Middleware() gin.HandlersChain {
+	return gin.HandlersChain{
+		permMdw.GinRequirePermission(storage.PermFileList),
 	}
+}
+
+func (l *listMetaRequest) Process(ctx *sgin.Context[*appContext]) (data any, err error) {
 	provider := ctx.Param("provider")
 	return ctx.App.srv.ListMeta(provider, l.Offset, l.Limit)
 }
@@ -236,9 +229,12 @@ func (l *listProviderRequest) GetRoute() sgin.HttpRouteInfo {
 	}
 }
 
-func (l *listProviderRequest) Process(ctx *sgin.Context[*appContext]) (data any, err error) {
-	if !hasManagePermission(ctx) {
-		return nil, permission.ErrPermissionDenied
+func (l *listProviderRequest) Middleware() gin.HandlersChain {
+	return gin.HandlersChain{
+		permMdw.GinRequirePermission(storage.PermFileList),
 	}
+}
+
+func (l *listProviderRequest) Process(ctx *sgin.Context[*appContext]) (data any, err error) {
 	return ctx.App.srv.ListProviders(), nil
 }

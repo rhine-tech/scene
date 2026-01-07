@@ -92,8 +92,13 @@ func (l *localStorage) Setup() error {
 	return nil
 }
 
-func NewLocalStorage(name string, localPath string) storage.IStorageProvider {
-	return &localStorage{name: name, localPath: localPath, uploads: make(map[string]*uploadSession)}
+func NewLocalStorage(name string, localPath string, urlprefix string) storage.IStorageProvider {
+	return &localStorage{
+		name:      name,
+		localPath: localPath,
+		uploads:   make(map[string]*uploadSession),
+		urlPrefix: urlprefix,
+	}
 }
 
 func (l *localStorage) ImplName() scene.ImplName {
@@ -210,7 +215,7 @@ func (l *localStorage) GetPublicURL(fileId storage.FileID) (uri string, err erro
 	if len(prefixs) == 0 {
 		return "", storage.ErrInvalidFileID
 	}
-	return url.JoinPath(l.urlPrefix, prefixs...)
+	return url.JoinPath(l.urlPrefix, append([]string{fileId.Provider()}, prefixs...)...)
 }
 
 func (l *localStorage) Delete(fileId storage.FileID) error {

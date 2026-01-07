@@ -10,15 +10,17 @@ import (
 type StorageProvider scene.IModuleDependencyProvider[storageApi.IStorageProvider]
 
 type Local struct {
-	Root string
+	Root      string
+	UrlPrefix string
 }
 
 func (l Local) Default() Local {
 	return Local{
-		Root: registry.Config.GetString("storage.local.root"),
+		Root:      registry.Config.GetString("storage.local.root"),
+		UrlPrefix: registry.Config.GetString("storage.local.prefix"),
 	}
 }
 
 func (l Local) Provide() storageApi.IStorageProvider {
-	return registry.Load(storage.NewLocalStorage("default", l.Root))
+	return registry.Load(storage.NewLocalStorage("default", l.Root, l.UrlPrefix))
 }
