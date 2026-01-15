@@ -1,7 +1,7 @@
 package loginstatus
 
 import (
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/lens/authentication"
 	"net/http"
@@ -10,7 +10,7 @@ import (
 
 type jwtClaims struct {
 	UserID string `json:"user_id"`
-	jwt.StandardClaims
+	jwt.RegisteredClaims
 }
 
 type JWT struct {
@@ -35,18 +35,23 @@ func (j *JWT) Verify(request *http.Request) (status authentication.LoginStatus, 
 		}
 		tokenStr = cookie.Value
 	}
-	token, err := jwt.ParseWithClaims(tokenStr, &jwtClaims{}, func(token *jwt.Token) (interface{}, error) {
+	claims := &jwtClaims{}
+	token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
+		if token.Method != jwt.SigningMethodHS256 {
+			return nil, jwt.ErrTokenSignatureInvalid
+		}
 		return j.secret, nil
-	})
-	if claims, ok := token.Claims.(*jwtClaims); ok && token.Valid {
-		return authentication.LoginStatus{
-			UserID:   claims.UserID,
-			Token:    token.Raw,
-			Verifier: j.SrvImplName().Implementation,
-		}, nil
-	} else {
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
+	if err != nil || token == nil || !token.Valid {
+		// todo: mapping jwt error
 		return status, err
 	}
+	return authentication.LoginStatus{
+		UserID:   claims.UserID,
+		Token:    token.Raw,
+		Verifier: j.SrvImplName().Implementation,
+		ExpireAt: -1,
+	}, nil
 }
 
 func (j *JWT) Login(userId string, resp http.ResponseWriter) (status authentication.LoginStatus, err error) {

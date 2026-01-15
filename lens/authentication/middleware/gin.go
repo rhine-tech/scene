@@ -31,7 +31,7 @@ func GinAuthContext(verifiers ...authentication.HTTPLoginStatusVerifier) gin.Han
 // GinRequireAuth is a middleware that check if request has been authenticated using authentication.AuthContext
 func GinRequireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		actx, ok := authentication.GetAuthContext(c)
+		actx, ok := authentication.GetAuthContext(sgin.GetContext(c))
 		if !ok {
 			c.AbortWithStatusJSON(http.StatusForbidden, model.TryErrorCodeResponse(authentication.ErrNotLogin))
 			return

@@ -67,12 +67,13 @@ func (g *ginApp) handleList(c *gin.Context) {
 }
 
 func (g *ginApp) handleAll(c *gin.Context) {
-	_, ok := authentication.IsLoginInCtx(c)
+	ctx := sgin.GetContext(c)
+	_, ok := authentication.IsLoginInCtx(ctx)
 	if !ok {
 		c.JSON(200, model.NewErrorCodeResponse(authentication.ErrNotLogin))
 		return
 	}
-	ok = permission.HasPermissionInCtx(c, permission.PermList)
+	ok = permission.HasPermissionInCtx(ctx, permission.PermList)
 	if !ok {
 		c.JSON(200, model.NewErrorCodeResponse(permission.ErrPermissionDenied))
 		return
@@ -94,12 +95,13 @@ type managePermParam struct {
 }
 
 func (g *ginApp) handleManageAdd(c *gin.Context) {
+	ctx := sgin.GetContext(c)
 	var param managePermParam
 	if err := c.ShouldBindQuery(&param); err != nil || param.Perm == "" {
 		c.JSON(http.StatusBadRequest, model.NewErrorCodeResponse(errcode.ParameterError.WithDetail(err)))
 		return
 	}
-	if _, ok := authentication.IsLoginInCtx(c); !ok || !permission.HasPermissionInCtx(c, permission.PermManage) {
+	if _, ok := authentication.IsLoginInCtx(ctx); !ok || !permission.HasPermissionInCtx(ctx, permission.PermManage) {
 		c.JSON(http.StatusUnauthorized, model.NewErrorCodeResponse(permission.ErrPermissionDenied))
 		return
 	}
@@ -111,12 +113,13 @@ func (g *ginApp) handleManageAdd(c *gin.Context) {
 }
 
 func (g *ginApp) handleManageDelete(c *gin.Context) {
+	ctx := sgin.GetContext(c)
 	var param managePermParam
 	if err := c.ShouldBindQuery(&param); err != nil || param.Perm == "" {
 		c.JSON(http.StatusBadRequest, model.NewErrorCodeResponse(errcode.ParameterError.WithDetail(err)))
 		return
 	}
-	if _, ok := authentication.IsLoginInCtx(c); !ok || !permission.HasPermissionInCtx(c, permission.PermManage) {
+	if _, ok := authentication.IsLoginInCtx(ctx); !ok || !permission.HasPermissionInCtx(ctx, permission.PermManage) {
 		c.JSON(http.StatusUnauthorized, model.NewErrorCodeResponse(permission.ErrPermissionDenied))
 		return
 	}
@@ -128,12 +131,13 @@ func (g *ginApp) handleManageDelete(c *gin.Context) {
 }
 
 func (g *ginApp) handleManageList(c *gin.Context) {
+	ctx := sgin.GetContext(c)
 	var param managePermParam
 	if err := c.ShouldBindQuery(&param); err != nil {
 		c.JSON(http.StatusBadRequest, model.NewErrorCodeResponse(errcode.ParameterError.WithDetail(err)))
 		return
 	}
-	if _, ok := authentication.IsLoginInCtx(c); !ok || !permission.HasPermissionInCtx(c, permission.PermManage) {
+	if _, ok := authentication.IsLoginInCtx(ctx); !ok || !permission.HasPermissionInCtx(ctx, permission.PermManage) {
 		c.JSON(http.StatusUnauthorized, model.NewErrorCodeResponse(permission.ErrPermissionDenied))
 		return
 	}
