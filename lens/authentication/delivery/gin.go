@@ -2,11 +2,14 @@ package delivery
 
 import (
 	"github.com/rhine-tech/scene"
+	"github.com/rhine-tech/scene/errcode"
 	"github.com/rhine-tech/scene/lens/authentication"
 	"github.com/rhine-tech/scene/lens/authentication/service/token"
 	"github.com/rhine-tech/scene/lens/permission"
+	"github.com/rhine-tech/scene/lens/storage"
 	"github.com/rhine-tech/scene/model"
 	sgin "github.com/rhine-tech/scene/scenes/gin"
+	"io"
 	"net/http"
 	"strings"
 )
@@ -15,6 +18,7 @@ type authContext struct {
 	authSrv  authentication.IAuthenticationService                 `aperture:""`
 	tokenSrv scene.WithContext[authentication.IAccessTokenService] `aperture:"embed"`
 	lgStVrf  authentication.HTTPLoginStatusVerifier                `aperture:""`
+	storage  storage.IStorageService                               `aperture:""`
 }
 
 func hasUserManagePermission(ctx *sgin.Context[*authContext]) bool {
@@ -35,6 +39,7 @@ func AuthGinApp(lgStVrf authentication.HTTPLoginStatusVerifier) sgin.GinApplicat
 			new(logoutRequest),
 			new(getInfoRequest),
 			new(updateProfileRequest),
+			new(uploadAvatarRequest),
 			new(listUsersRequest),
 			new(createUserRequest),
 			new(updateUserRequest),
@@ -109,7 +114,7 @@ func (g *getInfoRequest) Process(ctx *sgin.Context[*authContext]) (data any, err
 		return nil, authentication.ErrNotLogin
 	}
 	u, err := ctx.App.authSrv.UserById(userId)
-	return UserNoPassword{}.FromUser(u), err
+	return UserNoPasswordFromUser(u, ctx.App.storage), err
 }
 
 // updateProfileRequest allows a logged-in user to update their own profile
@@ -156,7 +161,84 @@ func (u *updateProfileRequest) Process(ctx *sgin.Context[*authContext]) (data an
 	if err := ctx.App.authSrv.UpdateUser(user); err != nil {
 		return nil, err
 	}
-	return UserNoPassword{}.FromUser(user), nil
+	return UserNoPasswordFromUser(user, ctx.App.storage), nil
+}
+
+type uploadAvatarRequest struct {
+	sgin.BaseAction
+	sgin.RequestNoParam
+	fileName    string
+	contentType string
+	content     []byte
+}
+
+func (u *uploadAvatarRequest) GetRoute() sgin.HttpRouteInfo {
+	return sgin.HttpRouteInfo{Method: http.MethodPost, Path: "/user/avatar"}
+}
+
+func (u *uploadAvatarRequest) Bind(ctx *sgin.Context[*authContext]) error {
+	if err := ctx.Request.ParseMultipartForm(6 << 20); err != nil {
+		return err
+	}
+	file, header, err := ctx.Request.FormFile("file")
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = file.Close()
+	}()
+	limited := &io.LimitedReader{R: file, N: 5 << 20}
+	content, err := io.ReadAll(limited)
+	if err != nil {
+		return err
+	}
+	if limited.N <= 0 {
+		return errcode.ParameterError.WithDetailStr("avatar too large")
+	}
+	detectedType := http.DetectContentType(content)
+	if !isAllowedAvatarType(detectedType) {
+		return errcode.ParameterError.WithDetailStr("unsupported avatar type")
+	}
+	u.fileName = header.Filename
+	u.contentType = detectedType
+	u.content = content
+	return nil
+}
+
+func (u *uploadAvatarRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
+	userId, ok := authentication.IsLoginInCtx(ctx)
+	if !ok {
+		return nil, authentication.ErrNotLogin
+	}
+	user, err := ctx.App.authSrv.UserById(userId)
+	if err != nil {
+		return nil, err
+	}
+	if ctx.App.storage == nil {
+		return nil, errcode.InternalError.WithDetailStr("storage service not available")
+	}
+	fileId, err := ctx.App.storage.Store(u.content, storage.FileMeta{
+		OriginalFilename: u.fileName,
+		ContentType:      u.contentType,
+		ContentLength:    int64(len(u.content)),
+	})
+	if err != nil {
+		return nil, err
+	}
+	user.Avatar = string(fileId)
+	if err := ctx.App.authSrv.UpdateUser(user); err != nil {
+		return nil, err
+	}
+	return UserNoPasswordFromUser(user, ctx.App.storage), nil
+}
+
+func isAllowedAvatarType(contentType string) bool {
+	switch contentType {
+	case "image/png", "image/jpeg", "image/gif", "image/webp":
+		return true
+	default:
+		return false
+	}
 }
 
 // listUsersRequest lists users (admin only)
@@ -184,7 +266,7 @@ func (l *listUsersRequest) Process(ctx *sgin.Context[*authContext]) (data any, e
 	}
 	users := make([]UserNoPassword, 0, len(result.Results))
 	for _, u := range result.Results {
-		users = append(users, UserNoPassword{}.FromUser(u))
+		users = append(users, UserNoPasswordFromUser(u, ctx.App.storage))
 	}
 	return model.PaginationResult[UserNoPassword]{
 		Offset:  result.Offset,
@@ -217,7 +299,7 @@ func (c *createUserRequest) Process(ctx *sgin.Context[*authContext]) (data any, 
 	if err != nil {
 		return nil, err
 	}
-	return UserNoPassword{}.FromUser(user), nil
+	return UserNoPasswordFromUser(user, ctx.App.storage), nil
 }
 
 // updateUserRequest allows admins to update another user's profile.
@@ -275,7 +357,7 @@ func (u *updateUserRequest) Process(ctx *sgin.Context[*authContext]) (data any, 
 	if err := ctx.App.authSrv.UpdateUser(user); err != nil {
 		return nil, err
 	}
-	return UserNoPassword{}.FromUser(user), nil
+	return UserNoPasswordFromUser(user, ctx.App.storage), nil
 }
 
 // deleteUserRequest handles deleting a user.

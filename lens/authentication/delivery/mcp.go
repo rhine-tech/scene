@@ -72,7 +72,7 @@ func (a *app) toolGetMyInfo() server.ServerTool {
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
-			return mcp.NewToolResultJSON(UserNoPassword{}.FromUser(user))
+			return mcp.NewToolResultJSON(UserNoPasswordFromUser(user, nil))
 		},
 	}
 }
