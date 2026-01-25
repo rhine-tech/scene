@@ -42,7 +42,7 @@ func (b *filterBuilder) buildLogicalFilter(db *gorm.DB, logicalOpt *sopt.Logical
 	}
 	if logicalOpt.Operator == sopt.OpAnd {
 		for _, f := range logicalOpt.Filters {
-			db = db.Where(b.buildOption(db, f))
+			db = b.buildOption(db, f)
 		}
 		return db
 	}
