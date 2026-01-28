@@ -2,6 +2,7 @@ package orm
 
 import (
 	"context"
+	"errors"
 	"github.com/rhine-tech/scene/model"
 	"github.com/rhine-tech/scene/model/query"
 	"gorm.io/gorm"
@@ -57,9 +58,9 @@ func (g *GormRepository[Model]) Delete(options ...query.Option) error {
 func (g *GormRepository[Model]) FindFirst(options ...query.Option) (data Model, found bool, err error) {
 	err = g.db.WithFieldMapper(g.fieldMapper).Build(options...).First(&data).Error
 	if err != nil {
-		//if errors.Is(err,gorm.ErrRecordNotFound) {
-		//	return data,false, err
-		//}
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return data, false, nil
+		}
 		return data, false, err
 	}
 	return data, true, nil

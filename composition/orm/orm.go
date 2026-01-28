@@ -18,6 +18,9 @@ type GenericRepository[Model any] interface {
 	Update(updates any, options ...query.Option) error
 	Upsert(data *Model, conflictKeys []query.Field, updateKeys []query.Field) error
 	Delete(options ...query.Option) error
+	// FindFirst find first record satisfy all condition.
+	// if found, found is true, err is nil. if not found, found is false, err is also nil
+	// err will only be error if something wrong when query
 	FindFirst(options ...query.Option) (data Model, found bool, err error)
 	Count(options ...query.Option) (count int64, err error)
 	List(offset, limit int64, options ...query.Option) (model.PaginationResult[Model], error)
