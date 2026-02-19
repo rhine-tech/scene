@@ -113,8 +113,10 @@ const Lens scene.ModuleName = "authentication"
 
 ### Error Handling
 
-- Service Layer can only return module-specific `errcode` errors. Always wrap repository errors before returning to delivery.
-- Service Layer **should** log every non-nil repository error (with enough context to troubleshoot), but it is not compulsory for trivial cases.
+- Service Layer can only return module-specific `errcode` errors.
+- Service Layer **must** log every non-nil error returned by repository/external dependencies, with enough business context for troubleshooting (query params, entity IDs, operation name).
+- Service Layer **must not** pass repository/driver/SQL/raw infrastructure error details to delivery/frontend (including `WithDetail(err)`-style passthrough).
+- Service Layer may return only business errors, and at most attach an abstract/safe reason string that does not expose schema/table/column/SQL/path internals.
 - Service Layer **must** propagate errors to delivery. Never swallow errors silently; if the use case recovers, log the discarded error explicitly.
 
 ### Additional rules
