@@ -14,7 +14,7 @@ func NewBasicAuth(srv authentication.IAuthenticationService) authentication.HTTP
 	return &basicAuth{srv: srv}
 }
 
-func (b *basicAuth) SrvImplName() scene.ImplName {
+func (b *basicAuth) ImplName() scene.ImplName {
 	return authentication.Lens.ImplName("HTTPLoginStatusVerifier", "basic")
 }
 
@@ -29,7 +29,7 @@ func (b *basicAuth) Verify(request *http.Request) (status authentication.LoginSt
 	}
 	return authentication.LoginStatus{
 		UserID:   uid,
-		Verifier: b.SrvImplName().Implementation,
+		Verifier: b.ImplName().Implementation,
 		Token:    "",
 		ExpireAt: -1,
 	}, nil
@@ -38,7 +38,7 @@ func (b *basicAuth) Verify(request *http.Request) (status authentication.LoginSt
 func (b *basicAuth) Login(userId string, resp http.ResponseWriter) (status authentication.LoginStatus, err error) {
 	return authentication.LoginStatus{
 		UserID:   userId,
-		Verifier: b.SrvImplName().Implementation,
+		Verifier: b.ImplName().Implementation,
 		Token:    "",
 		ExpireAt: -1,
 	}, nil

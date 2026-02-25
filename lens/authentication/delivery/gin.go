@@ -17,8 +17,8 @@ import (
 type authContext struct {
 	authSrv  authentication.IAuthenticationService                 `aperture:""`
 	tokenSrv scene.WithContext[authentication.IAccessTokenService] `aperture:"embed"`
-	lgStVrf  authentication.HTTPLoginStatusVerifier                `aperture:""`
 	storage  storage.IStorageService                               `aperture:""`
+	lgStVrf  authentication.HTTPLoginStatusVerifier
 }
 
 func hasUserManagePermission(ctx *sgin.Context[*authContext]) bool {

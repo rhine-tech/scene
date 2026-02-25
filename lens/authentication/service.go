@@ -35,7 +35,7 @@ type IAccessTokenService interface {
 }
 
 type HTTPLoginStatusVerifier interface {
-	scene.Service
+	scene.Named
 	Verify(request *http.Request) (status LoginStatus, err error)
 	Login(userId string, resp http.ResponseWriter) (status LoginStatus, err error)
 	Logout(resp http.ResponseWriter) (err error)

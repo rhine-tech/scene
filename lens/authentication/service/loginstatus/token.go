@@ -23,7 +23,7 @@ func NewTokenAuth(srv authentication.IAccessTokenService,
 	return &tokenAuth{srv: srv, headerKey: headerKey, queryKey: queryKey}
 }
 
-func (t *tokenAuth) SrvImplName() scene.ImplName {
+func (t *tokenAuth) ImplName() scene.ImplName {
 	return authentication.Lens.ImplName("HTTPLoginStatusVerifier", "access-token")
 }
 
@@ -65,7 +65,7 @@ func (t *tokenAuth) Verify(request *http.Request) (authentication.LoginStatus, e
 
 	return authentication.LoginStatus{
 		UserID:   uid,
-		Verifier: t.SrvImplName().Implementation,
+		Verifier: t.ImplName().Implementation,
 		Token:    tokenValue,
 		ExpireAt: -1, // Expiry can be managed by the token service transparently
 	}, nil
@@ -87,7 +87,7 @@ func (t *tokenAuth) Login(userId string, resp http.ResponseWriter) (authenticati
 
 	return authentication.LoginStatus{
 		UserID:   userId,
-		Verifier: t.SrvImplName().Implementation,
+		Verifier: t.ImplName().Implementation,
 		Token:    token.Token,
 		ExpireAt: -1,
 	}, nil
