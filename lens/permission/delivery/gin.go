@@ -39,8 +39,8 @@ func (g *ginApp) Create(engine *gin.Engine, router gin.IRouter) error {
 	router.GET("/myself/check", authMw.GinRequireAuth(), g.handleCheck)
 	router.GET("/myself/list", authMw.GinRequireAuth(), g.handleList)
 	router.GET("/list", g.handleAll)
-	router.GET("/manage/add", authMw.GinRequireAuth(), g.handleManageAdd)
-	router.GET("/manage/delete", authMw.GinRequireAuth(), g.handleManageDelete)
+	router.POST("/manage/add", authMw.GinRequireAuth(), g.handleManageAdd)
+	router.DELETE("/manage/delete", authMw.GinRequireAuth(), g.handleManageDelete)
 	router.GET("/manage/list", authMw.GinRequireAuth(), g.handleManageList)
 	return nil
 }
@@ -97,7 +97,7 @@ type managePermParam struct {
 func (g *ginApp) handleManageAdd(c *gin.Context) {
 	ctx := sgin.GetContext(c)
 	var param managePermParam
-	if err := c.ShouldBindQuery(&param); err != nil || param.Perm == "" {
+	if err := c.ShouldBind(&param); err != nil || param.Perm == "" {
 		c.JSON(http.StatusBadRequest, model.NewErrorCodeResponse(errcode.ParameterError.WithDetail(err)))
 		return
 	}
@@ -106,6 +106,7 @@ func (g *ginApp) handleManageAdd(c *gin.Context) {
 		return
 	}
 	if err := g.permSrv.AddPermission(param.Owner, param.Perm); err != nil {
+		_ = c.Error(err)
 		c.JSON(http.StatusOK, model.NewErrorCodeResponse(errcode.InternalError.WithDetail(err)))
 		return
 	}
@@ -115,7 +116,7 @@ func (g *ginApp) handleManageAdd(c *gin.Context) {
 func (g *ginApp) handleManageDelete(c *gin.Context) {
 	ctx := sgin.GetContext(c)
 	var param managePermParam
-	if err := c.ShouldBindQuery(&param); err != nil || param.Perm == "" {
+	if err := c.ShouldBind(&param); err != nil || param.Perm == "" {
 		c.JSON(http.StatusBadRequest, model.NewErrorCodeResponse(errcode.ParameterError.WithDetail(err)))
 		return
 	}
@@ -124,6 +125,7 @@ func (g *ginApp) handleManageDelete(c *gin.Context) {
 		return
 	}
 	if err := g.permSrv.RemovePermission(param.Owner, param.Perm); err != nil {
+		_ = c.Error(err)
 		c.JSON(http.StatusOK, model.NewErrorCodeResponse(errcode.InternalError.WithDetail(err)))
 		return
 	}

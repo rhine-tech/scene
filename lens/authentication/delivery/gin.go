@@ -63,13 +63,17 @@ func AuthGinApp(lgStVrf authentication.HTTPLoginStatusVerifier) sgin.GinApplicat
 // loginRequest handles user login with username and password.
 type loginRequest struct {
 	sgin.BaseAction
-	sgin.RequestQuery
+	sgin.RequestNoParam
 	Username string `json:"username" form:"username" binding:"required"`
 	Password string `json:"password" form:"password" binding:"required"`
 }
 
 func (l *loginRequest) GetRoute() sgin.HttpRouteInfo {
-	return sgin.HttpRouteInfo{Method: http.MethodGet, Path: "/login", Methods: sgin.HttpMethodGet | sgin.HttpMethodPost}
+	return sgin.HttpRouteInfo{Method: http.MethodPost, Path: "/login"}
+}
+
+func (l *loginRequest) Bind(ctx *sgin.Context[*authContext]) error {
+	return ctx.ShouldBind(l)
 }
 
 func (l *loginRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {

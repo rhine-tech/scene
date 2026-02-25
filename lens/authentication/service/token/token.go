@@ -11,6 +11,16 @@ import (
 	"time"
 )
 
+func maskSecretValue(raw string) string {
+	if raw == "" {
+		return ""
+	}
+	if len(raw) <= 8 {
+		return "***"
+	}
+	return raw[:4] + "..." + raw[len(raw)-4:]
+}
+
 // accessTokenService provides the implementation for IAccessTokenService.
 type accessTokenService struct {
 	logger    logger.ILogger                        `aperture:""`
@@ -67,7 +77,7 @@ func (s *accessTokenService) Create(userId, name string, expireAt int64) (authen
 		return authentication.AccessToken{}, err
 	}
 
-	s.logger.InfoW("successfully created access token", "userId", userId, "tokenId", createdToken.Token)
+	s.logger.InfoW("successfully created access token", "userId", userId, "tokenId", maskSecretValue(createdToken.Token))
 	return createdToken, nil
 }
 
@@ -99,15 +109,15 @@ func (s *accessTokenService) List(offset, limit int64) (model.PaginationResult[a
 
 // Delete removes a token, ensuring the user owns it first.
 func (s *accessTokenService) Delete(tokenValue string) error {
-	s.logger.InfoW("deleting token", "tokenValue", tokenValue)
+	s.logger.InfoW("deleting token", "tokenValue", maskSecretValue(tokenValue))
 
 	// Proceed with deletion
 	if err := s.tokenRepo.DeleteToken(tokenValue); err != nil {
-		s.logger.ErrorW("failed to delete token from repository", "tokenValue", tokenValue, "error", err)
+		s.logger.ErrorW("failed to delete token from repository", "tokenValue", maskSecretValue(tokenValue), "error", err)
 		return authentication.ErrInternalError.WrapIfNot(err)
 	}
 
-	s.logger.InfoW("successfully deleted token", "tokenValue", tokenValue)
+	s.logger.InfoW("successfully deleted token", "tokenValue", maskSecretValue(tokenValue))
 	return nil
 }
 
@@ -119,7 +129,7 @@ func (s *accessTokenService) Validate(tokenValue string) (userId string, valid b
 	if err != nil {
 		// If the token is not found in the repository
 		if errors.Is(err, authentication.ErrTokenNotFound) {
-			s.logger.DebugW("token not found", "token", tokenValue)
+			s.logger.DebugW("token not found", "token", maskSecretValue(tokenValue))
 			return "", false, authentication.ErrTokenNotFound
 		}
 		// For other repository errors
@@ -129,11 +139,11 @@ func (s *accessTokenService) Validate(tokenValue string) (userId string, valid b
 
 	// Check if the token is expired
 	if token.ExpireAt > 0 && time.Now().Unix() > token.ExpireAt {
-		s.logger.DebugW("token is expired", "token", tokenValue, "expireAt", token.ExpireAt)
+		s.logger.DebugW("token is expired", "token", maskSecretValue(tokenValue), "expireAt", token.ExpireAt)
 		return token.UserID, false, nil
 	}
 
-	s.logger.DebugW("token is valid", "token", tokenValue, "userId", token.UserID)
+	s.logger.DebugW("token is valid", "token", maskSecretValue(tokenValue), "userId", token.UserID)
 	return token.UserID, true, nil
 }
 
