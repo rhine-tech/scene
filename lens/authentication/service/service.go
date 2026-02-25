@@ -54,7 +54,7 @@ func (s *authenticationService) AddUser(username, password string) (authenticati
 	if err == nil {
 		return authentication.User{}, authentication.ErrUserAlreadyExists
 	}
-	if !errors.Is(err, authentication.ErrUserAlreadyExists) {
+	if !errors.Is(err, authentication.ErrUserNotFound) {
 		s.logger.ErrorW("failed to check user existence before adding", "username", username, "error", err)
 		return authentication.User{}, authentication.ErrFailToAddUser.Wrap(err)
 	}
