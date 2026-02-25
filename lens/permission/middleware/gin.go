@@ -15,10 +15,13 @@ func GinPermContextFromAuth(srv permission.PermissionService) gin.HandlerFunc {
 		ctx := sgin.GetContext(c)
 		permission.SetPermContext(ctx, "", srv)
 		actx, exist := scene.ContextFindValue[authentication.AuthContext](ctx)
+		// if not exists, auth context has not been set properly, so mark it as same as not login
+		// for not login, owner will always be empty.
 		if !exist || !actx.IsLogin() {
-			return
+			permission.SetPermContext(ctx, "", srv)
+		} else {
+			permission.SetPermContext(ctx, actx.UserID, srv)
 		}
-		permission.SetPermContext(ctx, actx.UserID, srv)
 		c.Next()
 	}
 }
