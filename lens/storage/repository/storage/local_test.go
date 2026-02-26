@@ -12,15 +12,15 @@ import (
 )
 
 func TestLocalStorage_HealthCheck(t *testing.T) {
-	storageApi := NewLocalStorage("default", "./")
+	storageApi := NewLocalStorage("default", "./", "")
 	require.NoError(t, storageApi.HealthCheck())
-	storageApi = NewLocalStorage("default", "./definitely-does-not-exist")
+	storageApi = NewLocalStorage("default", "./definitely-does-not-exist", "")
 	require.Error(t, storageApi.HealthCheck())
 }
 
 func TestLocalStorage_Simple(t *testing.T) {
 	require.NoError(t, os.MkdirAll("./data", 0755))
-	storageApi := NewLocalStorage("default", "./data")
+	storageApi := NewLocalStorage("default", "./data", "")
 	data := []byte("hello world")
 	err := storageApi.Store("local://test", bytes.NewBuffer(data))
 	require.NoError(t, err)
@@ -31,6 +31,7 @@ func TestLocalStorage_Simple(t *testing.T) {
 	var readed = make([]byte, len(data))
 	read, err := data2.Read(readed)
 	require.NoError(t, err)
+	require.NoError(t, data2.Close())
 	require.Equal(t, len(data), read)
 	require.Equal(t, data, readed)
 	data2, err = storageApi.LoadAll("local://aaa/test")
@@ -38,6 +39,7 @@ func TestLocalStorage_Simple(t *testing.T) {
 	readed = make([]byte, len(data))
 	read, err = data2.Read(readed)
 	require.NoError(t, err)
+	require.NoError(t, data2.Close())
 	require.Equal(t, len(data), read)
 	require.Equal(t, data, readed)
 	require.NoError(t, storageApi.Delete("local://test"))
@@ -47,7 +49,7 @@ func TestLocalStorage_Simple(t *testing.T) {
 
 func TestLocalStorage_Load(t *testing.T) {
 	require.NoError(t, os.MkdirAll("./data", 0755))
-	storageApi := NewLocalStorage("default", "./data")
+	storageApi := NewLocalStorage("default", "./data", "")
 
 	// Setup test data
 	content := []byte("the quick brown fox jumps over the lazy dog")
@@ -60,16 +62,13 @@ func TestLocalStorage_Load(t *testing.T) {
 	buf := make([]byte, 5)
 	n, err := reader.Read(buf)
 	require.NoError(t, err)
+	require.NoError(t, reader.Close())
 	require.Equal(t, 5, n)
 	require.Equal(t, []byte("brown"), buf)
 
 	// Offset beyond file length
 	reader, err = storageApi.Load(fileID, int64(len(content)+10), 5)
-	require.NoError(t, err)
-	buf = make([]byte, 5)
-	n, err = reader.Read(buf)
-	require.Equal(t, 0, n)
-	require.ErrorIs(t, err, io.EOF)
+	require.ErrorIs(t, err, storage.ErrInvalidOffset)
 
 	// negative offset
 	reader, err = storageApi.Load(fileID, -1, 5)
@@ -83,7 +82,7 @@ func TestLocalStorage_Load(t *testing.T) {
 func TestLocalStorage_MultipartUpload(t *testing.T) {
 	basePath := "./data"
 	require.NoError(t, os.MkdirAll(basePath, 0755))
-	storageApi := NewLocalStorage("default", basePath)
+	storageApi := NewLocalStorage("default", basePath, "")
 
 	// 1. Start multipart upload
 	fileID := storage.NewFileID("local.default", "multi/testfile")
@@ -113,6 +112,7 @@ func TestLocalStorage_MultipartUpload(t *testing.T) {
 	require.NoError(t, err)
 	finalContent, err := io.ReadAll(finalReader)
 	require.NoError(t, err)
+	require.NoError(t, finalReader.Close())
 	require.Equal(t, []byte("hello world!"), finalContent)
 
 	// 6. Check part files cleaned up (optional behavior)

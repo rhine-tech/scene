@@ -36,6 +36,19 @@ type localStorage struct {
 	uploadsLock sync.RWMutex
 }
 
+type sectionReadCloser struct {
+	reader io.Reader
+	closer io.Closer
+}
+
+func (s *sectionReadCloser) Read(p []byte) (int, error) {
+	return s.reader.Read(p)
+}
+
+func (s *sectionReadCloser) Close() error {
+	return s.closer.Close()
+}
+
 func (l *localStorage) ProviderName() string {
 	return "local." + l.name
 }
@@ -166,7 +179,7 @@ func (l *localStorage) Store(fileId storage.FileID, data io.Reader) (err error) 
 	return file.Close()
 }
 
-func (l *localStorage) Load(fileId storage.FileID, offset, length int64) (reader io.Reader, err error) {
+func (l *localStorage) Load(fileId storage.FileID, offset, length int64) (reader io.ReadCloser, err error) {
 	prefixs := l.cleanupPath(fileId)
 	if len(prefixs) == 0 {
 		return nil, storage.ErrStorageFailed
@@ -177,7 +190,7 @@ func (l *localStorage) Load(fileId storage.FileID, offset, length int64) (reader
 		return nil, storage.ErrInvalidOffset
 	}
 
-	// If length is non-positive, read till EOF
+	// local ranged load requires a positive length
 	if length <= 0 {
 		return nil, storage.ErrInvalidLength
 	}
@@ -190,18 +203,28 @@ func (l *localStorage) Load(fileId storage.FileID, offset, length int64) (reader
 		return nil, storage.ErrStorageError.WithDetail(err)
 	}
 
-	if offset > 0 {
-		_, err := file.Seek(offset, io.SeekStart)
-		if err != nil {
-			_ = file.Close()
-			return nil, storage.ErrStorageError.WithDetailStr("failed to seek in file")
-		}
+	stat, err := file.Stat()
+	if err != nil {
+		_ = file.Close()
+		return nil, storage.ErrStorageError.WithDetailStr("failed to stat file")
+	}
+	if offset > stat.Size() {
+		_ = file.Close()
+		return nil, storage.ErrInvalidOffset
+	}
+	maxLen := stat.Size() - offset
+	if length > maxLen {
+		length = maxLen
 	}
 
-	return io.LimitReader(file, length), nil
+	section := io.NewSectionReader(file, offset, length)
+	return &sectionReadCloser{
+		reader: section,
+		closer: file,
+	}, nil
 }
 
-func (l *localStorage) LoadAll(fileId storage.FileID) (reader io.Reader, err error) {
+func (l *localStorage) LoadAll(fileId storage.FileID) (reader io.ReadCloser, err error) {
 	prefixs := l.cleanupPath(fileId)
 	if len(prefixs) == 0 {
 		return nil, storage.ErrInvalidFileID

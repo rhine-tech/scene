@@ -139,9 +139,11 @@ func (s *StorageService) Load(fileId storage.FileID, offset, length int64) ([]by
 		s.log.ErrorW("failed to load file", "fileId", fileId, "err", err)
 		return nil, errcode.Must(err, storage.ErrFailToLoad)
 	}
-	if closer, ok := reader.(io.Closer); ok {
-		defer closer.Close()
-	}
+	defer func() {
+		if err := reader.Close(); err != nil {
+			s.log.ErrorW("failed to close load reader", "fileId", fileId, "err", err)
+		}
+	}()
 
 	data, err := io.ReadAll(reader)
 	if err != nil {
@@ -164,9 +166,11 @@ func (s *StorageService) LoadAll(fileId storage.FileID) ([]byte, error) {
 		s.log.ErrorW("failed to load file", "fileId", fileId, "err", err)
 		return nil, errcode.Must(err, storage.ErrFailToLoad)
 	}
-	if closer, ok := reader.(io.Closer); ok {
-		defer closer.Close()
-	}
+	defer func() {
+		if err := reader.Close(); err != nil {
+			s.log.ErrorW("failed to close load-all reader", "fileId", fileId, "err", err)
+		}
+	}()
 
 	data, err := io.ReadAll(reader)
 	if err != nil {

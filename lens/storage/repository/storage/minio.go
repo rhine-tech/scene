@@ -105,7 +105,7 @@ func (m *minioStorage) Store(fileId storage.FileID, data io.Reader) error {
 	return nil
 }
 
-func (m *minioStorage) Load(fileId storage.FileID, offset, length int64) (io.Reader, error) {
+func (m *minioStorage) Load(fileId storage.FileID, offset, length int64) (io.ReadCloser, error) {
 	opts := minio.GetObjectOptions{}
 	if offset > 0 || length > 0 {
 		err := opts.SetRange(offset, offset+length-1)
@@ -122,7 +122,7 @@ func (m *minioStorage) Load(fileId storage.FileID, offset, length int64) (io.Rea
 	return obj, nil
 }
 
-func (m *minioStorage) LoadAll(fileId storage.FileID) (io.Reader, error) {
+func (m *minioStorage) LoadAll(fileId storage.FileID) (io.ReadCloser, error) {
 	obj, err := m.client.GetObject(context.Background(), m.bucket, fileId.ID(), minio.GetObjectOptions{})
 	if err != nil {
 		return nil, storage.ErrFileNotFound.WithDetail(err)

@@ -1,9 +1,9 @@
 package storage
 
 import (
+	"github.com/google/uuid"
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/model"
-	"github.com/google/uuid"
 	"io"
 	"strings"
 	"time"
@@ -84,8 +84,8 @@ type IStorageProvider interface {
 	HealthCheck() error
 	// Meta will return any possible metadata can be found, as a fallback option if IFileMetaRepository failed
 	Meta(fileId FileID) (meta FileMeta, err error)
-	Load(fileId FileID, offset, length int64) (reader io.Reader, err error)
-	LoadAll(fileId FileID) (reader io.Reader, err error)
+	Load(fileId FileID, offset, length int64) (reader io.ReadCloser, err error)
+	LoadAll(fileId FileID) (reader io.ReadCloser, err error)
 	// Store will store the data in the storage at path and return the fileId,
 	// if path not exists, it will create the path.
 	Store(fileId FileID, data io.Reader) (err error)
