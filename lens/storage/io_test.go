@@ -140,51 +140,50 @@ func TestIoImpl_ReadAndSeekSemantics(t *testing.T) {
 	require.Error(t, err)
 }
 
-//
-//func TestIoImpl_ReadAheadCacheBehavior(t *testing.T) {
-//	data := make([]byte, defaultReadAheadSize+32)
-//	for i := range data {
-//		data[i] = byte(i % 251)
-//	}
-//	svc := &testStorageService{data: data}
-//
-//	iFace, _, err := NewIoInterface(svc, NewFileID("local.test", "big"))
-//	require.NoError(t, err)
-//
-//	r, ok := iFace.(*ioImpl)
-//	require.True(t, ok)
-//	_ = r
-//
-//	one := make([]byte, 1)
-//
-//	n, err := iFace.Read(one)
-//	require.NoError(t, err)
-//	require.Equal(t, 1, n)
-//	require.Equal(t, data[0], one[0])
-//	require.Len(t, svc.loadCalls, 1)
-//	require.Equal(t, int64(0), svc.loadCalls[0].offset)
-//	require.Equal(t, defaultReadAheadSize, svc.loadCalls[0].length)
-//
-//	n, err = iFace.Read(one)
-//	require.NoError(t, err)
-//	require.Equal(t, 1, n)
-//	require.Equal(t, data[1], one[0])
-//	require.Len(t, svc.loadCalls, 1)
-//
-//	_, err = iFace.Seek(128, io.SeekStart)
-//	require.NoError(t, err)
-//	n, err = iFace.Read(one)
-//	require.NoError(t, err)
-//	require.Equal(t, 1, n)
-//	require.Equal(t, data[128], one[0])
-//	require.Len(t, svc.loadCalls, 1)
-//
-//	_, err = iFace.Seek(defaultReadAheadSize, io.SeekStart)
-//	require.NoError(t, err)
-//	n, err = iFace.Read(one)
-//	require.NoError(t, err)
-//	require.Equal(t, 1, n)
-//	require.Equal(t, data[defaultReadAheadSize], one[0])
-//	require.Len(t, svc.loadCalls, 2)
-//	require.Equal(t, defaultReadAheadSize, svc.loadCalls[1].offset)
-//}
+func TestIoImpl_ReadAheadCacheBehavior(t *testing.T) {
+	data := make([]byte, defaultReadAheadSize+32)
+	for i := range data {
+		data[i] = byte(i % 251)
+	}
+	svc := &testStorageService{data: data}
+
+	iFace, _, err := NewIoInterface(svc, NewFileID("local.test", "big"))
+	require.NoError(t, err)
+
+	r, ok := iFace.(*ioImpl)
+	require.True(t, ok)
+	_ = r
+
+	one := make([]byte, 1)
+
+	n, err := iFace.Read(one)
+	require.NoError(t, err)
+	require.Equal(t, 1, n)
+	require.Equal(t, data[0], one[0])
+	require.Len(t, svc.loadCalls, 1)
+	require.Equal(t, int64(0), svc.loadCalls[0].offset)
+	require.Equal(t, defaultReadAheadSize, svc.loadCalls[0].length)
+
+	n, err = iFace.Read(one)
+	require.NoError(t, err)
+	require.Equal(t, 1, n)
+	require.Equal(t, data[1], one[0])
+	require.Len(t, svc.loadCalls, 1)
+
+	_, err = iFace.Seek(128, io.SeekStart)
+	require.NoError(t, err)
+	n, err = iFace.Read(one)
+	require.NoError(t, err)
+	require.Equal(t, 1, n)
+	require.Equal(t, data[128], one[0])
+	require.Len(t, svc.loadCalls, 1)
+
+	_, err = iFace.Seek(defaultReadAheadSize, io.SeekStart)
+	require.NoError(t, err)
+	n, err = iFace.Read(one)
+	require.NoError(t, err)
+	require.Equal(t, 1, n)
+	require.Equal(t, data[defaultReadAheadSize], one[0])
+	require.Len(t, svc.loadCalls, 2)
+	require.Equal(t, defaultReadAheadSize, svc.loadCalls[1].offset)
+}
