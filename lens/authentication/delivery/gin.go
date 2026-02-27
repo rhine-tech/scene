@@ -395,7 +395,7 @@ func (d *deleteUserRequest) Process(ctx *sgin.Context[*authContext]) (data any, 
 // This route MUST be protected by authentication middleware.
 type createTokenRequest struct {
 	sgin.BaseAction
-	sgin.RequestQuery
+	sgin.RequestJson
 	Name     string `json:"name" form:"name" binding:"required"`
 	UserID   string `json:"user_id" form:"user_id" binding:"required"`
 	ExpireAt int64  `json:"expire_at" form:"expire_at,default=-1"` // Unix timestamp, 0 for no expiration
