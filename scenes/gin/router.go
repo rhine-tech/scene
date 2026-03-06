@@ -18,11 +18,12 @@ func (a *BaseAction) Middleware() gin.HandlersChain {
 }
 
 type AppRouter[T any] struct {
-	app    T
-	router gin.IRouter
+	app         T
+	router      gin.IRouter
+	middlewares gin.HandlersChain
 }
 
-func NewAppRouter[T any](app T, router gin.IRouter) *AppRouter[T] {
+func NewAppRouter[T any](app T, router gin.IRouter, middlewares gin.HandlersChain) *AppRouter[T] {
 	return &AppRouter[T]{app: app, router: router}
 }
 
@@ -32,7 +33,7 @@ func (r *AppRouter[T]) Router() gin.IRouter {
 
 func (r *AppRouter[T]) HandleAction(action Action[T]) {
 	routeInfo := action.GetRoute()
-	chain := MiddlewareChain(action.Middleware()...)
+	chain := MiddlewareChain(append(r.middlewares, action.Middleware()...)...)
 	methods := routeInfo.Methods | HttpMethod(routeInfo.Method)
 	if methods == 0 {
 		panic("invalid method")

@@ -16,10 +16,11 @@ type GinApplication interface {
 }
 
 type AppRoutes[T any] struct {
-	AppName  scene.ImplName
-	BasePath string
-	Actions  []Action[*T]
-	Context  T
+	AppName     scene.ImplName
+	BasePath    string
+	Actions     []Action[*T]
+	Context     T
+	Middlewares gin.HandlersChain
 }
 
 func (a *AppRoutes[T]) Name() scene.ImplName {
@@ -32,7 +33,7 @@ func (a *AppRoutes[T]) Prefix() string {
 
 func (a *AppRoutes[T]) Create(engine *gin.Engine, router gin.IRouter) error {
 	registry.Inject(&a.Context)
-	approuter := NewAppRouter(&a.Context, router)
+	approuter := NewAppRouter(&a.Context, router, a.Middlewares)
 	approuter.HandleActions(a.Actions...)
 	return nil
 }
