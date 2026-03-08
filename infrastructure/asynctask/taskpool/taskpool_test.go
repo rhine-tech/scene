@@ -1,9 +1,10 @@
-package repository
+package taskpool
 
 import (
-	"github.com/rhine-tech/scene/infrastructure/asynctask"
 	"sync"
 	"testing"
+
+	"github.com/rhine-tech/scene/infrastructure/asynctask"
 )
 
 func testTaskDispatcher(tp asynctask.TaskDispatcher) {

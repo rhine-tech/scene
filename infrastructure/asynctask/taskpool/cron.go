@@ -1,11 +1,12 @@
-package repository
+package taskpool
 
 import (
+	"sync"
+
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/asynctask"
 	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/robfig/cron/v3"
-	"sync"
 )
 
 type internalTask struct {

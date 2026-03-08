@@ -2,7 +2,7 @@
 
 **An implementation of TaskDispatcher**
 
-The tuna package is designed to efficiently manage the execution of asynchronous tasks. 
+The tuna package is designed to efficiently manage the execution of asynchronous tasks.
 
 It consists of a task dispatcher and a Thunnus type that manages concurrent workers for executing tasks.
 

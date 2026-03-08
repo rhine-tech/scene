@@ -1,15 +1,13 @@
 package asynctask
 
 import (
-	"context"
-	"github.com/google/uuid"
-	"github.com/rhine-tech/scene"
 	"math"
 	"sync/atomic"
 	"time"
-)
 
-const Lens scene.InfraName = "asynctask"
+	"github.com/google/uuid"
+	"github.com/rhine-tech/scene"
+)
 
 const DefaultMaxPoolSize = math.MaxInt32
 const DefaultInitialPoolSize = 1024
@@ -87,31 +85,4 @@ type CronTaskDispatcher interface {
 	// GetTask will return the underlying task, not copy of the task info.
 	// which means user can modify TaskFunc if they need
 	GetTask(id string) (*CronTask, error)
-}
-
-// LongRunningTaskFunc is a function which handle long-running task,
-// this function must return when context is done
-type LongRunningTaskFunc func(ctx context.Context) error
-
-type LongRunningTask struct {
-	Name        string
-	Description string
-	Func        LongRunningTaskFunc
-}
-
-// Identifier is the unique identifier getter, if this LongRunningTask already
-// set a name. the name will be the identifier
-func (t *LongRunningTask) Identifier() string {
-	if t.Name != "" {
-		return t.Name
-	}
-	t.Name = uuid.New().String()
-	return t.Name
-}
-
-type LongRunningTaskDispatcher interface {
-	scene.Named
-	Run(taskFunc LongRunningTaskFunc) (task *LongRunningTask, err error)
-	//RunWithName(name string, taskFunc LongRunningTaskFunc) (task *LongRunningTask, err error)
-	Cancel(id string) error
 }

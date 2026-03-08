@@ -45,24 +45,20 @@ func (t *Thunnus) Stop() {
 	t.Resize(0)
 }
 
-// Resize reference to https://github.com/Jeffail/tunny/blob/master/tunny.go#L266
 func (t *Thunnus) Resize(n int) {
 	cnt := len(t.tunas)
 	if cnt == n {
 		return
 	}
 
-	// Add extra workers if N > len(workers)
 	for i := cnt; i < n; i++ {
 		t.tunas = append(t.tunas, newTuna(t.taskChan))
 	}
 
-	// Asynchronously stop all workers > N
 	for i := n; i < cnt; i++ {
 		t.tunas[i].stop()
 	}
 
-	// Synchronously wait for all workers > N to stop
 	for i := n; i < cnt; i++ {
 		t.tunas[i].join()
 		t.tunas[i] = nil

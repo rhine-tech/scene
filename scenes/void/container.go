@@ -12,7 +12,8 @@ type voidContainer struct {
 	log  logger.ILogger
 }
 
-// NewVoidContainer create a void container
+// NewVoidContainer creates a container for background-style delivery apps.
+// Void apps should start background work in Run and return quickly.
 func NewVoidContainer(
 	apps []VoidApp,
 	opts ...VoidOption) scene.Scene {
@@ -36,11 +37,15 @@ func (a *voidContainer) Start() error {
 	return nil
 }
 
+// Stop forwards the shutdown context to all apps and returns the first stop error.
 func (a *voidContainer) Stop(ctx context.Context) error {
+	var stopErr error
 	for _, app := range a.apps {
-		_ = app.Stop()
+		if err := app.Stop(ctx); err != nil && stopErr == nil {
+			stopErr = err
+		}
 	}
-	return nil
+	return stopErr
 }
 
 func (a *voidContainer) ListAppNames() []string {
