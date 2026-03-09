@@ -2,12 +2,13 @@ package gin
 
 import (
 	"fmt"
+	"time"
+
 	ginCors "github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/rhine-tech/scene/registry"
-	"time"
 )
 
 type GinOption func(engine *gin.Engine) error
@@ -27,7 +28,7 @@ func _ginLogger(log logger.ILogger) gin.HandlerFunc {
 			c.Errors.ByType(gin.ErrorTypePrivate).Errors(),
 			latency.Milliseconds())
 
-		log.Info(msg)
+		log.Debug(msg)
 	}
 }
 
