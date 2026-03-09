@@ -55,8 +55,6 @@ const Lens scene.ModuleName = "authentication"
    - Place concrete services inside `service/`. Wire dependencies through struct fields tagged with ``` `aperture:""` ``` to let the DI container inject them.
    - Services orchestrate repositories and domain objects. Push domain invariants back to entities/value objects to keep services thin.
    - Convert every error to your module’s `errcode` before returning to delivery. Wrap external errors with helpers such as `ErrInternalError.WrapIfNot(err)` so callers always receive typed errors.
-   - Use `logger.ILogger` and override its prefix in `Setup()` using `SrvImplName().Identifier()` to make logs searchable.
-   - If a service needs request context (scene.Context), expose a `WithSceneContext` helper similar to `token.CtxProxy`.
 
 5. **Deliver the use cases**
    - Under `delivery/`, add adapters per scene (`delivery/gin`, `delivery/arpc`, `delivery/middleware`, etc.). Each adapter composes actions or handlers that call services.
