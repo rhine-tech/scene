@@ -76,10 +76,39 @@ const Lens scene.ModuleName = "authentication"
 
 ## Domain Layer Guidelines
 
-- Favor value objects/methods on entities to enforce invariants instead of spreading conditionals across services.
+- Favor rich domain models (entities/value objects/domain helpers) to enforce invariants and pure business rules instead of spreading conditionals across services.
+- Prefer a rich domain model when the logic is stable, reusable, and does not depend on infrastructure. An anemic model also works for simple CRUD-style modules or transitional refactors, but do not let that become an excuse to leak business rules into delivery.
 - Keep structs JSON/BSON/GORM tags in sync to simplify reuse across transports/persistence.
 - When storing timestamps or enumerations, use strongly typed aliases or helper methods to avoid magic numbers in services.
 - Offer helper APIs (e.g. `IsLoginInCtx`) for common cross-module queries.
+- Good candidates for root-layer/domain helpers:
+  - normalization rules (`NormalizeArtists`)
+  - model-to-domain conversion (`MediaInfoCache.ToMediaInfo`)
+  - deterministic selection logic (`PickMediaURL`, cache quality selection)
+  - matching/resolution helpers that do not call repositories or external systems
+
+## Responsibility Boundaries
+
+- Put **pure rules** in the module root/domain layer:
+  - no repository access
+  - no HTTP/RPC context
+  - no queue/task dispatch
+  - deterministic input -> output logic
+- Put **use case orchestration** in the service layer:
+  - cache-first / fallback flows
+  - cross-repository coordination
+  - async task triggering
+  - external provider calls
+- Put **transport adaptation** in delivery:
+  - request binding/validation
+  - HTTP/RPC status and response formatting
+  - middleware integration
+- Delivery must not decide business workflows such as:
+  - cache hit/miss policy
+  - fallback order
+  - enqueue/warmup timing
+  - model reconstruction from persistence structs
+- If a handler starts combining multiple service/cache calls to implement one business flow, that is usually a signal to move the orchestration into service and keep only pure conversion helpers in the root layer.
 
 ## Repository Layer Design Principle
 
@@ -106,8 +135,9 @@ const Lens scene.ModuleName = "authentication"
 ### Responsibilities
 
 - Service Layer orchestrates business use cases. It coordinates repositories, domain logic, and other services through interfaces.
-- Model-related invariants should live on the entities/value objects. Services focus on application workflows (e.g. validation, orchestration, cross-aggregate operations).
+- Model-related invariants and pure selection/normalization rules should live on entities/value objects/domain helpers. Services focus on application workflows (e.g. validation, orchestration, cross-aggregate operations).
 - Services may call other modules but must do so via interfaces registered in the `registry` to avoid tight coupling.
+- When a service interface is exposed to other modules or RPC adapters, prefer methods that represent stable business capabilities instead of implementation details. For example, expose `ResolveMediaInfo(...)` rather than raw internal scheduling operations like `Enqueue...` unless background warmup is itself a business capability.
 
 ### Error Handling
 
@@ -120,8 +150,13 @@ const Lens scene.ModuleName = "authentication"
 ### Additional rules
 
 - Implement `Setup()` to finalize dependencies (e.g. prefixing loggers, validating configuration).
+- If the application entrypoint has registered `logger.LoggerAddPrefix()`, injected loggers already receive the implementation name automatically. In that case, do not manually call `WithPrefix(...)` again in `Setup()` unless you intentionally want an additional sub-prefix. If the hook is not enabled, explicitly add a prefix in `Setup()` for every `scene.Service` / `scene.Named` implementation that owns logs.
 - When services are context-aware, expose lightweight proxies (`WithSceneContext`) instead of letting delivery mutate the service directly.
 - Prefer constructor functions for services/repositories instead of exporting structs directly. This keeps dependency wiring explicit and testable.
+- A service may expose both:
+  - cache-management methods returning raw cache records
+  - resolve/use-case methods returning consumer-facing domain results
+  as long as the naming clearly separates the two levels (`GetMediaInfoCache` vs `ResolveMediaInfo`).
 
 ## Delivery Layer Guidelines
 
@@ -130,6 +165,67 @@ const Lens scene.ModuleName = "authentication"
 - Validate inputs at the boundary using binding tags or explicit validators. Only pass clean, typed values into services.
 - Map service errors to transport responses centrally (middleware or engine-level handler) so handlers can simply return the error.
 - Delivery can set `scene.Context` values (user, locale, tracing) that downstream services access via helpers in the domain layer.
+- Delivery should prefer one service call per business action. If a handler needs to:
+  - check cache
+  - fall back to upstream
+  - enqueue background tasks
+  - rebuild domain objects from cache structs
+  then that logic belongs in service/root helpers rather than in the handler itself.
+
+## Refactoring Heuristics
+
+- When refactoring a fat handler:
+  1. Move pure normalization/selection/conversion logic into the module root.
+  2. Move cache-first/fallback/enqueue workflows into the service layer.
+  3. Leave only binding and response shaping in delivery.
+- Before adding a new service, ask whether the logic is:
+  - a new reusable business capability
+  - or just a few pure helpers plus existing service orchestration
+- Do not create a new service only to host pure deterministic helpers. Keep those in the module root unless they need infrastructure access.
+
+## Delivery Strategy
+
+- Follow the sequence: **make it work, make it right, make it fast**.
+
+### Make It Work
+
+- First make the feature usable and safe enough to run:
+  - it works end-to-end
+  - it does not obviously crash
+  - it does not create obviously broken state transitions
+  - it still keeps the most basic layering
+- At this stage, temporary compromises are acceptable, for example:
+  - delivery contains too much orchestration logic
+  - pure helper logic is duplicated in one or two places
+  - domain behavior has not been fully extracted yet
+- Even in this stage, the following are not acceptable:
+  - silent data corruption
+  - obvious security holes
+  - swallowed important errors without logging
+  - mixing transport concerns so deeply into lower layers that later cleanup becomes hard
+
+### Make It Right
+
+- Next align the code with this project’s DDD / Clean Architecture variant:
+  - responsibility boundaries are explicit
+  - delivery is thin
+  - pure rules live in the module root/domain layer
+  - orchestration lives in services
+  - infrastructure details stay in repository/infrastructure layers
+  - easy to maintain in the future
+- This is the stage where temporary shortcuts from “make it work” should be paid back.
+- If code works but the boundary is wrong, the work is still incomplete.
+
+### Make It Fast
+
+- Optimize only after correctness and responsibility boundaries are clear.
+- Improve concrete bottlenecks such as:
+  - repeated queries
+  - unnecessary allocations or full-buffer reads
+  - slow cache hit paths
+  - expensive network/storage calls
+- Do not trade away correctness or architectural clarity just to gain speed.
+- A fast but boundary-breaking solution should usually be rejected or explicitly isolated and documented.
 
 ## Factories, DI, and cross-module access
 
