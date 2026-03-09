@@ -11,6 +11,7 @@ var UseLazyInject = false
 
 const InjectTag = "aperture"
 const EmbedValue = "embed"
+const OptionalValue = "optional"
 
 func inject[T any](indirectVal reflect.Value) {
 	if indirectVal.Kind() != reflect.Struct {
@@ -29,7 +30,13 @@ func inject[T any](indirectVal reflect.Value) {
 					tagValue = field.Type.String()
 				}
 				instance, exists := singletonRegistry[tagValue]
+				// if not exists, we have to check if this field is optional or not
 				if !exists {
+					// if this inject is optional, continue without panic
+					if tagValue == OptionalValue {
+						continue
+					}
+					// default should panic if optional tag is not specified.
 					panic("scene registry: no instance found for " + tagValue + " when injecting " + field.Name)
 				}
 
