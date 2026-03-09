@@ -2,17 +2,17 @@ package datasources
 
 import (
 	"context"
+
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/datasource"
 	"github.com/rhine-tech/scene/infrastructure/logger"
-	"github.com/rhine-tech/scene/model"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 type MongoRepo struct {
-	cfg           model.DatabaseConfig
+	cfg           datasource.DatabaseConfig
 	client        *mongo.Client
 	err           error
 	db            *mongo.Database
@@ -22,7 +22,7 @@ type MongoRepo struct {
 
 var _ datasource.MongoDataSource = (*MongoRepo)(nil)
 
-func NewMongoDataSource(cfg model.DatabaseConfig, useApiVersion bool) datasource.MongoDataSource {
+func NewMongoDataSource(cfg datasource.DatabaseConfig, useApiVersion bool) datasource.MongoDataSource {
 	repo := &MongoRepo{cfg: cfg, useApiVersion: useApiVersion}
 	return repo
 }

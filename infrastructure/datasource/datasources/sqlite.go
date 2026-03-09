@@ -3,22 +3,21 @@ package datasources
 import (
 	"database/sql"
 	"errors"
+
+	_ "github.com/glebarez/go-sqlite"
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/datasource"
 	"github.com/rhine-tech/scene/infrastructure/logger"
-	"github.com/rhine-tech/scene/model"
-
-	_ "github.com/glebarez/go-sqlite"
 )
 
 type sqliteImpl struct {
 	db  *sql.DB
 	err error
-	cfg model.DatabaseConfig
+	cfg datasource.DatabaseConfig
 	log logger.ILogger `aperture:""`
 }
 
-func SqliteDatasource(cfg model.DatabaseConfig) datasource.SqliteDataSource {
+func SqliteDatasource(cfg datasource.DatabaseConfig) datasource.SqliteDataSource {
 	return &sqliteImpl{
 		cfg: cfg,
 	}

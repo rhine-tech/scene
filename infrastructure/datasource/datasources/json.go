@@ -1,25 +1,25 @@
 package datasources
 
 import (
+	"os"
+
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/datasource"
 	"github.com/rhine-tech/scene/infrastructure/logger"
-	"github.com/rhine-tech/scene/model"
-	"os"
 )
 
 type JsonRepo struct {
-	cfg  model.FileConfig
+	cfg  datasource.FileConfig
 	data []byte
 	log  logger.ILogger `aperture:""`
 }
 
-func NewJsonDataSource(cfg model.FileConfig) datasource.JsonDataSource {
+func NewJsonDataSource(cfg datasource.FileConfig) datasource.JsonDataSource {
 	return &JsonRepo{cfg: cfg}
 }
 
 func NewJsonDataSourceFromPath(path string) datasource.JsonDataSource {
-	return NewJsonDataSource(model.FileConfig{Path: path})
+	return NewJsonDataSource(datasource.FileConfig{Path: path})
 }
 
 func (j *JsonRepo) Dispose() error {

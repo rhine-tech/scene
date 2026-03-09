@@ -6,7 +6,7 @@ import (
 	queueimpl "github.com/rhine-tech/scene/infrastructure/asynctask/queue"
 	"github.com/rhine-tech/scene/infrastructure/asynctask/queue/rabbitmq"
 	"github.com/rhine-tech/scene/infrastructure/asynctask/queue/redisstream"
-	"github.com/rhine-tech/scene/model"
+	"github.com/rhine-tech/scene/infrastructure/datasource"
 	"github.com/rhine-tech/scene/registry"
 )
 
@@ -63,7 +63,7 @@ func (b RedisStream) Init() scene.LensInit {
 func (b RedisStream) Default() RedisStream {
 	return RedisStream{
 		Config: redisstream.Config{
-			Redis: model.DatabaseConfig{
+			Redis: datasource.DatabaseConfig{
 				Host:     registry.Config.GetString("redis.host"),
 				Port:     int(registry.Config.GetInt("redis.port")),
 				Username: registry.Config.GetString("redis.username"),

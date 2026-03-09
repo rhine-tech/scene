@@ -5,22 +5,22 @@ import (
 	"encoding"
 	"encoding/json"
 	"fmt"
+	"time"
+
 	"github.com/redis/go-redis/v9"
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/datasource"
 	"github.com/rhine-tech/scene/infrastructure/logger"
-	"github.com/rhine-tech/scene/model"
 	"github.com/spf13/cast"
-	"time"
 )
 
 type RedisDataRepo struct {
-	cfg model.DatabaseConfig
+	cfg datasource.DatabaseConfig
 	rdb *redis.Client
 	log logger.ILogger `aperture:""`
 }
 
-func NewRedisDataRepo(cfg model.DatabaseConfig) datasource.RedisDataSource {
+func NewRedisDataRepo(cfg datasource.DatabaseConfig) datasource.RedisDataSource {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
 		Password: cfg.Password,

@@ -14,7 +14,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/asynctask"
-	"github.com/rhine-tech/scene/model"
+	"github.com/rhine-tech/scene/infrastructure/datasource"
 	"github.com/spf13/cast"
 )
 
@@ -27,7 +27,7 @@ const (
 )
 
 type Config struct {
-	Redis        model.DatabaseConfig
+	Redis        datasource.DatabaseConfig
 	StreamPrefix string
 	GroupPrefix  string
 	Block        time.Duration

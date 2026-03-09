@@ -1,4 +1,4 @@
-package model
+package datasource
 
 import (
 	"fmt"

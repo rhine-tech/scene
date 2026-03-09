@@ -2,22 +2,21 @@ package datasources
 
 import (
 	"database/sql"
+
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/datasource"
 	"github.com/rhine-tech/scene/infrastructure/logger"
-	"github.com/rhine-tech/scene/model"
-
-	_ "github.com/go-sql-driver/mysql"
 )
 
 type MysqlRepo struct {
 	db  *sql.DB
-	cfg model.DatabaseConfig
+	cfg datasource.DatabaseConfig
 	err error
 	log logger.ILogger `aperture:""`
 }
 
-func NewMysqlDatasource(cfg model.DatabaseConfig) datasource.MysqlDataSource {
+func NewMysqlDatasource(cfg datasource.DatabaseConfig) datasource.MysqlDataSource {
 	return &MysqlRepo{
 		cfg: cfg,
 	}

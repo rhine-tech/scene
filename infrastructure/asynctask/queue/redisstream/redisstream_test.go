@@ -7,13 +7,13 @@ import (
 	"time"
 
 	"github.com/rhine-tech/scene/infrastructure/asynctask"
-	"github.com/rhine-tech/scene/model"
+	"github.com/rhine-tech/scene/infrastructure/datasource"
 )
 
 func newTestQueue(t *testing.T) *Queue {
 	t.Helper()
 	queue := New(Config{
-		Redis: model.DatabaseConfig{
+		Redis: datasource.DatabaseConfig{
 			Host:     "127.0.0.1",
 			Port:     6379,
 			Database: "15",

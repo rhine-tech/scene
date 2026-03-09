@@ -4,13 +4,12 @@ import (
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/datasource"
 	"github.com/rhine-tech/scene/infrastructure/datasource/datasources"
-	"github.com/rhine-tech/scene/model"
 	"github.com/rhine-tech/scene/registry"
 )
 
 type MongoDB struct {
 	scene.ModuleFactory
-	Config    model.DatabaseConfig
+	Config    datasource.DatabaseConfig
 	UseApiVer bool
 }
 
@@ -23,7 +22,7 @@ func (m MongoDB) Init() scene.LensInit {
 
 func (m MongoDB) Default() MongoDB {
 	return MongoDB{
-		Config: model.DatabaseConfig{
+		Config: datasource.DatabaseConfig{
 			Host:     registry.Config.GetString("mongodb.host"),
 			Port:     int(registry.Config.GetInt("mongodb.port")),
 			Username: registry.Config.GetString("mongodb.username"),
