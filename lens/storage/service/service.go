@@ -5,14 +5,17 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"errors"
+	"io"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/google/uuid"
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/errcode"
 	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/rhine-tech/scene/lens/storage"
 	"github.com/rhine-tech/scene/model"
-	"io"
-	"sync"
-	"time"
 )
 
 // StorageService implements IStorageService.
@@ -72,21 +75,20 @@ func (s *StorageService) ListProviders() []string {
 
 // Store stores data using the default provider.
 func (s *StorageService) Store(data []byte, meta storage.FileMeta) (fileId storage.FileID, err error) {
-	return s.StoreAt(s.defaultProvider, data, meta)
+	return s.StoreAt("", "", data, meta)
 }
 
 // StoreAt stores data at a specific path and provider.
-func (s *StorageService) StoreAt(provider string, data []byte, meta storage.FileMeta) (fileId storage.FileID, err error) {
-	if provider == "" {
-		provider = s.defaultProvider
+func (s *StorageService) StoreAt(provider, identifier string, data []byte, meta storage.FileMeta) (fileId storage.FileID, err error) {
+	fileId, err = s.resolveFileID(provider, identifier)
+	if err != nil {
+		return "", err
 	}
 	storageProvider, exists := s.providers[provider]
 	if !exists {
 		return "", storage.ErrStorageNotFound
 	}
 	md5Sum := md5.Sum(data)
-	fileKey := randString(4) + hex.EncodeToString(md5Sum[:])
-	fileId = storage.NewFileID(provider, fileKey)
 	err = storageProvider.Store(fileId, io.NopCloser(bytes.NewReader(data)))
 	if err != nil {
 		s.log.ErrorW("failed to store file", "fileId", fileId, "err", err)
@@ -94,7 +96,7 @@ func (s *StorageService) StoreAt(provider string, data []byte, meta storage.File
 	}
 	meta.Finished = true
 	meta.FileID = fileId
-	meta.Provider = provider
+	meta.Provider = fileId.Provider()
 	meta.Identifier = fileId.ID()
 	meta.FillMissing()
 	meta.Md5Checksum = hex.EncodeToString(md5Sum[:])
@@ -199,22 +201,26 @@ func (s *StorageService) Delete(fileId storage.FileID) error {
 	return nil
 }
 
-func (s *StorageService) InitMultipartStore(fileId storage.FileID, meta storage.FileMeta) (string, error) {
+func (s *StorageService) InitMultipartStore(provider, identifier string, meta storage.FileMeta) (storage.FileID, string, error) {
+	fileId, err := s.resolveFileID(provider, identifier)
+	if err != nil {
+		return "", "", err
+	}
 	pvd, ok := s.providers[fileId.Provider()]
 	if !ok {
-		return "", storage.ErrStorageNotFound
+		return "", "", storage.ErrStorageNotFound
 	}
-	_, err := s.metaRepo.Load(fileId)
+	_, err = s.metaRepo.Load(fileId)
 	if err == nil {
-		return "", storage.ErrFileIDExists
+		return "", "", storage.ErrFileIDExists
 	}
 	if !errors.Is(err, storage.ErrMetaNotFound) {
-		return "", err
+		return "", "", err
 	}
 	uploadId, err := pvd.InitMultipartStore(fileId)
 	if err != nil {
 		s.log.ErrorW("failed to initiate multipart upload", "fileId", fileId, "err", err)
-		return "", storage.ErrInitPartUploadFailed.WrapIfNot(err)
+		return "", "", storage.ErrInitPartUploadFailed.WrapIfNot(err)
 	}
 	err = s.uploadSessions.Save(uploadId, storage.UploadSession{
 		FileID:  fileId,
@@ -225,7 +231,7 @@ func (s *StorageService) InitMultipartStore(fileId storage.FileID, meta storage.
 		if err2 != nil {
 			s.log.ErrorW("failed to abort multipart upload", "fileId", fileId, "err", err2)
 		}
-		return "", err
+		return "", "", err
 	}
 	meta.Finished = false
 	meta.FileID = fileId
@@ -240,9 +246,9 @@ func (s *StorageService) InitMultipartStore(fileId storage.FileID, meta storage.
 		if err2 != nil {
 			s.log.ErrorW("failed to abort multipart upload", "fileId", fileId, "err", err2)
 		}
-		return "", storage.ErrInitPartUploadFailed.WrapIfNot(err)
+		return "", "", storage.ErrInitPartUploadFailed.WrapIfNot(err)
 	}
-	return uploadId, nil
+	return fileId, uploadId, nil
 }
 
 func (s *StorageService) StorePart(uploadId string, partNumber int, data []byte) error {
@@ -327,6 +333,20 @@ func (s *StorageService) AbortMultiPartStore(uploadId string) error {
 	}
 
 	return nil
+}
+
+func (s *StorageService) resolveFileID(provider, identifier string) (storage.FileID, error) {
+	if provider == "" {
+		provider = s.defaultProvider
+	}
+	if _, exists := s.providers[provider]; !exists {
+		return "", storage.ErrStorageNotFound
+	}
+	if identifier == "" {
+		identifier = randString(4) + strings.ReplaceAll(uuid.NewString(), "-", "")
+	}
+	fileId := storage.NewFileID(provider, identifier)
+	return fileId, nil
 }
 
 func (s *StorageService) ListMeta(provider string, offset, limit int64) (model.PaginationResult[storage.FileMeta], error) {

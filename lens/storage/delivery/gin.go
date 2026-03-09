@@ -111,7 +111,7 @@ func (p *putDataRequest) Process(ctx *sgin.Context[*appContext]) (data any, err 
 	}
 
 	// Init multipart session
-	uploadId, err := ctx.App.srv.InitMultipartStore(fileId, meta)
+	fileId, uploadId, err := ctx.App.srv.InitMultipartStore(p.Provider, p.FileID, meta)
 	if err != nil {
 		return nil, err
 	}

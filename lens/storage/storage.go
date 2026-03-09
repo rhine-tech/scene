@@ -126,11 +126,16 @@ type IStorageService interface {
 	// Store will store data at default provider
 	// it calls StoreAt internally
 	Store(data []byte, meta FileMeta) (fileId FileID, err error)
-	// StoreAt will store the data in the storage at path using specified provider,
-	// if provider is empty, it will use default provider
-	StoreAt(provider string, data []byte, meta FileMeta) (fileId FileID, err error)
+	// StoreAt will store data using the given provider and identifier.
+	// If provider is empty, the service default provider will be used.
+	// If identifier is empty, the service will generate one internally.
+	StoreAt(provider, identifier string, data []byte, meta FileMeta) (fileId FileID, err error)
 	// Multipart related
-	InitMultipartStore(fileId FileID, meta FileMeta) (uploadId string, err error)
+	// InitMultipartStore will initialize a multipart upload using the given provider and identifier.
+	// If provider is empty, the service default provider will be used.
+	// If identifier is empty, the service will generate one internally.
+	// It returns both the resolved file id and the upload id.
+	InitMultipartStore(provider, identifier string, meta FileMeta) (fileId FileID, uploadId string, err error)
 	StorePart(uploadId string, partNumber int, data []byte) error
 	StorePartReader(uploadId string, partNumber int, data io.Reader) error
 	CompleteMultipartStore(uploadId string) error

@@ -71,12 +71,12 @@ func (t *testStorageService) Store(data []byte, meta FileMeta) (FileID, error) {
 	return "", nil
 }
 
-func (t *testStorageService) StoreAt(provider string, data []byte, meta FileMeta) (FileID, error) {
+func (t *testStorageService) StoreAt(provider, identifier string, data []byte, meta FileMeta) (FileID, error) {
 	return "", nil
 }
 
-func (t *testStorageService) InitMultipartStore(fileId FileID, meta FileMeta) (string, error) {
-	return "", nil
+func (t *testStorageService) InitMultipartStore(provider, identifier string, meta FileMeta) (FileID, string, error) {
+	return "", "", nil
 }
 
 func (t *testStorageService) StorePart(uploadId string, partNumber int, data []byte) error {
