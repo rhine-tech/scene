@@ -26,6 +26,36 @@ lens/<module>/
   gen/                // generated code (e.g. arpc stubs)
 ```
 
+For larger business modules, the minimal `lens/<module>` example often grows into a richer shape with multiple delivery scenes, background workers, and several repository adapters. A typical generalized structure is:
+
+```
+<module>/
+  <module>.go         // module name + exported service interface + core domain structs
+  consts.go           // errcode + permission + task queue constants
+  <feature>.go        // feature-facing models + repository/service interfaces
+  <feature>_info.go   // pure domain helpers / model conversion helpers
+  <feature>_flow.go   // pure resolve / selection helpers
+  delivery/
+    gin/              // HTTP actions only
+    arpc/             // RPC adapter when needed
+    mcp/              // other protocol adapters when needed
+    worker/           // background worker / queue consumers
+  repository/
+    <storage>/        // storage adapter grouped by persistence concern
+    <state>/          // session / state / status persistence
+    <provider>/       // outbound third-party adapters
+  service/
+    impl.go           // primary use case orchestration
+    <feature>.go      // feature-specific orchestration
+  factory/
+    init.go           // library or provider init side effects only
+    <infra>.go        // repository/service registration
+    apps.go           // delivery app registration
+    <scene>.go        // scene-specific app wiring when needed
+```
+
+Use this richer split when the module has materially different concerns that would become noisy in a single file.
+
 A module **must** declare a lens identifier:
 
 ```go
@@ -87,6 +117,22 @@ const Lens scene.ModuleName = "authentication"
   - deterministic selection logic (`PickMediaURL`, cache quality selection)
   - matching/resolution helpers that do not call repositories or external systems
 
+### Root package rules
+
+- The root package should export the module contract, not concrete implementations.
+- Put these in the root package when they are part of the module contract:
+  - `Lens`
+  - domain structs shared across layers
+  - service interfaces
+  - repository interfaces
+  - module `errcode`
+  - permission constants
+  - queue/task type constants
+- Do not put GORM row structs, gin request DTOs, or provider SDK glue in the root package.
+- If a method is a consumer-facing use case, name it as a business capability (`ResolveMediaInfo`, `ResolveMediaURL`).
+- If a method is an admin/cache-management capability, name it explicitly as cache management (`GetMediaInfoCache`, `RefreshMediaLyric`, `DeleteMediaCache`).
+- Keep this distinction visible in interface names and comments so delivery can choose the right API without reimplementing fallback logic.
+
 ## Responsibility Boundaries
 
 - Put **pure rules** in the module root/domain layer:
@@ -129,6 +175,11 @@ const Lens scene.ModuleName = "authentication"
 - Keep transactions and connection lifecycle inside the repository. Accept dependencies (ORM handles, clients) through constructors.
 - Expose pagination via `model.PaginationResult` so the service/delivery layers can stream results consistently.
 - Use `scene.Named`’s `ImplName()` so observability/logging exposes which adapter is used.
+- Split repository packages by external dependency or persistence concern, not by arbitrary CRUD verb grouping.
+  - Good: `repository/cache`, `repository/sessionstore`, `repository/provider`
+  - Bad: `repository/create`, `repository/query`, `repository/misc`
+- Repository-private persistence rows should stay inside the repository package even if they resemble domain structs.
+- When a repository needs auxiliary tables, keep those row structs and conversion helpers local to that adapter.
 
 ## Service Layer Design Principle
 
@@ -157,6 +208,14 @@ const Lens scene.ModuleName = "authentication"
   - cache-management methods returning raw cache records
   - resolve/use-case methods returning consumer-facing domain results
   as long as the naming clearly separates the two levels (`GetMediaInfoCache` vs `ResolveMediaInfo`).
+- A service file may orchestrate:
+  - repositories
+  - async task dispatchers
+  - cron jobs
+  - third-party provider adapters
+  but the orchestration still belongs in service, not delivery.
+- If setup includes background recovery or scheduled jobs, keep the registration inside `Setup()` and keep task names/module prefixes in root constants or constructor-created fields.
+- When a best-effort background task intentionally suppresses an error from escaping the request path, log it explicitly with business identifiers.
 
 ## Delivery Layer Guidelines
 
@@ -171,6 +230,18 @@ const Lens scene.ModuleName = "authentication"
   - enqueue background tasks
   - rebuild domain objects from cache structs
   then that logic belongs in service/root helpers rather than in the handler itself.
+
+### Gin organization
+
+- Group gin actions by business area instead of one giant handler file.
+- `gin.go` should primarily declare the app context and route/action list.
+- Each action should usually contain:
+  - request binding fields
+  - route metadata
+  - permission middleware
+  - one service call
+- Small transport-specific exception mapping is acceptable in delivery when it only affects response semantics, for example converting a domain not-found error into an empty response object.
+- Do not perform provider lookup, cache fallback, or persistence reconstruction in gin handlers.
 
 ## Refactoring Heuristics
 
@@ -232,5 +303,24 @@ const Lens scene.ModuleName = "authentication"
 - All dependencies are managed through `registry.Register`, `registry.Load`, and `aperture` tags. Avoid manual `new()` inside services unless you construct pure domain helpers.
 - Factories own configuration lookup via `registry.Config`. Keep secrets or dynamic values here so services remain deterministic and testable.
 - Cross-module usage must be defined via interfaces and registered implementations. Never import another module’s concrete types from `service/<impl>` or `repository/<impl>`—depend on the exported interfaces from the root package.
+
+### Factory split
+
+Use separate factory files by responsibility:
+
+- `init.go`: third-party provider global initialization / side effects only.
+- `gorm.go` or another infra-specific file: register repositories and services.
+- `apps.go`: register delivery apps for gin / mcp / worker scenes.
+- Additional files like `arpc.go`, `mcp.go`, `worker.go` are fine when scene-specific wiring grows.
+
+Do not mix all of the following into one file unless the module is trivial:
+
+- provider side effects
+- repository registration
+- service registration
+- gin app registration
+- worker app registration
+
+Keeping them split makes the module easier to review and lets different scene entrypoints compose only the parts they need.
 
 Following this guideline keeps new modules consistent with existing ones, passes code review faster, and ensures each scene application can freely assemble or replace infrastructure without touching the business logic.
