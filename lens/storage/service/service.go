@@ -84,7 +84,7 @@ func (s *StorageService) StoreAt(provider, identifier string, data []byte, meta 
 	if err != nil {
 		return "", err
 	}
-	storageProvider, exists := s.providers[provider]
+	storageProvider, exists := s.providers[fileId.Provider()]
 	if !exists {
 		return "", storage.ErrStorageNotFound
 	}
