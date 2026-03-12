@@ -2,10 +2,12 @@ package factory
 
 import (
 	"github.com/rhine-tech/scene"
+	authcmd "github.com/rhine-tech/scene/lens/authentication/cmd"
 	"github.com/rhine-tech/scene/lens/authentication/delivery"
 	"github.com/rhine-tech/scene/lens/authentication/gen/arpcimpl"
 	"github.com/rhine-tech/scene/registry"
 	sarpc "github.com/rhine-tech/scene/scenes/arpc"
+	scmd "github.com/rhine-tech/scene/scenes/cmd"
 	sgin "github.com/rhine-tech/scene/scenes/gin"
 	smcp "github.com/rhine-tech/scene/scenes/mcp"
 )
@@ -52,6 +54,18 @@ func (b AppMcp) Apps() []any {
 	return []any{
 		func() smcp.McpApp {
 			return registry.Load(delivery.NewMcpApp())
+		},
+	}
+}
+
+type AppCmd struct {
+	scene.ModuleFactory
+}
+
+func (b AppCmd) Apps() []any {
+	return []any{
+		func() scmd.CmdApp {
+			return registry.Load(authcmd.NewCmdApp())
 		},
 	}
 }

@@ -3,10 +3,12 @@ package factory
 import (
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/lens/permission"
+	permcmd "github.com/rhine-tech/scene/lens/permission/cmd"
 	"github.com/rhine-tech/scene/lens/permission/delivery"
 	"github.com/rhine-tech/scene/lens/permission/gen/arpcimpl"
 	"github.com/rhine-tech/scene/registry"
 	sarpc "github.com/rhine-tech/scene/scenes/arpc"
+	scmd "github.com/rhine-tech/scene/scenes/cmd"
 	sgin "github.com/rhine-tech/scene/scenes/gin"
 )
 
@@ -32,6 +34,18 @@ func (b AppARpc) Apps() []any {
 	return []any{
 		func() sarpc.ARpcApp {
 			return registry.Load[sarpc.ARpcApp](new(arpcimpl.ARpcAppPermissionService))
+		},
+	}
+}
+
+type AppCmd struct {
+	scene.ModuleFactory
+}
+
+func (b AppCmd) Apps() []any {
+	return []any{
+		func() scmd.CmdApp {
+			return registry.Load(permcmd.NewCmdApp())
 		},
 	}
 }
