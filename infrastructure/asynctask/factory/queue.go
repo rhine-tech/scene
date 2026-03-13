@@ -4,6 +4,7 @@ import (
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/asynctask"
 	queueimpl "github.com/rhine-tech/scene/infrastructure/asynctask/queue"
+	"github.com/rhine-tech/scene/infrastructure/asynctask/queue/asynq"
 	"github.com/rhine-tech/scene/infrastructure/asynctask/queue/rabbitmq"
 	"github.com/rhine-tech/scene/infrastructure/asynctask/queue/redisstream"
 	"github.com/rhine-tech/scene/infrastructure/datasource"
@@ -43,6 +44,33 @@ func (b RabbitMQ) Default() RabbitMQ {
 			ExchangeType: "direct",
 			Durable:      true,
 			Prefetch:     16,
+		},
+	}
+}
+
+type Asynq struct {
+	scene.ModuleFactory
+	Config asynq.Config
+}
+
+func (b Asynq) Init() scene.LensInit {
+	return func() {
+		taskQueue := asynq.New(b.Config)
+		registry.Register[asynctask.TaskQueuePublisher](taskQueue)
+		registry.Register[asynctask.TaskQueueConsumer](taskQueue)
+	}
+}
+
+func (b Asynq) Default() Asynq {
+	return Asynq{
+		Config: asynq.Config{
+			Redis: datasource.DatabaseConfig{
+				Host:     registry.Config.GetString("redis.host"),
+				Port:     int(registry.Config.GetInt("redis.port")),
+				Username: registry.Config.GetString("redis.username"),
+				Password: registry.Config.GetString("redis.password"),
+				Database: registry.Config.GetString("redis.database"),
+			},
 		},
 	}
 }
