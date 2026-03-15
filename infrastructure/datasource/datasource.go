@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"github.com/rhine-tech/scene"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 	"time"
 )
 

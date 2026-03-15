@@ -6,9 +6,9 @@ import (
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/datasource"
 	"github.com/rhine-tech/scene/infrastructure/logger"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
 )
 
 type MongoRepo struct {
@@ -50,7 +50,7 @@ func (m *MongoRepo) Setup() error {
 	}
 
 	// Create a new client and connect to the server
-	m.client, m.err = mongo.Connect(context.TODO(), opts)
+	m.client, m.err = mongo.Connect(opts)
 	if m.err != nil {
 		m.log.Warnf("'%s' init failed", m.cfg.MongoDSN())
 		return m.err

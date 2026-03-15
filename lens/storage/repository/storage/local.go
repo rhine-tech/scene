@@ -3,9 +3,6 @@ package storage
 import (
 	"errors"
 	"fmt"
-	"github.com/rhine-tech/scene"
-	"github.com/rhine-tech/scene/infrastructure/logger"
-	"github.com/rhine-tech/scene/lens/storage"
 	"io"
 	"net/http"
 	"net/url"
@@ -17,6 +14,10 @@ import (
 	"sync"
 	"time"
 	"unicode"
+
+	"github.com/rhine-tech/scene"
+	"github.com/rhine-tech/scene/infrastructure/logger"
+	"github.com/rhine-tech/scene/lens/storage"
 )
 
 type uploadSession struct {
@@ -160,7 +161,7 @@ func (l *localStorage) Meta(fileId storage.FileID) (storage.FileMeta, error) {
 func (l *localStorage) Store(fileId storage.FileID, data io.Reader) (err error) {
 	prefixs := l.cleanupPath(fileId)
 	if len(prefixs) == 0 {
-		return storage.ErrStorageFailed
+		return storage.ErrStorageFailed.WithDetailStr("invalid_prefix")
 	}
 	path := filepath.Join(append([]string{l.localPath}, prefixs...)...)
 	dir := filepath.Dir(path)
