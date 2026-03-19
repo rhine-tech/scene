@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"testing"
@@ -40,7 +41,7 @@ func (t *testStorageService) Meta(fileId FileID) (FileMeta, error) {
 	}, nil
 }
 
-func (t *testStorageService) Load(fileId FileID, offset, length int64) ([]byte, error) {
+func (t *testStorageService) Load(fileId FileID, offset, length int64) (io.ReadCloser, error) {
 	t.loadCalls = append(t.loadCalls, testLoadCall{offset: offset, length: length})
 	if offset < 0 || length < 0 {
 		return nil, fmt.Errorf("invalid range")
@@ -54,24 +55,24 @@ func (t *testStorageService) Load(fileId FileID, offset, length int64) ([]byte, 
 	}
 	out := make([]byte, end-offset)
 	copy(out, t.data[offset:end])
-	return out, nil
+	return io.NopCloser(bytes.NewReader(out)), nil
 }
 
-func (t *testStorageService) LoadAll(fileId FileID) ([]byte, error) {
+func (t *testStorageService) LoadAll(fileId FileID) (io.ReadCloser, error) {
 	out := make([]byte, len(t.data))
 	copy(out, t.data)
-	return out, nil
+	return io.NopCloser(bytes.NewReader(out)), nil
 }
 
 func (t *testStorageService) Delete(fileId FileID) error {
 	return nil
 }
 
-func (t *testStorageService) Store(data []byte, meta FileMeta) (FileID, error) {
+func (t *testStorageService) Store(data io.Reader, meta FileMeta) (FileID, error) {
 	return "", nil
 }
 
-func (t *testStorageService) StoreAt(provider, identifier string, data []byte, meta FileMeta) (FileID, error) {
+func (t *testStorageService) StoreAt(provider, identifier string, data io.Reader, meta FileMeta) (FileID, error) {
 	return "", nil
 }
 
@@ -79,7 +80,7 @@ func (t *testStorageService) InitMultipartStore(provider, identifier string, met
 	return "", "", nil
 }
 
-func (t *testStorageService) StorePart(uploadId string, partNumber int, data []byte) error {
+func (t *testStorageService) StorePart(uploadId string, partNumber int, data io.Reader) error {
 	return nil
 }
 

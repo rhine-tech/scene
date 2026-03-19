@@ -47,7 +47,14 @@ func (s *ioImpl) Read(p []byte) (int, error) {
 		if toRead > remaining {
 			toRead = remaining
 		}
-		data, err := s.srv.Load(s.fileId, s.pos, toRead)
+		reader, err := s.srv.Load(s.fileId, s.pos, toRead)
+		if err != nil {
+			return 0, err
+		}
+		data, err := io.ReadAll(reader)
+		if closeErr := reader.Close(); closeErr != nil && err == nil {
+			err = closeErr
+		}
 		if err != nil {
 			return 0, err
 		}

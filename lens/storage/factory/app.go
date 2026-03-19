@@ -17,11 +17,17 @@ type Service struct {
 }
 
 func (a Service) Default() Service {
+	providers := []StorageProvider{
+		Local{}.Default(),
+	}
+	s3 := S3{}.Default()
+	if s3.Endpoint != "" && s3.Bucket != "" {
+		providers = append(providers, s3)
+	}
 	return Service{
-		Providers: []StorageProvider{
-			Local{}.Default(),
-		},
-		SessionTracker: SessionTrackerMemory{},
+		DefaultProvider: registry.Config.GetString("storage.default_provider"),
+		Providers:       providers,
+		SessionTracker:  SessionTrackerMemory{},
 	}
 }
 

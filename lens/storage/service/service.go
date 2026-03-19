@@ -1,7 +1,6 @@
 package service
 
 import (
-	"bytes"
 	"crypto/md5"
 	"encoding/hex"
 	"errors"
@@ -74,12 +73,12 @@ func (s *StorageService) ListProviders() []string {
 }
 
 // Store stores data using the default provider.
-func (s *StorageService) Store(data []byte, meta storage.FileMeta) (fileId storage.FileID, err error) {
+func (s *StorageService) Store(data io.Reader, meta storage.FileMeta) (fileId storage.FileID, err error) {
 	return s.StoreAt("", "", data, meta)
 }
 
 // StoreAt stores data at a specific path and provider.
-func (s *StorageService) StoreAt(provider, identifier string, data []byte, meta storage.FileMeta) (fileId storage.FileID, err error) {
+func (s *StorageService) StoreAt(provider, identifier string, data io.Reader, meta storage.FileMeta) (fileId storage.FileID, err error) {
 	fileId, err = s.resolveFileID(provider, identifier)
 	if err != nil {
 		return "", err
@@ -88,8 +87,9 @@ func (s *StorageService) StoreAt(provider, identifier string, data []byte, meta 
 	if !exists {
 		return "", storage.ErrStorageNotFound
 	}
-	md5Sum := md5.Sum(data)
-	err = storageProvider.Store(fileId, io.NopCloser(bytes.NewReader(data)))
+	hash := md5.New()
+	reader := io.TeeReader(data, hash)
+	err = storageProvider.Store(fileId, reader)
 	if err != nil {
 		s.log.ErrorW("failed to store file", "fileId", fileId, "err", err)
 		return "", storage.ErrFailToStore
@@ -99,7 +99,7 @@ func (s *StorageService) StoreAt(provider, identifier string, data []byte, meta 
 	meta.Provider = fileId.Provider()
 	meta.Identifier = fileId.ID()
 	meta.FillMissing()
-	meta.Md5Checksum = hex.EncodeToString(md5Sum[:])
+	meta.Md5Checksum = hex.EncodeToString(hash.Sum(nil))
 	err = s.metaRepo.Store(meta)
 	if err != nil {
 		return "", err
@@ -130,7 +130,7 @@ func (s *StorageService) Meta(fileId storage.FileID) (meta storage.FileMeta, err
 }
 
 // Load retrieves data based on fileId.
-func (s *StorageService) Load(fileId storage.FileID, offset, length int64) ([]byte, error) {
+func (s *StorageService) Load(fileId storage.FileID, offset, length int64) (io.ReadCloser, error) {
 	storager, exists := s.providers[fileId.Provider()]
 	if !exists {
 		return nil, storage.ErrStorageNotFound
@@ -141,23 +141,11 @@ func (s *StorageService) Load(fileId storage.FileID, offset, length int64) ([]by
 		s.log.ErrorW("failed to load file", "fileId", fileId, "err", err)
 		return nil, errcode.Must(err, storage.ErrFailToLoad)
 	}
-	defer func() {
-		if err := reader.Close(); err != nil {
-			s.log.ErrorW("failed to close load reader", "fileId", fileId, "err", err)
-		}
-	}()
-
-	data, err := io.ReadAll(reader)
-	if err != nil {
-		s.log.ErrorW("failed to read data", "fileId", fileId, "err", err)
-		return nil, storage.ErrFailToLoad
-	}
-
-	return data, nil
+	return reader, nil
 }
 
 // LoadAll retrieves data based on fileId.
-func (s *StorageService) LoadAll(fileId storage.FileID) ([]byte, error) {
+func (s *StorageService) LoadAll(fileId storage.FileID) (io.ReadCloser, error) {
 	storager, exists := s.providers[fileId.Provider()]
 	if !exists {
 		return nil, storage.ErrStorageNotFound
@@ -168,19 +156,7 @@ func (s *StorageService) LoadAll(fileId storage.FileID) ([]byte, error) {
 		s.log.ErrorW("failed to load file", "fileId", fileId, "err", err)
 		return nil, errcode.Must(err, storage.ErrFailToLoad)
 	}
-	defer func() {
-		if err := reader.Close(); err != nil {
-			s.log.ErrorW("failed to close load-all reader", "fileId", fileId, "err", err)
-		}
-	}()
-
-	data, err := io.ReadAll(reader)
-	if err != nil {
-		s.log.ErrorW("failed to read data", "fileId", fileId, "err", err)
-		return nil, storage.ErrFailToLoad
-	}
-
-	return data, nil
+	return reader, nil
 }
 
 // Delete deletes a file based on fileId.
@@ -251,8 +227,8 @@ func (s *StorageService) InitMultipartStore(provider, identifier string, meta st
 	return fileId, uploadId, nil
 }
 
-func (s *StorageService) StorePart(uploadId string, partNumber int, data []byte) error {
-	return s.StorePartReader(uploadId, partNumber, bytes.NewReader(data))
+func (s *StorageService) StorePart(uploadId string, partNumber int, data io.Reader) error {
+	return s.StorePartReader(uploadId, partNumber, data)
 }
 
 func (s *StorageService) StorePartReader(uploadId string, partNumber int, data io.Reader) error {

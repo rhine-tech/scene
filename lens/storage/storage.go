@@ -116,27 +116,28 @@ type IStorageService interface {
 	ListMeta(provider string, offset, limit int64) (model.PaginationResult[FileMeta], error)
 	// Meta return the meta given a fileId
 	Meta(fileId FileID) (meta FileMeta, err error)
-	// Load will load file data at offset with length.
-	// basically io.Seeker & io.Reader
-	Load(fileId FileID, offset, length int64) (data []byte, err error)
-	// LoadAll will load data, if reach end of file it will return io.EOF
-	// only use when you know the size of the data
-	LoadAll(fileId FileID) (data []byte, err error)
+	// Load will load file stream at offset with length.
+	// Caller must close the returned reader.
+	Load(fileId FileID, offset, length int64) (reader io.ReadCloser, err error)
+	// LoadAll will load full file stream.
+	// Caller must close the returned reader.
+	LoadAll(fileId FileID) (reader io.ReadCloser, err error)
 	Delete(fileId FileID) error
 	// Store will store data at default provider
 	// it calls StoreAt internally
-	Store(data []byte, meta FileMeta) (fileId FileID, err error)
+	// Store consumes data from reader until EOF.
+	Store(data io.Reader, meta FileMeta) (fileId FileID, err error)
 	// StoreAt will store data using the given provider and identifier.
 	// If provider is empty, the service default provider will be used.
 	// If identifier is empty, the service will generate one internally.
-	StoreAt(provider, identifier string, data []byte, meta FileMeta) (fileId FileID, err error)
+	StoreAt(provider, identifier string, data io.Reader, meta FileMeta) (fileId FileID, err error)
 	// Multipart related
 	// InitMultipartStore will initialize a multipart upload using the given provider and identifier.
 	// If provider is empty, the service default provider will be used.
 	// If identifier is empty, the service will generate one internally.
 	// It returns both the resolved file id and the upload id.
 	InitMultipartStore(provider, identifier string, meta FileMeta) (fileId FileID, uploadId string, err error)
-	StorePart(uploadId string, partNumber int, data []byte) error
+	StorePart(uploadId string, partNumber int, data io.Reader) error
 	StorePartReader(uploadId string, partNumber int, data io.Reader) error
 	CompleteMultipartStore(uploadId string) error
 	AbortMultiPartStore(uploadId string) error

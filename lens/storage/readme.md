@@ -6,5 +6,4 @@
 - [ ] Aliyun oss
 - [ ] Tencent cos
 - [ ] Qiniu
-- [ ] aws s3
-- [ ] minIO
+- [x] aws s3 (S3-compatible, e.g. RustFS)

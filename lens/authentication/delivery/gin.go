@@ -1,6 +1,7 @@
 package delivery
 
 import (
+	"bytes"
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/errcode"
 	"github.com/rhine-tech/scene/lens/authentication"
@@ -221,7 +222,7 @@ func (u *uploadAvatarRequest) Process(ctx *sgin.Context[*authContext]) (data any
 	if ctx.App.storage == nil {
 		return nil, errcode.InternalError.WithDetailStr("storage service not available")
 	}
-	fileId, err := ctx.App.storage.Store(u.content, storage.FileMeta{
+	fileId, err := ctx.App.storage.Store(bytes.NewReader(u.content), storage.FileMeta{
 		OriginalFilename: u.fileName,
 		ContentType:      u.contentType,
 		ContentLength:    int64(len(u.content)),
