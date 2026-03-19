@@ -9,6 +9,7 @@ import (
 	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/rhine-tech/scene/registry"
 	"github.com/rhine-tech/scene/utils"
+	"net"
 	"net/http"
 	"time"
 )
@@ -24,12 +25,14 @@ func createGinEngine() *gin.Engine {
 }
 
 type ginContainer struct {
-	addr   string
-	prefix string
-	engine *gin.Engine
-	apps   []GinApplication
-	logger logger.ILogger
-	server *http.Server
+	addr    string
+	prefix  string
+	engine  *gin.Engine
+	apps    []GinApplication
+	logger  logger.ILogger
+	server  *http.Server
+	baseCtx context.Context
+	cancel  context.CancelFunc
 }
 
 func (c *ginContainer) ImplName() scene.ImplName {
@@ -80,6 +83,9 @@ func (c *ginContainer) Start() error {
 	c.server = &http.Server{
 		Addr:    c.addr,
 		Handler: c.engine,
+		BaseContext: func(listener net.Listener) context.Context {
+			return c.baseCtx
+		},
 	}
 	go func() {
 		c.logger.Infof("gin http server started, listen on 'http://%s'", utils.PrettyAddress(c.addr))
@@ -95,12 +101,17 @@ func (c *ginContainer) Stop(ctx context.Context) error {
 	if err := c.stopApps(); err != nil {
 		return err
 	}
+	if c.cancel != nil {
+		// Cancel the base context first so long-lived handlers (SSE/WebSocket-like loops)
+		// can observe ctx.Done() and exit before graceful shutdown timeout.
+		c.cancel()
+	}
 
 	subctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	if err := c.server.Shutdown(subctx); err != nil {
-		c.logger.Infof("Server Shutdown:", err)
+		c.logger.Infof("Server Shutdown: %v", err)
 		return err
 	}
 	return nil
@@ -132,6 +143,7 @@ func NewAppContainerWithPrefix(
 		engine: ginEngine,
 		apps:   apps,
 	}
+	container.baseCtx, container.cancel = context.WithCancel(context.Background())
 	container.logger = registry.Logger.WithPrefix(container.ImplName().Identifier())
 	return container
 }
