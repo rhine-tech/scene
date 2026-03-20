@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/rhine-tech/scene"
-	scache "github.com/rhine-tech/scene/infrastructure/cache"
+	"github.com/rhine-tech/scene/infrastructure/cache"
 	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/rhine-tech/scene/lens/permission"
 )
@@ -14,15 +14,15 @@ import (
 const permissionListCacheTTL = 30 * time.Second
 
 type CachedPermissionService struct {
-	Base      permission.PermissionService `aperture:"embed"`
-	CacheRepo scache.ICache                `aperture:"optional"`
-	Logger    logger.ILogger               `aperture:""`
+	base  permission.PermissionService `aperture:"embed"`
+	cache cache.ICache                 `aperture:"optional"`
+	log   logger.ILogger               `aperture:"optional"`
 
-	cacheCli *scache.Client
+	cacheCli *cache.Client
 }
 
-func NewCachedPermissionService(base permission.PermissionService) *CachedPermissionService {
-	return &CachedPermissionService{Base: base}
+func NewCachedPermissionService(base permission.PermissionService) permission.PermissionService {
+	return &CachedPermissionService{base: base}
 }
 
 func (c *CachedPermissionService) SrvImplName() scene.ImplName {
@@ -30,11 +30,11 @@ func (c *CachedPermissionService) SrvImplName() scene.ImplName {
 }
 
 func (c *CachedPermissionService) Setup() error {
-	if c.CacheRepo != nil {
-		c.cacheCli = scache.NewClient(c.CacheRepo)
-		c.Logger.Infof("cache.ICache found, using cache with %s ", c.CacheRepo.ImplName().Identifier())
+	if c.cache != nil {
+		c.cacheCli = cache.NewClient(c.cache)
+		c.log.Infof("cache.ICache found, using cache with %s ", c.cache.ImplName().Identifier())
 	} else {
-		c.Logger.Warnf("cache.ICache not found, all request will directly pass to service")
+		c.log.Warnf("cache.ICache not found, all request will directly pass to service")
 	}
 	return nil
 }
@@ -55,27 +55,27 @@ func (c *CachedPermissionService) HasPermissionStr(owner string, perm string) bo
 
 func (c *CachedPermissionService) ListPermissions(owner string) []*permission.Permission {
 	if c.cacheCli == nil {
-		return c.Base.ListPermissions(owner)
+		return c.base.ListPermissions(owner)
 	}
 	key := fmt.Sprintf("permission:list:v1:%s", owner)
 	tag := permissionOwnerTag(owner)
-	val, err := scache.GetOrLoad(context.Background(), c.cacheCli, key, scache.GetOrLoadPolicy[[]*permission.Permission]{
+	val, err := cache.GetOrLoad(context.Background(), c.cacheCli, key, cache.GetOrLoadPolicy[[]*permission.Permission]{
 		TTL:  permissionListCacheTTL,
 		Tags: []string{tag},
 	}, func(_ context.Context) ([]*permission.Permission, error) {
-		return c.Base.ListPermissions(owner), nil
+		return c.base.ListPermissions(owner), nil
 	})
 	if err != nil {
-		if c.Logger != nil {
-			c.Logger.WarnW("permission cache load failed, fallback to source", "owner", owner, "error", err)
+		if c.log != nil {
+			c.log.WarnW("permission cache load failed, fallback to source", "owner", owner, "error", err)
 		}
-		return c.Base.ListPermissions(owner)
+		return c.base.ListPermissions(owner)
 	}
 	return val
 }
 
 func (c *CachedPermissionService) AddPermission(owner string, perm string) error {
-	if err := c.Base.AddPermission(owner, perm); err != nil {
+	if err := c.base.AddPermission(owner, perm); err != nil {
 		return err
 	}
 	c.invalidateOwner(owner)
@@ -83,7 +83,7 @@ func (c *CachedPermissionService) AddPermission(owner string, perm string) error
 }
 
 func (c *CachedPermissionService) RemovePermission(owner string, perm string) error {
-	if err := c.Base.RemovePermission(owner, perm); err != nil {
+	if err := c.base.RemovePermission(owner, perm); err != nil {
 		return err
 	}
 	c.invalidateOwner(owner)
@@ -91,12 +91,12 @@ func (c *CachedPermissionService) RemovePermission(owner string, perm string) er
 }
 
 func (c *CachedPermissionService) invalidateOwner(owner string) {
-	if c.CacheRepo == nil {
+	if c.cache == nil {
 		return
 	}
 	tag := permissionOwnerTag(owner)
-	if err := c.CacheRepo.InvalidateTags(context.Background(), tag); err != nil && c.Logger != nil {
-		c.Logger.WarnW("failed to invalidate permission cache", "tag", tag, "error", err)
+	if err := c.cache.InvalidateTags(context.Background(), tag); err != nil && c.log != nil {
+		c.log.WarnW("failed to invalidate permission cache", "tag", tag, "error", err)
 	}
 }
 

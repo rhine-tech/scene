@@ -12,7 +12,7 @@ type PermissionManagerImpl struct {
 }
 
 func (p *PermissionManagerImpl) SrvImplName() scene.ImplName {
-	return permission.Lens.ImplName("PermissionManager", "default")
+	return permission.Lens.ImplName("PermissionService", "default")
 }
 
 func (p *PermissionManagerImpl) Setup() error {
