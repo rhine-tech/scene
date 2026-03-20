@@ -16,3 +16,23 @@ func (r RedisCache) Init() scene.LensInit {
 		registry.Register[cache.ICache](repository.NewRedisCache(nil))
 	}
 }
+
+type MemoryCache struct {
+	scene.ModuleFactory
+}
+
+func (m MemoryCache) Init() scene.LensInit {
+	return func() {
+		registry.Register[cache.ICache](repository.NewMemoryCache())
+	}
+}
+
+type GoCache struct {
+	scene.ModuleFactory
+}
+
+func (g GoCache) Init() scene.LensInit {
+	return func() {
+		registry.Register[cache.ICache](repository.NewGoCache())
+	}
+}

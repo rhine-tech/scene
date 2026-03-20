@@ -28,7 +28,7 @@ type ServiceGorm struct {
 func (b ServiceGorm) Init() scene.LensInit {
 	return func() {
 		_ = registry.Register(repository.NewGormImpl(nil))
-		_ = registry.Register(
-			permission.PermissionService(&service.PermissionManagerImpl{}))
+		base := registry.Load(permission.PermissionService(&service.PermissionManagerImpl{}))
+		_ = registry.Register[permission.PermissionService](service.NewCachedPermissionService(base))
 	}
 }
