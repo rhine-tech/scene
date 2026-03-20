@@ -26,10 +26,14 @@ func inject[T any](indirectVal reflect.Value) {
 			// if field is nil, and it's an Interface or Ptr, inject it.
 			if tagValue != EmbedValue && (fieldVal.Kind() == reflect.Interface || fieldVal.Kind() == reflect.Ptr) && fieldVal.IsNil() {
 				//fmt.Println("injecting", field.Type.String(), "for", getInterfaceName[T]())
-				if tagValue == "" {
-					tagValue = field.Type.String()
+				var lookupName string
+				// set lookup name if tagValue is empty or specified as optional
+				if tagValue == "" || tagValue == OptionalValue {
+					lookupName = field.Type.String()
+				} else {
+					lookupName = tagValue
 				}
-				instance, exists := singletonRegistry[tagValue]
+				instance, exists := singletonRegistry[lookupName]
 				// if not exists, we have to check if this field is optional or not
 				if !exists {
 					// if this inject is optional, continue without panic
@@ -37,11 +41,11 @@ func inject[T any](indirectVal reflect.Value) {
 						continue
 					}
 					// default should panic if optional tag is not specified.
-					panic("scene registry: no instance found for " + tagValue + " when injecting " + field.Name)
+					panic("scene registry: no instance found for " + lookupName + " when injecting " + field.Name)
 				}
 
 				// run hooks
-				runHooks(tagValue, indirectVal.Addr(), fieldVal, tagValue, &instance)
+				runHooks(lookupName, indirectVal.Addr(), fieldVal, &instance)
 				setUnexportedField(fieldVal, instance)
 				continue
 			}

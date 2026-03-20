@@ -8,5 +8,5 @@ import (
 )
 
 func TestGetInterfaceName(t *testing.T) {
-	assert.Equal(t, "model.DatabaseConfig", getInterfaceName[datasource.DatabaseConfig]())
+	assert.Equal(t, "datasource.DatabaseConfig", getInterfaceName[datasource.DatabaseConfig]())
 }
