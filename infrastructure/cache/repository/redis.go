@@ -1,11 +1,11 @@
 package repository
 
 import (
+	"context"
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/cache"
 	"github.com/rhine-tech/scene/infrastructure/datasource"
 	"github.com/rhine-tech/scene/infrastructure/logger"
-	"github.com/rhine-tech/scene/registry"
 	"time"
 )
 
@@ -36,21 +36,30 @@ func (r *RedisCache) Setup() error {
 	return nil
 }
 
-func (r *RedisCache) Get(key string) (string, bool) {
-	val, err := r.ds.Get(registry.EmptyContext, key)
+func (r *RedisCache) Get(ctx context.Context, key string) ([]byte, bool, error) {
+	val, err := r.ds.Get(ctx, key)
 	if err != nil {
-		return val, false
+		return nil, false, nil
 	}
-	return val, true
+	return []byte(val), true, nil
 }
 
-func (r *RedisCache) Set(key string, value string, expiration time.Duration) error {
-	if err := r.ds.Set(registry.EmptyContext, key, value, expiration); err != nil {
-		return cache.ErrFailedToSetCache.WithDetail(err)
+func (r *RedisCache) Set(ctx context.Context, key string, value []byte, expiration time.Duration, _ ...string) error {
+	if err := r.ds.Set(ctx, key, value, expiration); err != nil {
+		return cache.ErrCacheWrite.WithDetail(err)
 	}
 	return nil
 }
 
-func (r *RedisCache) Delete(key string) error {
-	return r.ds.Delete(registry.EmptyContext, key)
+func (r *RedisCache) Delete(ctx context.Context, keys ...string) error {
+	for _, key := range keys {
+		if err := r.ds.Delete(ctx, key); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *RedisCache) InvalidateTags(_ context.Context, _ ...string) error {
+	return nil
 }
