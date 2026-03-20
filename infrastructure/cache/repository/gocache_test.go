@@ -55,3 +55,30 @@ func TestGoCacheTTLExpiration(t *testing.T) {
 		t.Fatal("expected cache miss after ttl expiration")
 	}
 }
+
+func TestGoCacheNoCopyOnRead(t *testing.T) {
+	c := &GoCache{c: gocache.New(time.Second, 2*time.Second)}
+	ctx := context.Background()
+
+	if err := c.Set(ctx, "k", []byte("abc"), time.Second); err != nil {
+		t.Fatalf("set failed: %v", err)
+	}
+	got, hit, err := c.Get(ctx, "k")
+	if err != nil {
+		t.Fatalf("get failed: %v", err)
+	}
+	if !hit {
+		t.Fatal("expected hit")
+	}
+	got[0] = 'z'
+	got2, hit, err := c.Get(ctx, "k")
+	if err != nil {
+		t.Fatalf("get2 failed: %v", err)
+	}
+	if !hit {
+		t.Fatal("expected hit")
+	}
+	if string(got2) != "zbc" {
+		t.Fatalf("expected no-copy read semantics, got=%s", string(got2))
+	}
+}

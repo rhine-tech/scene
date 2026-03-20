@@ -15,16 +15,30 @@ type memoryItem struct {
 	tags     map[string]struct{}
 }
 
+type MemoryCacheOptions struct {
+	// CopyOnRead returns a cloned value on Get when enabled.
+	// Disable it for better read throughput (returned bytes must be treated as read-only).
+	CopyOnRead bool
+}
+
 type MemoryCache struct {
 	mu       sync.RWMutex
 	items    map[string]memoryItem
 	tagIndex map[string]map[string]struct{}
+	opts     MemoryCacheOptions
 }
 
 func NewMemoryCache() cache.ICache {
+	return NewMemoryCacheWithOptions(MemoryCacheOptions{
+		CopyOnRead: false,
+	})
+}
+
+func NewMemoryCacheWithOptions(opts MemoryCacheOptions) *MemoryCache {
 	return &MemoryCache{
 		items:    make(map[string]memoryItem),
 		tagIndex: make(map[string]map[string]struct{}),
+		opts:     opts,
 	}
 }
 
@@ -45,6 +59,9 @@ func (m *MemoryCache) Get(_ context.Context, key string) ([]byte, bool, error) {
 		m.mu.Unlock()
 		return nil, false, nil
 	}
+	if !m.opts.CopyOnRead {
+		return item.value, true, nil
+	}
 	val := make([]byte, len(item.value))
 	copy(val, item.value)
 	return val, true, nil
@@ -60,23 +77,25 @@ func (m *MemoryCache) Set(_ context.Context, key string, value []byte, expiratio
 
 	item := memoryItem{
 		value: make([]byte, len(value)),
-		tags:  make(map[string]struct{}, len(tags)),
 	}
 	copy(item.value, value)
 	if expiration > 0 {
 		item.expireAt = time.Now().Add(expiration)
 	}
-	for _, tag := range tags {
-		if tag == "" {
-			continue
+	if len(tags) > 0 {
+		item.tags = make(map[string]struct{}, len(tags))
+		for _, tag := range tags {
+			if tag == "" {
+				continue
+			}
+			item.tags[tag] = struct{}{}
+			keys, ok := m.tagIndex[tag]
+			if !ok {
+				keys = make(map[string]struct{})
+				m.tagIndex[tag] = keys
+			}
+			keys[key] = struct{}{}
 		}
-		item.tags[tag] = struct{}{}
-		keys, ok := m.tagIndex[tag]
-		if !ok {
-			keys = make(map[string]struct{})
-			m.tagIndex[tag] = keys
-		}
-		keys[key] = struct{}{}
 	}
 	m.items[key] = item
 	return nil
