@@ -94,4 +94,3 @@ func (l *LeakyBucketLimiter) AllowN(_ context.Context, key string, n int) (ratel
 		RetryAfter: 0,
 	}, nil
 }
-

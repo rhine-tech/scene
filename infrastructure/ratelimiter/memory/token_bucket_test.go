@@ -46,4 +46,3 @@ func TestTokenBucketLimiterAllowAndRefill(t *testing.T) {
 		t.Fatalf("after refill request should pass, decision=%+v err=%v", d, e)
 	}
 }
-

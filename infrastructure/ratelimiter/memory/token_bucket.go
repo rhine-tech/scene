@@ -96,4 +96,3 @@ func (l *TokenBucketLimiter) AllowN(_ context.Context, key string, n int) (ratel
 		RetryAfter: 0,
 	}, nil
 }
-

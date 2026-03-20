@@ -85,4 +85,3 @@ func TestTimeRateLimiterInvalidNAndKey(t *testing.T) {
 		t.Fatalf("expected ErrInvalidN for n>limit, got %v", err)
 	}
 }
-

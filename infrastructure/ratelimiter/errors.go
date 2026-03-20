@@ -8,4 +8,3 @@ var (
 	ErrEmptyKey      = errors.New("ratelimiter: key cannot be empty")
 	ErrInvalidN      = errors.New("ratelimiter: n must be greater than zero and less than or equal to limit")
 )
-

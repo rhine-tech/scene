@@ -46,4 +46,3 @@ func TestFixedWindowLimiterAllowAndReset(t *testing.T) {
 		t.Fatalf("new window request should pass, decision=%+v err=%v", d, e)
 	}
 }
-

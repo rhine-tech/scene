@@ -85,4 +85,3 @@ func (l *SlidingWindowLogLimiter) AllowN(_ context.Context, key string, n int) (
 		RetryAfter: 0,
 	}, nil
 }
-

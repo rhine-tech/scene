@@ -23,4 +23,3 @@ func normalizeInput(limit int, window time.Duration, key string, n int) (string,
 	}
 	return trimmed, nil
 }
-

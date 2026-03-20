@@ -43,4 +43,3 @@ func TestLeakyBucketLimiterAllowAndLeak(t *testing.T) {
 		t.Fatalf("after leak request should pass, decision=%+v err=%v", d, e)
 	}
 }
-

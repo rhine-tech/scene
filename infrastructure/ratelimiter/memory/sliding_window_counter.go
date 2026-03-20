@@ -118,4 +118,3 @@ func (l *SlidingWindowCounterLimiter) AllowN(_ context.Context, key string, n in
 		RetryAfter: 0,
 	}, nil
 }
-
