@@ -1,13 +1,14 @@
 package arpcimpl
+
 import (
 	"github.com/lesismal/arpc"
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/errcode"
 	"github.com/rhine-tech/scene/infrastructure/logger"
-	sarpc "github.com/rhine-tech/scene/scenes/arpc"
-	"time"
 	"github.com/rhine-tech/scene/lens/authentication"
 	"github.com/rhine-tech/scene/model"
+	sarpc "github.com/rhine-tech/scene/scenes/arpc"
+	"time"
 )
 
 // make sure errcode used
@@ -16,11 +17,11 @@ type _ = errcode.Error
 // Method definition
 
 const (
-	ARpcNameAuthenticationIAccessTokenServiceCreate = "authentication.IAccessTokenService.Create"
+	ARpcNameAuthenticationIAccessTokenServiceCreate     = "authentication.IAccessTokenService.Create"
 	ARpcNameAuthenticationIAccessTokenServiceListByUser = "authentication.IAccessTokenService.ListByUser"
-	ARpcNameAuthenticationIAccessTokenServiceList = "authentication.IAccessTokenService.List"
-	ARpcNameAuthenticationIAccessTokenServiceValidate = "authentication.IAccessTokenService.Validate"
-	ARpcNameAuthenticationIAccessTokenServiceDelete = "authentication.IAccessTokenService.Delete"
+	ARpcNameAuthenticationIAccessTokenServiceList       = "authentication.IAccessTokenService.List"
+	ARpcNameAuthenticationIAccessTokenServiceValidate   = "authentication.IAccessTokenService.Validate"
+	ARpcNameAuthenticationIAccessTokenServiceDelete     = "authentication.IAccessTokenService.Delete"
 )
 
 type IAccessTokenServiceCreateArgs struct {
@@ -72,11 +73,10 @@ type IAccessTokenServiceDeleteResult struct {
 // Service (Client) Implementation
 
 type arpcClientIAccessTokenService struct {
-	client sarpc.Client  `aperture:""`
+	client  sarpc.Client `aperture:""`
 	timeout time.Duration
-	log 	logger.ILogger `aperture:""`
+	log     logger.ILogger `aperture:""`
 }
-
 
 func NewARpcIAccessTokenService(client sarpc.Client) authentication.IAccessTokenService {
 	return &arpcClientIAccessTokenService{
@@ -100,65 +100,60 @@ func (r *arpcClientIAccessTokenService) ImplName() scene.ImplName {
 	return authentication.Lens.ImplName("IAccessTokenService", "arpc")
 }
 
-// Deprecated: no longer used
-func (r *arpcClientIAccessTokenService) WithSceneContext(ctx scene.Context) authentication.IAccessTokenService {
-	return r
-}
-
-func (r *arpcClientIAccessTokenService) Create(userId string, name string, expireAt int64, ) (authentication.AccessToken, error) {
+func (r *arpcClientIAccessTokenService) Create(userId string, name string, expireAt int64) (authentication.AccessToken, error) {
 	var resp IAccessTokenServiceCreateResult
 	err := r.client.Call(ARpcNameAuthenticationIAccessTokenServiceCreate, &IAccessTokenServiceCreateArgs{
 		Val0: userId,
 		Val1: name,
 		Val2: expireAt,
-	}, &resp,r.timeout)
+	}, &resp, r.timeout)
 	if err != nil {
 		r.log.ErrorW("remote call error", "method", ARpcNameAuthenticationIAccessTokenServiceCreate, "err", err)
 		return *new(authentication.AccessToken), err
 	}
 	return resp.Val0, resp.Val1.Error
 }
-func (r *arpcClientIAccessTokenService) ListByUser(userId string, offset int64, limit int64, ) (model.PaginationResult[authentication.AccessToken], error) {
+func (r *arpcClientIAccessTokenService) ListByUser(userId string, offset int64, limit int64) (model.PaginationResult[authentication.AccessToken], error) {
 	var resp IAccessTokenServiceListByUserResult
 	err := r.client.Call(ARpcNameAuthenticationIAccessTokenServiceListByUser, &IAccessTokenServiceListByUserArgs{
 		Val0: userId,
 		Val1: offset,
 		Val2: limit,
-	}, &resp,r.timeout)
+	}, &resp, r.timeout)
 	if err != nil {
 		r.log.ErrorW("remote call error", "method", ARpcNameAuthenticationIAccessTokenServiceListByUser, "err", err)
 		return *new(model.PaginationResult[authentication.AccessToken]), err
 	}
 	return resp.Val0, resp.Val1.Error
 }
-func (r *arpcClientIAccessTokenService) List(offset int64, limit int64, ) (model.PaginationResult[authentication.AccessToken], error) {
+func (r *arpcClientIAccessTokenService) List(offset int64, limit int64) (model.PaginationResult[authentication.AccessToken], error) {
 	var resp IAccessTokenServiceListResult
 	err := r.client.Call(ARpcNameAuthenticationIAccessTokenServiceList, &IAccessTokenServiceListArgs{
 		Val0: offset,
 		Val1: limit,
-	}, &resp,r.timeout)
+	}, &resp, r.timeout)
 	if err != nil {
 		r.log.ErrorW("remote call error", "method", ARpcNameAuthenticationIAccessTokenServiceList, "err", err)
 		return *new(model.PaginationResult[authentication.AccessToken]), err
 	}
 	return resp.Val0, resp.Val1.Error
 }
-func (r *arpcClientIAccessTokenService) Validate(token string, ) (string, bool, error) {
+func (r *arpcClientIAccessTokenService) Validate(token string) (string, bool, error) {
 	var resp IAccessTokenServiceValidateResult
 	err := r.client.Call(ARpcNameAuthenticationIAccessTokenServiceValidate, &IAccessTokenServiceValidateArgs{
 		Val0: token,
-	}, &resp,r.timeout)
+	}, &resp, r.timeout)
 	if err != nil {
 		r.log.ErrorW("remote call error", "method", ARpcNameAuthenticationIAccessTokenServiceValidate, "err", err)
 		return *new(string), *new(bool), err
 	}
 	return resp.Val0, resp.Val1, resp.Val2.Error
 }
-func (r *arpcClientIAccessTokenService) Delete(token string, ) (error) {
+func (r *arpcClientIAccessTokenService) Delete(token string) error {
 	var resp IAccessTokenServiceDeleteResult
 	err := r.client.Call(ARpcNameAuthenticationIAccessTokenServiceDelete, &IAccessTokenServiceDeleteArgs{
 		Val0: token,
-	}, &resp,r.timeout)
+	}, &resp, r.timeout)
 	if err != nil {
 		r.log.ErrorW("remote call error", "method", ARpcNameAuthenticationIAccessTokenServiceDelete, "err", err)
 		return err
@@ -172,39 +167,20 @@ type ARpcServerIAccessTokenService struct {
 	srv authentication.IAccessTokenService `aperture:""`
 }
 
-type ARpcServerIAccessTokenServiceWithContext struct {
-	srv scene.WithContext[authentication.IAccessTokenService]
-}
-
 func HandleIAccessTokenService(srv authentication.IAccessTokenService, handler arpc.Handler) {
 	svr := NewARpcServerIAccessTokenService(srv)
-	HandleARpcServerIAccessTokenService(svr,handler)
+	HandleARpcServerIAccessTokenService(svr, handler)
 }
 
 func HandleARpcServerIAccessTokenService(svr *ARpcServerIAccessTokenService, handler arpc.Handler) {
-	handler.Handle(ARpcNameAuthenticationIAccessTokenServiceCreate , svr.Create)
-	handler.Handle(ARpcNameAuthenticationIAccessTokenServiceListByUser , svr.ListByUser)
-	handler.Handle(ARpcNameAuthenticationIAccessTokenServiceList , svr.List)
-	handler.Handle(ARpcNameAuthenticationIAccessTokenServiceValidate , svr.Validate)
-	handler.Handle(ARpcNameAuthenticationIAccessTokenServiceDelete , svr.Delete)
-} 
-
-func HandleARpcServerIAccessTokenServiceWithContext(svr *ARpcServerIAccessTokenServiceWithContext, handler arpc.Handler) {
-	handler.Handle(ARpcNameAuthenticationIAccessTokenServiceCreate , svr.Create)
-	handler.Handle(ARpcNameAuthenticationIAccessTokenServiceListByUser , svr.ListByUser)
-	handler.Handle(ARpcNameAuthenticationIAccessTokenServiceList , svr.List)
-	handler.Handle(ARpcNameAuthenticationIAccessTokenServiceValidate , svr.Validate)
-	handler.Handle(ARpcNameAuthenticationIAccessTokenServiceDelete , svr.Delete)
-} 
-
+	handler.Handle(ARpcNameAuthenticationIAccessTokenServiceCreate, svr.Create)
+	handler.Handle(ARpcNameAuthenticationIAccessTokenServiceListByUser, svr.ListByUser)
+	handler.Handle(ARpcNameAuthenticationIAccessTokenServiceList, svr.List)
+	handler.Handle(ARpcNameAuthenticationIAccessTokenServiceValidate, svr.Validate)
+	handler.Handle(ARpcNameAuthenticationIAccessTokenServiceDelete, svr.Delete)
+}
 func NewARpcServerIAccessTokenService(srv authentication.IAccessTokenService) *ARpcServerIAccessTokenService {
 	return &ARpcServerIAccessTokenService{
-		srv: srv,
-	}
-}
-
-func NewARpcServerIAccessTokenServiceWithContext(srv scene.WithContext[authentication.IAccessTokenService]) *ARpcServerIAccessTokenServiceWithContext {
-	return &ARpcServerIAccessTokenServiceWithContext{
 		srv: srv,
 	}
 }
@@ -215,13 +191,13 @@ func (r *ARpcServerIAccessTokenService) Create(c *arpc.Context) {
 	if err != nil {
 		return
 	}
-	 a0, a1 := r.srv.Create(
+	a0, a1 := r.srv.Create(
 		req.Val0,
 		req.Val1,
 		req.Val2,
 	)
 	resp.Val0 = a0
-	resp.Val1 = errcode.UnmarshalError{Error:a1}
+	resp.Val1 = errcode.UnmarshalError{Error: a1}
 	_ = c.Write(&resp)
 	return
 }
@@ -232,13 +208,13 @@ func (r *ARpcServerIAccessTokenService) ListByUser(c *arpc.Context) {
 	if err != nil {
 		return
 	}
-	 a0, a1 := r.srv.ListByUser(
+	a0, a1 := r.srv.ListByUser(
 		req.Val0,
 		req.Val1,
 		req.Val2,
 	)
 	resp.Val0 = a0
-	resp.Val1 = errcode.UnmarshalError{Error:a1}
+	resp.Val1 = errcode.UnmarshalError{Error: a1}
 	_ = c.Write(&resp)
 	return
 }
@@ -249,12 +225,12 @@ func (r *ARpcServerIAccessTokenService) List(c *arpc.Context) {
 	if err != nil {
 		return
 	}
-	 a0, a1 := r.srv.List(
+	a0, a1 := r.srv.List(
 		req.Val0,
 		req.Val1,
 	)
 	resp.Val0 = a0
-	resp.Val1 = errcode.UnmarshalError{Error:a1}
+	resp.Val1 = errcode.UnmarshalError{Error: a1}
 	_ = c.Write(&resp)
 	return
 }
@@ -265,12 +241,12 @@ func (r *ARpcServerIAccessTokenService) Validate(c *arpc.Context) {
 	if err != nil {
 		return
 	}
-	 a0, a1, a2 := r.srv.Validate(
+	a0, a1, a2 := r.srv.Validate(
 		req.Val0,
 	)
 	resp.Val0 = a0
 	resp.Val1 = a1
-	resp.Val2 = errcode.UnmarshalError{Error:a2}
+	resp.Val2 = errcode.UnmarshalError{Error: a2}
 	_ = c.Write(&resp)
 	return
 }
@@ -281,90 +257,10 @@ func (r *ARpcServerIAccessTokenService) Delete(c *arpc.Context) {
 	if err != nil {
 		return
 	}
-	 a0 := r.srv.Delete(
+	a0 := r.srv.Delete(
 		req.Val0,
 	)
-	resp.Val0 = errcode.UnmarshalError{Error:a0}
-	_ = c.Write(&resp)
-	return
-}
-func (r *ARpcServerIAccessTokenServiceWithContext) Create(c *arpc.Context) {
-	var req IAccessTokenServiceCreateArgs
-	var resp IAccessTokenServiceCreateResult
-	err := c.Bind(&req)
-	if err != nil {
-		return
-	}
-	 a0, a1 := r.srv.WithSceneContext(sarpc.Context(c)).Create(
-		req.Val0,
-		req.Val1,
-		req.Val2,
-	)
-	resp.Val0 = a0
-	resp.Val1 = errcode.UnmarshalError{Error:a1}
-	_ = c.Write(&resp)
-	return
-}
-func (r *ARpcServerIAccessTokenServiceWithContext) ListByUser(c *arpc.Context) {
-	var req IAccessTokenServiceListByUserArgs
-	var resp IAccessTokenServiceListByUserResult
-	err := c.Bind(&req)
-	if err != nil {
-		return
-	}
-	 a0, a1 := r.srv.WithSceneContext(sarpc.Context(c)).ListByUser(
-		req.Val0,
-		req.Val1,
-		req.Val2,
-	)
-	resp.Val0 = a0
-	resp.Val1 = errcode.UnmarshalError{Error:a1}
-	_ = c.Write(&resp)
-	return
-}
-func (r *ARpcServerIAccessTokenServiceWithContext) List(c *arpc.Context) {
-	var req IAccessTokenServiceListArgs
-	var resp IAccessTokenServiceListResult
-	err := c.Bind(&req)
-	if err != nil {
-		return
-	}
-	 a0, a1 := r.srv.WithSceneContext(sarpc.Context(c)).List(
-		req.Val0,
-		req.Val1,
-	)
-	resp.Val0 = a0
-	resp.Val1 = errcode.UnmarshalError{Error:a1}
-	_ = c.Write(&resp)
-	return
-}
-func (r *ARpcServerIAccessTokenServiceWithContext) Validate(c *arpc.Context) {
-	var req IAccessTokenServiceValidateArgs
-	var resp IAccessTokenServiceValidateResult
-	err := c.Bind(&req)
-	if err != nil {
-		return
-	}
-	 a0, a1, a2 := r.srv.WithSceneContext(sarpc.Context(c)).Validate(
-		req.Val0,
-	)
-	resp.Val0 = a0
-	resp.Val1 = a1
-	resp.Val2 = errcode.UnmarshalError{Error:a2}
-	_ = c.Write(&resp)
-	return
-}
-func (r *ARpcServerIAccessTokenServiceWithContext) Delete(c *arpc.Context) {
-	var req IAccessTokenServiceDeleteArgs
-	var resp IAccessTokenServiceDeleteResult
-	err := c.Bind(&req)
-	if err != nil {
-		return
-	}
-	 a0 := r.srv.WithSceneContext(sarpc.Context(c)).Delete(
-		req.Val0,
-	)
-	resp.Val0 = errcode.UnmarshalError{Error:a0}
+	resp.Val0 = errcode.UnmarshalError{Error: a0}
 	_ = c.Write(&resp)
 	return
 }
@@ -383,4 +279,3 @@ func (r *ARpcAppIAccessTokenService) RegisterService(handler arpc.Handler) error
 	HandleIAccessTokenService(r.srv, handler)
 	return nil
 }
-

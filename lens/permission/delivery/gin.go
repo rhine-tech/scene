@@ -55,19 +55,19 @@ func (g *ginApp) handleCheck(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, model.NewErrorCodeResponse(errcode.ParameterError.WithDetail(err)))
 		return
 	}
-	actx, _ := scene.ContextFindValue[authentication.AuthContext](sgin.GetContext(c))
+	actx, _ := authentication.GetAuthContext(c.Request.Context())
 	c.JSON(200, model.NewDataResponse(gin.H{
 		"permission": param.Perm,
 		"has":        g.permSrv.HasPermissionStr(actx.UserID, param.Perm)}))
 }
 
 func (g *ginApp) handleList(c *gin.Context) {
-	actx, _ := scene.ContextFindValue[authentication.AuthContext](sgin.GetContext(c))
+	actx, _ := authentication.GetAuthContext(c.Request.Context())
 	c.JSON(200, model.NewDataResponse(g.permSrv.ListPermissions(actx.UserID)))
 }
 
 func (g *ginApp) handleAll(c *gin.Context) {
-	ctx := sgin.GetContext(c)
+	ctx := c.Request.Context()
 	_, ok := authentication.IsLoginInCtx(ctx)
 	if !ok {
 		c.JSON(200, model.NewErrorCodeResponse(authentication.ErrNotLogin))
@@ -95,7 +95,7 @@ type managePermParam struct {
 }
 
 func (g *ginApp) handleManageAdd(c *gin.Context) {
-	ctx := sgin.GetContext(c)
+	ctx := c.Request.Context()
 	var param managePermParam
 	if err := c.ShouldBind(&param); err != nil || param.Perm == "" {
 		c.JSON(http.StatusBadRequest, model.NewErrorCodeResponse(errcode.ParameterError.WithDetail(err)))
@@ -114,7 +114,7 @@ func (g *ginApp) handleManageAdd(c *gin.Context) {
 }
 
 func (g *ginApp) handleManageDelete(c *gin.Context) {
-	ctx := sgin.GetContext(c)
+	ctx := c.Request.Context()
 	var param managePermParam
 	if err := c.ShouldBind(&param); err != nil || param.Perm == "" {
 		c.JSON(http.StatusBadRequest, model.NewErrorCodeResponse(errcode.ParameterError.WithDetail(err)))
@@ -133,7 +133,7 @@ func (g *ginApp) handleManageDelete(c *gin.Context) {
 }
 
 func (g *ginApp) handleManageList(c *gin.Context) {
-	ctx := sgin.GetContext(c)
+	ctx := c.Request.Context()
 	var param managePermParam
 	if err := c.ShouldBindQuery(&param); err != nil {
 		c.JSON(http.StatusBadRequest, model.NewErrorCodeResponse(errcode.ParameterError.WithDetail(err)))

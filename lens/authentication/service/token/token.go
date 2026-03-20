@@ -146,7 +146,3 @@ func (s *accessTokenService) Validate(tokenValue string) (userId string, valid b
 	s.logger.DebugW("token is valid", "token", maskSecretValue(tokenValue), "userId", token.UserID)
 	return token.UserID, true, nil
 }
-
-func (s *accessTokenService) WithSceneContext(ctx scene.Context) authentication.IAccessTokenService {
-	return &accessTokenServiceCtx{s: s, ctx: ctx}
-}

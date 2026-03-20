@@ -1,8 +1,10 @@
 package permission
 
-import "github.com/rhine-tech/scene"
+import (
+	"context"
+)
 
-func HasPermissionInCtx(ctx scene.Context, perm *Permission) bool {
+func HasPermissionInCtx(ctx context.Context, perm *Permission) bool {
 	pctx, ok := GetPermContext(ctx)
 	if !ok {
 		return false

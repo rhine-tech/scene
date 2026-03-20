@@ -1,9 +1,11 @@
 package authentication
 
-import "github.com/rhine-tech/scene"
+import (
+	"context"
+)
 
 // IsLoginInCtx return userId and if user has logged in
-func IsLoginInCtx(ctx scene.Context) (string, bool) {
+func IsLoginInCtx(ctx context.Context) (string, bool) {
 	actx, ok := GetAuthContext(ctx)
 	if !ok {
 		return "", false

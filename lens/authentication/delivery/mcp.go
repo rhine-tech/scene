@@ -63,8 +63,7 @@ func (a *app) toolGetMyInfo() server.ServerTool {
 			mcp.WithDescription("获取当前登录用户信息"),
 		),
 		Handler: func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			_, sceneCtx := smcp.GetContext(ctx)
-			authCtx, ok := authentication.GetAuthContext(sceneCtx)
+			authCtx, ok := authentication.GetAuthContext(ctx)
 			if !ok || !authCtx.IsLogin() {
 				return mcp.NewToolResultError(authentication.ErrNotLogin.Error()), nil
 			}

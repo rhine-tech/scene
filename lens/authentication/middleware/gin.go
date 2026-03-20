@@ -1,37 +1,37 @@
 package middleware
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
-	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/lens/authentication"
 	"github.com/rhine-tech/scene/model"
-	sgin "github.com/rhine-tech/scene/scenes/gin"
-	"net/http"
 )
 
 func GinAuthContext(verifiers ...authentication.HTTPLoginStatusVerifier) gin.HandlerFunc {
-	return func(context *gin.Context) {
-		ctx := sgin.GetContext(context)
+	return func(c *gin.Context) {
+		reqCtx := c.Request.Context()
 		verified := false
 		for _, verifier := range verifiers {
-			status, err := verifier.Verify(context.Request)
+			status, err := verifier.Verify(c.Request)
 			if err == nil {
-				scene.ContextSetValue(ctx, authentication.NewAuthContext(status.UserID))
+				reqCtx = authentication.SetAuthContext(reqCtx, status.UserID)
 				verified = true
 				break
 			}
 		}
 		if !verified {
-			scene.ContextSetValue(ctx, authentication.AuthContext{})
+			reqCtx = authentication.SetAuthContext(reqCtx, "")
 		}
-		context.Next()
+		c.Request = c.Request.WithContext(reqCtx)
+		c.Next()
 	}
 }
 
 // GinRequireAuth is a middleware that check if request has been authenticated using authentication.AuthContext
 func GinRequireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		actx, ok := authentication.GetAuthContext(sgin.GetContext(c))
+		actx, ok := authentication.GetAuthContext(c.Request.Context())
 		if !ok {
 			c.AbortWithStatusJSON(http.StatusForbidden, model.TryErrorCodeResponse(authentication.ErrNotLogin))
 			return

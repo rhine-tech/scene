@@ -1,7 +1,9 @@
 //go:generate scene gen arpc PermissionService
 package permission
 
-import "github.com/rhine-tech/scene"
+import (
+	"github.com/rhine-tech/scene"
+)
 
 const Lens scene.ModuleName = "permission"
 

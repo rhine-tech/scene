@@ -2,23 +2,24 @@ package delivery
 
 import (
 	"bytes"
-	"github.com/rhine-tech/scene"
-	"github.com/rhine-tech/scene/errcode"
-	"github.com/rhine-tech/scene/lens/authentication"
-	"github.com/rhine-tech/scene/lens/authentication/service/token"
-	"github.com/rhine-tech/scene/lens/permission"
-	"github.com/rhine-tech/scene/lens/storage"
-	"github.com/rhine-tech/scene/model"
-	sgin "github.com/rhine-tech/scene/scenes/gin"
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/gin-gonic/gin"
+	"github.com/rhine-tech/scene/errcode"
+	"github.com/rhine-tech/scene/lens/authentication"
+	"github.com/rhine-tech/scene/lens/permission"
+	permMdw "github.com/rhine-tech/scene/lens/permission/middleware"
+	"github.com/rhine-tech/scene/lens/storage"
+	"github.com/rhine-tech/scene/model"
+	sgin "github.com/rhine-tech/scene/scenes/gin"
 )
 
 type authContext struct {
-	authSrv  authentication.IAuthenticationService                 `aperture:""`
-	tokenSrv scene.WithContext[authentication.IAccessTokenService] `aperture:"embed"`
-	storage  storage.IStorageService                               `aperture:""`
+	authSrv  authentication.IAuthenticationService `aperture:""`
+	tokenSrv authentication.IAccessTokenService    `aperture:""`
+	storage  storage.IStorageService               `aperture:""`
 	lgStVrf  authentication.HTTPLoginStatusVerifier
 }
 
@@ -53,8 +54,7 @@ func AuthGinApp(lgStVrf authentication.HTTPLoginStatusVerifier) sgin.GinApplicat
 		},
 		// The context is initialized empty; DI will populate it.
 		Context: authContext{
-			lgStVrf:  lgStVrf,
-			tokenSrv: new(token.CtxProxy),
+			lgStVrf: lgStVrf,
 		},
 	}
 }
@@ -406,11 +406,17 @@ func (c *createTokenRequest) GetRoute() sgin.HttpRouteInfo {
 	return sgin.HttpRouteInfo{Method: http.MethodPost, Path: "/token"}
 }
 
+func (c *createTokenRequest) Middleware() gin.HandlersChain {
+	return gin.HandlersChain{
+		permMdw.GinRequirePermission(authentication.PermTokenCreate),
+	}
+}
+
 func (c *createTokenRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
 	if c.ExpireAt == 0 {
 		c.ExpireAt = -1
 	}
-	return ctx.App.tokenSrv.WithSceneContext(ctx).Create(c.UserID, c.Name, c.ExpireAt)
+	return ctx.App.tokenSrv.Create(c.UserID, c.Name, c.ExpireAt)
 }
 
 // listTokensRequest lists all tokens for the currently authenticated user.
@@ -427,8 +433,14 @@ func (l *listTokensRequest) GetRoute() sgin.HttpRouteInfo {
 	return sgin.HttpRouteInfo{Method: http.MethodGet, Path: "/tokens"}
 }
 
+func (l *listTokensRequest) Middleware() gin.HandlersChain {
+	return gin.HandlersChain{
+		permMdw.GinRequirePermission(authentication.PermTokenList),
+	}
+}
+
 func (l *listTokensRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
-	return ctx.App.tokenSrv.WithSceneContext(ctx).ListByUser(l.UserID, l.Offset, l.Limit)
+	return ctx.App.tokenSrv.ListByUser(l.UserID, l.Offset, l.Limit)
 }
 
 // deleteTokenRequest deletes a specific token owned by the user.
@@ -443,6 +455,12 @@ func (d *deleteTokenRequest) GetRoute() sgin.HttpRouteInfo {
 	return sgin.HttpRouteInfo{Method: http.MethodDelete, Path: "/token"}
 }
 
+func (d *deleteTokenRequest) Middleware() gin.HandlersChain {
+	return gin.HandlersChain{
+		permMdw.GinRequirePermission(authentication.PermTokenDelete),
+	}
+}
+
 func (d *deleteTokenRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
-	return nil, ctx.App.tokenSrv.WithSceneContext(ctx).Delete(d.Token)
+	return nil, ctx.App.tokenSrv.Delete(d.Token)
 }

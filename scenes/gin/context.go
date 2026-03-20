@@ -1,8 +1,10 @@
 package gin
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/gin-gonic/gin"
-	"github.com/rhine-tech/scene"
 )
 
 type Context[T any] struct {
@@ -10,14 +12,43 @@ type Context[T any] struct {
 	App T // App is the container of current app
 }
 
-func (g *Context[T]) Get(key string) (value any, exists bool) {
-	return g.Context.Get(key)
+func (g *Context[T]) Deadline() (deadline time.Time, ok bool) {
+	if g.Request == nil {
+		return time.Time{}, false
+	}
+	return g.Request.Context().Deadline()
 }
 
-func (g *Context[T]) Set(key string, value any) {
-	g.Context.Set(key, value)
+func (g *Context[T]) Done() <-chan struct{} {
+	if g.Request == nil {
+		return nil
+	}
+	return g.Request.Context().Done()
 }
 
-func GetContext(c *gin.Context) scene.Context {
-	return &Context[GinApplication]{Context: c, App: GinApplication(nil)}
+func (g *Context[T]) Err() error {
+	if g.Request == nil {
+		return nil
+	}
+	return g.Request.Context().Err()
+}
+
+func (g *Context[T]) Value(key any) any {
+	if val, exists := g.Context.Get(contextStorageKey(key)); exists {
+		return val
+	}
+	if g.Request != nil {
+		if val := g.Request.Context().Value(key); val != nil {
+			return val
+		}
+	}
+	return nil
+}
+
+func (g *Context[T]) SetContextValue(key any, value any) {
+	g.Context.Set(contextStorageKey(key), value)
+}
+
+func contextStorageKey(key any) string {
+	return "scene.ctx." + fmt.Sprintf("%T:%v", key, key)
 }
