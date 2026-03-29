@@ -3,12 +3,13 @@ package mcp
 import (
 	"context"
 	"errors"
+	"net/http"
+
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/rhine-tech/scene/registry"
 	"github.com/rhine-tech/scene/utils"
-	"net/http"
 )
 
 type SSEScene struct {
@@ -54,7 +55,7 @@ func (m *SSEScene) ListAppNames() []string {
 	return nil
 }
 
-func NewSSEScene(
+func NewSSE(
 	name string,
 	version string,
 	addr string,

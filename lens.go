@@ -74,6 +74,11 @@ type Named interface {
 	ImplName() ImplName
 }
 
+// Based is an interface imply this service might have an internal core implementation
+type Based[T any] interface {
+	Base() T
+}
+
 type ImplName struct {
 	ImplType       ImplType
 	Module         string

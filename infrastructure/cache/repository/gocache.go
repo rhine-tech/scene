@@ -2,10 +2,11 @@ package repository
 
 import (
 	"context"
+	"time"
+
 	gocache "github.com/patrickmn/go-cache"
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/cache"
-	"time"
 )
 
 type GoCache struct {
