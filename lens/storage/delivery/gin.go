@@ -36,8 +36,8 @@ func GinApp() sgin.GinApplication {
 type getDataRequest struct {
 	sgin.BaseAction
 	sgin.RequestURI
-	Provider string `uri:"provider" binding:"required"`
-	FileID   string `uri:"fileid" binding:"required"`
+	Provider   string `uri:"provider" binding:"required"`
+	StorageKey string `uri:"fileid" binding:"required"`
 }
 
 func (l *getDataRequest) GetRoute() sgin.HttpRouteInfo {
@@ -49,7 +49,7 @@ func (l *getDataRequest) GetRoute() sgin.HttpRouteInfo {
 }
 
 func (l *getDataRequest) Process(ctx *sgin.Context[*appContext]) (data any, err error) {
-	reader, meta, err := storage.NewIoInterface(ctx.App.srv, storage.NewFileID(l.Provider, l.FileID))
+	reader, meta, err := storage.NewIoInterface(ctx.App.srv, storage.NewStorageKey(l.Provider, l.StorageKey))
 	if err != nil {
 		return nil, err
 	}
@@ -60,8 +60,8 @@ func (l *getDataRequest) Process(ctx *sgin.Context[*appContext]) (data any, err 
 type putDataRequest struct {
 	sgin.BaseAction
 	sgin.RequestURI
-	Provider string `uri:"provider" binding:"required"`
-	FileID   string `uri:"fileid" binding:"required"`
+	Provider   string `uri:"provider" binding:"required"`
+	StorageKey string `uri:"fileid" binding:"required"`
 }
 
 func (p *putDataRequest) GetRoute() sgin.HttpRouteInfo {
@@ -79,17 +79,17 @@ func (p *putDataRequest) Middleware() gin.HandlersChain {
 }
 
 func (p *putDataRequest) Process(ctx *sgin.Context[*appContext]) (data any, err error) {
-	p.FileID = strings.TrimPrefix(p.FileID, "/")
-	fileId := storage.NewFileID(p.Provider, p.FileID)
+	p.StorageKey = strings.TrimPrefix(p.StorageKey, "/")
+	storageKey := storage.NewStorageKey(p.Provider, p.StorageKey)
 	if !permission.HasPermissionInCtx(ctx, storage.PermFileNaming) {
-		fileId = storage.NewFileIDWithUUID(p.Provider)
+		storageKey = storage.NewStorageKeyWithUUID(p.Provider)
 	}
 	fileName := ctx.Query("filename")
 	if fileName == "" {
 		fileName = ctx.Request.Header.Get("filename")
 	}
 	if fileName == "" {
-		fileName = fileId.ID()
+		fileName = storageKey.FileID()
 	}
 	contentType := ctx.Query("content_type")
 	if contentType == "" {
@@ -100,7 +100,7 @@ func (p *putDataRequest) Process(ctx *sgin.Context[*appContext]) (data any, err 
 	}
 	// Construct metadata (can be expanded from headers as needed)
 	meta := storage.FileMeta{
-		FileID:           fileId,
+		StorageKey:       storageKey,
 		Provider:         p.Provider,
 		OriginalFilename: fileName,
 		ContentType:      contentType,
@@ -111,7 +111,7 @@ func (p *putDataRequest) Process(ctx *sgin.Context[*appContext]) (data any, err 
 	}
 
 	// Init multipart session
-	fileId, uploadId, err := ctx.App.srv.InitMultipartStore(p.Provider, p.FileID, meta)
+	storageKey, uploadId, err := ctx.App.srv.InitMultipartStore(p.Provider, p.StorageKey, meta)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +129,7 @@ func (p *putDataRequest) Process(ctx *sgin.Context[*appContext]) (data any, err 
 		return nil, err
 	}
 
-	meta, err = ctx.App.srv.Meta(fileId)
+	meta, err = ctx.App.srv.Meta(storageKey)
 	if err != nil {
 		return nil, err
 	}
@@ -140,8 +140,8 @@ func (p *putDataRequest) Process(ctx *sgin.Context[*appContext]) (data any, err 
 type deleteDataRequest struct {
 	sgin.BaseAction
 	sgin.RequestURI
-	Provider string `uri:"provider" binding:"required"`
-	FileID   string `uri:"fileid" binding:"required"`
+	Provider   string `uri:"provider" binding:"required"`
+	StorageKey string `uri:"fileid" binding:"required"`
 }
 
 func (d *deleteDataRequest) GetRoute() sgin.HttpRouteInfo {
@@ -158,19 +158,19 @@ func (d *deleteDataRequest) Middleware() gin.HandlersChain {
 }
 
 func (d *deleteDataRequest) Process(ctx *sgin.Context[*appContext]) (data any, err error) {
-	d.FileID = strings.TrimPrefix(d.FileID, "/")
-	fileId := storage.NewFileID(d.Provider, d.FileID)
-	if err := ctx.App.srv.Delete(fileId); err != nil {
+	d.StorageKey = strings.TrimPrefix(d.StorageKey, "/")
+	storageKey := storage.NewStorageKey(d.Provider, d.StorageKey)
+	if err := ctx.App.srv.Delete(storageKey); err != nil {
 		return nil, err
 	}
-	return storage.FileMeta{FileID: fileId}, nil
+	return storage.FileMeta{StorageKey: storageKey}, nil
 }
 
 type getPublicURLRequest struct {
 	sgin.BaseAction
 	sgin.RequestURI
-	Provider string `uri:"provider" binding:"required"`
-	FileID   string `uri:"fileid" binding:"required"`
+	Provider   string `uri:"provider" binding:"required"`
+	StorageKey string `uri:"fileid" binding:"required"`
 }
 
 func (g *getPublicURLRequest) GetRoute() sgin.HttpRouteInfo {
@@ -187,9 +187,9 @@ func (g *getPublicURLRequest) Middleware() gin.HandlersChain {
 }
 
 func (g *getPublicURLRequest) Process(ctx *sgin.Context[*appContext]) (data any, err error) {
-	g.FileID = strings.TrimPrefix(g.FileID, "/")
-	fileId := storage.NewFileID(g.Provider, g.FileID)
-	return ctx.App.srv.GetPublicURL(fileId)
+	g.StorageKey = strings.TrimPrefix(g.StorageKey, "/")
+	storageKey := storage.NewStorageKey(g.Provider, g.StorageKey)
+	return ctx.App.srv.GetPublicURL(storageKey)
 }
 
 type listMetaRequest struct {

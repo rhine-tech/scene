@@ -222,7 +222,7 @@ func (u *uploadAvatarRequest) Process(ctx *sgin.Context[*authContext]) (data any
 	if ctx.App.storage == nil {
 		return nil, errcode.InternalError.WithDetailStr("storage service not available")
 	}
-	fileId, err := ctx.App.storage.Store(bytes.NewReader(u.content), storage.FileMeta{
+	storageKey, err := ctx.App.storage.Store(bytes.NewReader(u.content), storage.FileMeta{
 		OriginalFilename: u.fileName,
 		ContentType:      u.contentType,
 		ContentLength:    int64(len(u.content)),
@@ -230,7 +230,7 @@ func (u *uploadAvatarRequest) Process(ctx *sgin.Context[*authContext]) (data any
 	if err != nil {
 		return nil, err
 	}
-	user.Avatar = string(fileId)
+	user.Avatar = string(storageKey)
 	if err := ctx.App.authSrv.UpdateUser(user); err != nil {
 		return nil, err
 	}

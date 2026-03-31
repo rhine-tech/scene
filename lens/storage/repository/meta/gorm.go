@@ -45,18 +45,18 @@ func (r *GormFileMetaRepository) Store(meta storage.FileMeta) error {
 		"updated_at":        meta.UpdatedAt,
 	}
 
-	found, err := r.Exists(meta.FileID)
+	found, err := r.Exists(meta.StorageKey)
 	if err != nil {
 		return err
 	}
 	if found {
-		return r.internal.Update(updateFields, query.Field("file_id").Equal(meta.FileID))
+		return r.internal.Update(updateFields, query.Field("storage_key").Equal(meta.StorageKey))
 	}
 	return r.internal.Create(&meta)
 }
 
-func (r *GormFileMetaRepository) Load(fileId storage.FileID) (storage.FileMeta, error) {
-	meta, found, err := r.internal.FindFirst(query.Field("file_id").Equal(fileId))
+func (r *GormFileMetaRepository) Load(storageKey storage.StorageKey) (storage.FileMeta, error) {
+	meta, found, err := r.internal.FindFirst(query.Field("storage_key").Equal(storageKey))
 	if err != nil {
 		return storage.FileMeta{}, err
 	}
@@ -66,11 +66,11 @@ func (r *GormFileMetaRepository) Load(fileId storage.FileID) (storage.FileMeta, 
 	return meta, nil
 }
 
-func (r *GormFileMetaRepository) Delete(fileId storage.FileID) error {
-	return r.internal.Delete(query.Field("file_id").Equal(fileId))
+func (r *GormFileMetaRepository) Delete(storageKey storage.StorageKey) error {
+	return r.internal.Delete(query.Field("storage_key").Equal(storageKey))
 }
 
-func (r *GormFileMetaRepository) Exists(fileId storage.FileID) (bool, error) {
-	count, err := r.internal.Count(query.Field("file_id").Equal(fileId))
+func (r *GormFileMetaRepository) Exists(storageKey storage.StorageKey) (bool, error) {
+	count, err := r.internal.Count(query.Field("storage_key").Equal(storageKey))
 	return count > 0, err
 }

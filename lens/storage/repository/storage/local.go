@@ -21,7 +21,7 @@ import (
 )
 
 type uploadSession struct {
-	fileId     storage.FileID
+	storageKey storage.StorageKey
 	uploadId   string
 	parts      map[int]string // partNumber -> file path
 	createdAt  time.Time
@@ -119,10 +119,10 @@ func (l *localStorage) ImplName() scene.ImplName {
 	return storage.Lens.ImplName("IStorageProvider", "local")
 }
 
-func (l *localStorage) Meta(fileId storage.FileID) (storage.FileMeta, error) {
-	pathParts := l.cleanupPath(fileId)
+func (l *localStorage) Meta(storageKey storage.StorageKey) (storage.FileMeta, error) {
+	pathParts := l.cleanupPath(storageKey)
 	if len(pathParts) == 0 {
-		return storage.FileMeta{}, storage.ErrInvalidFileID
+		return storage.FileMeta{}, storage.ErrInvalidStorageKey
 	}
 
 	path := filepath.Join(append([]string{l.localPath}, pathParts...)...)
@@ -145,7 +145,7 @@ func (l *localStorage) Meta(fileId storage.FileID) (storage.FileMeta, error) {
 	_ = f.Close()
 
 	meta := storage.FileMeta{
-		FileID:           fileId,
+		StorageKey:       storageKey,
 		OriginalFilename: filepath.Base(path),
 		ContentType:      http.DetectContentType(header[:n]),
 		ContentLength:    stat.Size(),
@@ -158,8 +158,8 @@ func (l *localStorage) Meta(fileId storage.FileID) (storage.FileMeta, error) {
 	return meta, nil
 }
 
-func (l *localStorage) Store(fileId storage.FileID, data io.Reader) (err error) {
-	prefixs := l.cleanupPath(fileId)
+func (l *localStorage) Store(storageKey storage.StorageKey, data io.Reader) (err error) {
+	prefixs := l.cleanupPath(storageKey)
 	if len(prefixs) == 0 {
 		return storage.ErrStorageFailed.WithDetailStr("invalid_prefix")
 	}
@@ -180,8 +180,8 @@ func (l *localStorage) Store(fileId storage.FileID, data io.Reader) (err error) 
 	return file.Close()
 }
 
-func (l *localStorage) Load(fileId storage.FileID, offset, length int64) (reader io.ReadCloser, err error) {
-	prefixs := l.cleanupPath(fileId)
+func (l *localStorage) Load(storageKey storage.StorageKey, offset, length int64) (reader io.ReadCloser, err error) {
+	prefixs := l.cleanupPath(storageKey)
 	if len(prefixs) == 0 {
 		return nil, storage.ErrStorageFailed
 	}
@@ -225,25 +225,25 @@ func (l *localStorage) Load(fileId storage.FileID, offset, length int64) (reader
 	}, nil
 }
 
-func (l *localStorage) LoadAll(fileId storage.FileID) (reader io.ReadCloser, err error) {
-	prefixs := l.cleanupPath(fileId)
+func (l *localStorage) LoadAll(storageKey storage.StorageKey) (reader io.ReadCloser, err error) {
+	prefixs := l.cleanupPath(storageKey)
 	if len(prefixs) == 0 {
-		return nil, storage.ErrInvalidFileID
+		return nil, storage.ErrInvalidStorageKey
 	}
 	path := filepath.Join(append([]string{l.localPath}, prefixs...)...)
 	return os.Open(path)
 }
 
-func (l *localStorage) GetPublicURL(fileId storage.FileID) (uri string, err error) {
-	prefixs := strings.Split(fileId.ID(), "/")
+func (l *localStorage) GetPublicURL(storageKey storage.StorageKey) (uri string, err error) {
+	prefixs := strings.Split(storageKey.FileID(), "/")
 	if len(prefixs) == 0 {
-		return "", storage.ErrInvalidFileID
+		return "", storage.ErrInvalidStorageKey
 	}
-	return url.JoinPath(l.urlPrefix, append([]string{fileId.Provider()}, prefixs...)...)
+	return url.JoinPath(l.urlPrefix, append([]string{storageKey.Provider()}, prefixs...)...)
 }
 
-func (l *localStorage) Delete(fileId storage.FileID) error {
-	prefixs := l.cleanupPath(fileId)
+func (l *localStorage) Delete(storageKey storage.StorageKey) error {
+	prefixs := l.cleanupPath(storageKey)
 	if len(prefixs) == 0 {
 		return storage.ErrStorageFailed
 	}
@@ -251,8 +251,8 @@ func (l *localStorage) Delete(fileId storage.FileID) error {
 	return os.Remove(path)
 }
 
-func (l *localStorage) cleanupPath(fileId storage.FileID) []string {
-	parts := strings.Split(fileId.ID(), "/")
+func (l *localStorage) cleanupPath(storageKey storage.StorageKey) []string {
+	parts := strings.Split(storageKey.FileID(), "/")
 	if len(parts) == 0 {
 		return []string{}
 	}
@@ -281,19 +281,19 @@ func validFilename(name string) bool {
 	return true
 }
 
-func (l *localStorage) InitMultipartStore(fileId storage.FileID) (string, error) {
-	prefixs := l.cleanupPath(fileId)
+func (l *localStorage) InitMultipartStore(storageKey storage.StorageKey) (string, error) {
+	prefixs := l.cleanupPath(storageKey)
 	if len(prefixs) == 0 {
-		return "", storage.ErrInvalidFileID
+		return "", storage.ErrInvalidStorageKey
 	}
 	uploadId := fmt.Sprintf("upload-%d", time.Now().UnixNano())
 	l.uploadsLock.Lock()
 	defer l.uploadsLock.Unlock()
 	l.uploads[uploadId] = &uploadSession{
-		fileId:    fileId,
-		uploadId:  uploadId,
-		parts:     make(map[int]string),
-		createdAt: time.Now(),
+		storageKey: storageKey,
+		uploadId:   uploadId,
+		parts:      make(map[int]string),
+		createdAt:  time.Now(),
 	}
 	return uploadId, nil
 }
@@ -339,7 +339,7 @@ func (l *localStorage) CompleteMultipartStore(uploadId string) error {
 	}
 	sort.Ints(partNumbers)
 
-	prefixs := l.cleanupPath(sess.fileId)
+	prefixs := l.cleanupPath(sess.storageKey)
 	if len(prefixs) == 0 {
 		return storage.ErrStorageFailed
 	}

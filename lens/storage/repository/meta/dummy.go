@@ -26,10 +26,10 @@ func (d dummyImpl) Store(meta storage.FileMeta) error {
 	return storage.ErrLoadingMeta
 }
 
-func (d dummyImpl) Load(fileId storage.FileID) (meta storage.FileMeta, err error) {
+func (d dummyImpl) Load(storageKey storage.StorageKey) (meta storage.FileMeta, err error) {
 	return meta, storage.ErrLoadingMeta
 }
 
-func (d dummyImpl) Delete(fileId storage.FileID) error {
+func (d dummyImpl) Delete(storageKey storage.StorageKey) error {
 	return storage.ErrLoadingMeta
 }

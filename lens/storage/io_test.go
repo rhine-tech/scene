@@ -33,15 +33,15 @@ func (t *testStorageService) ListMeta(provider string, offset, limit int64) (mod
 	return model.PaginationResult[FileMeta]{}, nil
 }
 
-func (t *testStorageService) Meta(fileId FileID) (FileMeta, error) {
+func (t *testStorageService) Meta(storageKey StorageKey) (FileMeta, error) {
 	return FileMeta{
-		FileID:           fileId,
+		StorageKey:       storageKey,
 		ContentLength:    int64(len(t.data)),
 		OriginalFilename: "test.bin",
 	}, nil
 }
 
-func (t *testStorageService) Load(fileId FileID, offset, length int64) (io.ReadCloser, error) {
+func (t *testStorageService) Load(storageKey StorageKey, offset, length int64) (io.ReadCloser, error) {
 	t.loadCalls = append(t.loadCalls, testLoadCall{offset: offset, length: length})
 	if offset < 0 || length < 0 {
 		return nil, fmt.Errorf("invalid range")
@@ -58,25 +58,25 @@ func (t *testStorageService) Load(fileId FileID, offset, length int64) (io.ReadC
 	return io.NopCloser(bytes.NewReader(out)), nil
 }
 
-func (t *testStorageService) LoadAll(fileId FileID) (io.ReadCloser, error) {
+func (t *testStorageService) LoadAll(storageKey StorageKey) (io.ReadCloser, error) {
 	out := make([]byte, len(t.data))
 	copy(out, t.data)
 	return io.NopCloser(bytes.NewReader(out)), nil
 }
 
-func (t *testStorageService) Delete(fileId FileID) error {
+func (t *testStorageService) Delete(storageKey StorageKey) error {
 	return nil
 }
 
-func (t *testStorageService) Store(data io.Reader, meta FileMeta) (FileID, error) {
+func (t *testStorageService) Store(data io.Reader, meta FileMeta) (StorageKey, error) {
 	return "", nil
 }
 
-func (t *testStorageService) StoreAt(provider, identifier string, data io.Reader, meta FileMeta) (FileID, error) {
+func (t *testStorageService) StoreAt(provider, identifier string, data io.Reader, meta FileMeta) (StorageKey, error) {
 	return "", nil
 }
 
-func (t *testStorageService) InitMultipartStore(provider, identifier string, meta FileMeta) (FileID, string, error) {
+func (t *testStorageService) InitMultipartStore(provider, identifier string, meta FileMeta) (StorageKey, string, error) {
 	return "", "", nil
 }
 
@@ -96,13 +96,13 @@ func (t *testStorageService) AbortMultiPartStore(uploadId string) error {
 	return nil
 }
 
-func (t *testStorageService) GetPublicURL(fileId FileID) (string, error) {
+func (t *testStorageService) GetPublicURL(storageKey StorageKey) (string, error) {
 	return "", nil
 }
 
 func TestIoImpl_ReadAndSeekSemantics(t *testing.T) {
 	svc := &testStorageService{data: []byte("abcdefghijklmnopqrstuvwxyz")}
-	reader, meta, err := NewIoInterface(svc, NewFileID("local.test", "alphabet"))
+	reader, meta, err := NewIoInterface(svc, NewStorageKey("local.test", "alphabet"))
 	require.NoError(t, err)
 	require.Equal(t, int64(26), meta.ContentLength)
 
@@ -148,7 +148,7 @@ func TestIoImpl_ReadAheadCacheBehavior(t *testing.T) {
 	}
 	svc := &testStorageService{data: data}
 
-	iFace, _, err := NewIoInterface(svc, NewFileID("local.test", "big"))
+	iFace, _, err := NewIoInterface(svc, NewStorageKey("local.test", "big"))
 	require.NoError(t, err)
 
 	r, ok := iFace.(*ioImpl)

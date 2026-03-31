@@ -11,26 +11,26 @@ type IoInterface interface {
 }
 
 type ioImpl struct {
-	srv    IStorageService
-	fileId FileID
-	pos    int64
-	size   int64
-	buf    []byte
-	bufPos int64
+	srv        IStorageService
+	storageKey StorageKey
+	pos        int64
+	size       int64
+	buf        []byte
+	bufPos     int64
 }
 
 const defaultReadAheadSize int64 = 1 << 20 // 1 MiB
 
-func NewIoInterface(srv IStorageService, fileId FileID) (IoInterface, FileMeta, error) {
-	meta, err := srv.Meta(fileId)
+func NewIoInterface(srv IStorageService, storageKey StorageKey) (IoInterface, FileMeta, error) {
+	meta, err := srv.Meta(storageKey)
 	if err != nil {
 		return nil, meta, err
 	}
 	return &ioImpl{
-		srv:    srv,
-		fileId: fileId,
-		pos:    0,
-		size:   meta.ContentLength,
+		srv:        srv,
+		storageKey: storageKey,
+		pos:        0,
+		size:       meta.ContentLength,
 	}, meta, nil
 }
 
@@ -47,7 +47,7 @@ func (s *ioImpl) Read(p []byte) (int, error) {
 		if toRead > remaining {
 			toRead = remaining
 		}
-		reader, err := s.srv.Load(s.fileId, s.pos, toRead)
+		reader, err := s.srv.Load(s.storageKey, s.pos, toRead)
 		if err != nil {
 			return 0, err
 		}

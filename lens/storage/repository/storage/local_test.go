@@ -53,11 +53,11 @@ func TestLocalStorage_Load(t *testing.T) {
 
 	// Setup test data
 	content := []byte("the quick brown fox jumps over the lazy dog")
-	fileID := storage.FileID("local://fox/story")
-	require.NoError(t, storageApi.Store(fileID, bytes.NewReader(content)))
+	storageKey := storage.StorageKey("local://fox/story")
+	require.NoError(t, storageApi.Store(storageKey, bytes.NewReader(content)))
 
 	// Partial read from offset 10, length 5 ("brown")
-	reader, err := storageApi.Load(fileID, 10, 5)
+	reader, err := storageApi.Load(storageKey, 10, 5)
 	require.NoError(t, err)
 	buf := make([]byte, 5)
 	n, err := reader.Read(buf)
@@ -67,15 +67,15 @@ func TestLocalStorage_Load(t *testing.T) {
 	require.Equal(t, []byte("brown"), buf)
 
 	// Offset beyond file length
-	reader, err = storageApi.Load(fileID, int64(len(content)+10), 5)
+	reader, err = storageApi.Load(storageKey, int64(len(content)+10), 5)
 	require.ErrorIs(t, err, storage.ErrInvalidOffset)
 
 	// negative offset
-	reader, err = storageApi.Load(fileID, -1, 5)
+	reader, err = storageApi.Load(storageKey, -1, 5)
 	require.Error(t, err)
 
 	// Cleanup
-	require.NoError(t, storageApi.Delete(fileID))
+	require.NoError(t, storageApi.Delete(storageKey))
 	require.NoError(t, os.RemoveAll("./data"))
 }
 
@@ -85,8 +85,8 @@ func TestLocalStorage_MultipartUpload(t *testing.T) {
 	storageApi := NewLocalStorage("default", basePath, "")
 
 	// 1. Start multipart upload
-	fileID := storage.NewFileID("local.default", "multi/testfile")
-	uploadId, err := storageApi.InitMultipartStore(fileID)
+	storageKey := storage.NewStorageKey("local.default", "multi/testfile")
+	uploadId, err := storageApi.InitMultipartStore(storageKey)
 	require.NoError(t, err)
 	require.NotEmpty(t, uploadId)
 
@@ -108,7 +108,7 @@ func TestLocalStorage_MultipartUpload(t *testing.T) {
 	require.NoError(t, storageApi.CompleteMultipartStore(uploadId))
 
 	// 5. Check final file exists and is concatenated correctly
-	finalReader, err := storageApi.LoadAll(fileID)
+	finalReader, err := storageApi.LoadAll(storageKey)
 	require.NoError(t, err)
 	finalContent, err := io.ReadAll(finalReader)
 	require.NoError(t, err)
@@ -122,6 +122,6 @@ func TestLocalStorage_MultipartUpload(t *testing.T) {
 	require.True(t, os.IsNotExist(err))
 
 	// 7. Cleanup
-	require.NoError(t, storageApi.Delete(fileID))
+	require.NoError(t, storageApi.Delete(storageKey))
 	require.NoError(t, os.RemoveAll(basePath))
 }

@@ -220,10 +220,10 @@ func (r *arpcClientIStorageService) ListMeta(provider string, offset, limit int6
 	return resp.Val0, resp.Val1.Error
 }
 
-func (r *arpcClientIStorageService) Meta(fileId storage.FileID) (storage.FileMeta, error) {
+func (r *arpcClientIStorageService) Meta(storageKey storage.StorageKey) (storage.FileMeta, error) {
 	var resp IStorageServiceMetaResult
 	err := r.client.Call(ARpcNameStorageIStorageServiceMeta, &IStorageServiceMetaArgs{
-		Val0: string(fileId),
+		Val0: string(storageKey),
 	}, &resp, r.timeout)
 	if err != nil {
 		r.log.ErrorW("remote call error", "method", ARpcNameStorageIStorageServiceMeta, "err", err)
@@ -232,35 +232,35 @@ func (r *arpcClientIStorageService) Meta(fileId storage.FileID) (storage.FileMet
 	return resp.Val0, resp.Val1.Error
 }
 
-func (r *arpcClientIStorageService) Load(fileId storage.FileID, offset, length int64) (io.ReadCloser, error) {
+func (r *arpcClientIStorageService) Load(storageKey storage.StorageKey, offset, length int64) (io.ReadCloser, error) {
 	if length <= 0 {
 		return nil, storage.ErrInvalidLength
 	}
 	return &remoteChunkReader{
-		client:    r,
-		fileId:    fileId,
-		offset:    offset,
-		remaining: length,
+		client:     r,
+		storageKey: storageKey,
+		offset:     offset,
+		remaining:  length,
 	}, nil
 }
 
-func (r *arpcClientIStorageService) LoadAll(fileId storage.FileID) (io.ReadCloser, error) {
-	meta, err := r.Meta(fileId)
+func (r *arpcClientIStorageService) LoadAll(storageKey storage.StorageKey) (io.ReadCloser, error) {
+	meta, err := r.Meta(storageKey)
 	if err != nil {
 		return nil, err
 	}
 	return &remoteChunkReader{
-		client:    r,
-		fileId:    fileId,
-		offset:    0,
-		remaining: meta.ContentLength,
+		client:     r,
+		storageKey: storageKey,
+		offset:     0,
+		remaining:  meta.ContentLength,
 	}, nil
 }
 
-func (r *arpcClientIStorageService) Delete(fileId storage.FileID) error {
+func (r *arpcClientIStorageService) Delete(storageKey storage.StorageKey) error {
 	var resp IStorageServiceDeleteResult
 	err := r.client.Call(ARpcNameStorageIStorageServiceDelete, &IStorageServiceDeleteArgs{
-		Val0: string(fileId),
+		Val0: string(storageKey),
 	}, &resp, r.timeout)
 	if err != nil {
 		r.log.ErrorW("remote call error", "method", ARpcNameStorageIStorageServiceDelete, "err", err)
@@ -269,11 +269,11 @@ func (r *arpcClientIStorageService) Delete(fileId storage.FileID) error {
 	return resp.Val0.Error
 }
 
-func (r *arpcClientIStorageService) Store(data io.Reader, meta storage.FileMeta) (storage.FileID, error) {
+func (r *arpcClientIStorageService) Store(data io.Reader, meta storage.FileMeta) (storage.StorageKey, error) {
 	return r.StoreAt("", "", data, meta)
 }
 
-func (r *arpcClientIStorageService) StoreAt(provider, identifier string, data io.Reader, meta storage.FileMeta) (storage.FileID, error) {
+func (r *arpcClientIStorageService) StoreAt(provider, identifier string, data io.Reader, meta storage.FileMeta) (storage.StorageKey, error) {
 	uploadId, err := r.remoteStoreInit(provider, identifier, meta)
 	if err != nil {
 		return "", err
@@ -295,15 +295,15 @@ func (r *arpcClientIStorageService) StoreAt(provider, identifier string, data io
 			return "", readErr
 		}
 	}
-	fileId, finishErr := r.remoteStoreFinish(uploadId)
+	storageKey, finishErr := r.remoteStoreFinish(uploadId)
 	if finishErr != nil {
 		_ = r.remoteStoreAbort(uploadId)
 		return "", finishErr
 	}
-	return fileId, nil
+	return storageKey, nil
 }
 
-func (r *arpcClientIStorageService) InitMultipartStore(provider, identifier string, meta storage.FileMeta) (storage.FileID, string, error) {
+func (r *arpcClientIStorageService) InitMultipartStore(provider, identifier string, meta storage.FileMeta) (storage.StorageKey, string, error) {
 	var resp IStorageServiceInitMultipartStoreResult
 	err := r.client.Call(ARpcNameStorageIStorageServiceInitMultipartStore, &IStorageServiceInitMultipartStoreArgs{
 		Val0: provider,
@@ -314,7 +314,7 @@ func (r *arpcClientIStorageService) InitMultipartStore(provider, identifier stri
 		r.log.ErrorW("remote call error", "method", ARpcNameStorageIStorageServiceInitMultipartStore, "err", err)
 		return "", "", err
 	}
-	return storage.FileID(resp.Val0), resp.Val1, resp.Val2.Error
+	return storage.StorageKey(resp.Val0), resp.Val1, resp.Val2.Error
 }
 
 func (r *arpcClientIStorageService) StorePart(uploadId string, partNumber int, data io.Reader) error {
@@ -363,10 +363,10 @@ func (r *arpcClientIStorageService) AbortMultiPartStore(uploadId string) error {
 	return resp.Val0.Error
 }
 
-func (r *arpcClientIStorageService) GetPublicURL(fileId storage.FileID) (string, error) {
+func (r *arpcClientIStorageService) GetPublicURL(storageKey storage.StorageKey) (string, error) {
 	var resp IStorageServiceGetPublicURLResult
 	err := r.client.Call(ARpcNameStorageIStorageServiceGetPublicURL, &IStorageServiceGetPublicURLArgs{
-		Val0: string(fileId),
+		Val0: string(storageKey),
 	}, &resp, r.timeout)
 	if err != nil {
 		r.log.ErrorW("remote call error", "method", ARpcNameStorageIStorageServiceGetPublicURL, "err", err)
@@ -402,7 +402,7 @@ func (r *arpcClientIStorageService) remoteStoreChunk(uploadId string, data []byt
 	return resp.Val0.Error
 }
 
-func (r *arpcClientIStorageService) remoteStoreFinish(uploadId string) (storage.FileID, error) {
+func (r *arpcClientIStorageService) remoteStoreFinish(uploadId string) (storage.StorageKey, error) {
 	var resp IStorageServiceInternalStoreFinishResult
 	err := r.client.Call(ARpcNameStorageIStorageServiceInternalStoreFinish, &IStorageServiceInternalStoreFinishArgs{
 		Val0: uploadId,
@@ -411,7 +411,7 @@ func (r *arpcClientIStorageService) remoteStoreFinish(uploadId string) (storage.
 		r.log.ErrorW("remote call error", "method", ARpcNameStorageIStorageServiceInternalStoreFinish, "err", err)
 		return "", err
 	}
-	return storage.FileID(resp.Val0), resp.Val1.Error
+	return storage.StorageKey(resp.Val0), resp.Val1.Error
 }
 
 func (r *arpcClientIStorageService) remoteStoreAbort(uploadId string) error {
@@ -425,10 +425,10 @@ func (r *arpcClientIStorageService) remoteStoreAbort(uploadId string) error {
 	return resp.Val0.Error
 }
 
-func (r *arpcClientIStorageService) loadChunk(fileId storage.FileID, offset, length int64) ([]byte, error) {
+func (r *arpcClientIStorageService) loadChunk(storageKey storage.StorageKey, offset, length int64) ([]byte, error) {
 	var resp IStorageServiceInternalLoadChunkResult
 	err := r.client.Call(ARpcNameStorageIStorageServiceInternalLoadChunk, &IStorageServiceInternalLoadChunkArgs{
-		Val0: string(fileId),
+		Val0: string(storageKey),
 		Val1: offset,
 		Val2: length,
 	}, &resp, r.timeout)
@@ -440,14 +440,14 @@ func (r *arpcClientIStorageService) loadChunk(fileId storage.FileID, offset, len
 }
 
 type remoteChunkReader struct {
-	client    *arpcClientIStorageService
-	fileId    storage.FileID
-	offset    int64
-	remaining int64
-	pos       int64
-	buffer    []byte
-	bufferPos int
-	closed    bool
+	client     *arpcClientIStorageService
+	storageKey storage.StorageKey
+	offset     int64
+	remaining  int64
+	pos        int64
+	buffer     []byte
+	bufferPos  int
+	closed     bool
 }
 
 func (r *remoteChunkReader) Read(p []byte) (int, error) {
@@ -468,7 +468,7 @@ func (r *remoteChunkReader) Read(p []byte) (int, error) {
 		if chunkSize > r.remaining {
 			chunkSize = r.remaining
 		}
-		raw, err := r.client.loadChunk(r.fileId, r.offset+r.pos, chunkSize)
+		raw, err := r.client.loadChunk(r.storageKey, r.offset+r.pos, chunkSize)
 		if err != nil {
 			return 0, err
 		}
@@ -561,13 +561,13 @@ func (r *ARpcServerIStorageService) Meta(c *arpc.Context) {
 		_ = c.Write(&resp)
 		return
 	}
-	fileId, ok := storage.ParseFileID(req.Val0)
+	storageKey, ok := storage.ParseStorageKey(req.Val0)
 	if !ok {
-		resp.Val1 = errcode.UnmarshalError{Error: storage.ErrInvalidFileID}
+		resp.Val1 = errcode.UnmarshalError{Error: storage.ErrInvalidStorageKey}
 		_ = c.Write(&resp)
 		return
 	}
-	a0, a1 := r.srv.Meta(fileId)
+	a0, a1 := r.srv.Meta(storageKey)
 	resp.Val0 = a0
 	resp.Val1 = errcode.UnmarshalError{Error: a1}
 	_ = c.Write(&resp)
@@ -581,13 +581,13 @@ func (r *ARpcServerIStorageService) Delete(c *arpc.Context) {
 		_ = c.Write(&resp)
 		return
 	}
-	fileId, ok := storage.ParseFileID(req.Val0)
+	storageKey, ok := storage.ParseStorageKey(req.Val0)
 	if !ok {
-		resp.Val0 = errcode.UnmarshalError{Error: storage.ErrInvalidFileID}
+		resp.Val0 = errcode.UnmarshalError{Error: storage.ErrInvalidStorageKey}
 		_ = c.Write(&resp)
 		return
 	}
-	resp.Val0 = errcode.UnmarshalError{Error: r.srv.Delete(fileId)}
+	resp.Val0 = errcode.UnmarshalError{Error: r.srv.Delete(storageKey)}
 	_ = c.Write(&resp)
 }
 
@@ -650,13 +650,13 @@ func (r *ARpcServerIStorageService) GetPublicURL(c *arpc.Context) {
 		_ = c.Write(&resp)
 		return
 	}
-	fileId, ok := storage.ParseFileID(req.Val0)
+	storageKey, ok := storage.ParseStorageKey(req.Val0)
 	if !ok {
-		resp.Val1 = errcode.UnmarshalError{Error: storage.ErrInvalidFileID}
+		resp.Val1 = errcode.UnmarshalError{Error: storage.ErrInvalidStorageKey}
 		_ = c.Write(&resp)
 		return
 	}
-	a0, a1 := r.srv.GetPublicURL(fileId)
+	a0, a1 := r.srv.GetPublicURL(storageKey)
 	resp.Val0 = a0
 	resp.Val1 = errcode.UnmarshalError{Error: a1}
 	_ = c.Write(&resp)
@@ -742,8 +742,8 @@ func (r *ARpcServerIStorageService) StoreFinish(c *arpc.Context) {
 		_ = c.Write(&resp)
 		return
 	}
-	fileId, err := r.srv.StoreAt(sess.provider, sess.identifier, sess.file, sess.meta)
-	resp.Val0 = string(fileId)
+	storageKey, err := r.srv.StoreAt(sess.provider, sess.identifier, sess.file, sess.meta)
+	resp.Val0 = string(storageKey)
 	resp.Val1 = errcode.UnmarshalError{Error: err}
 	_ = c.Write(&resp)
 }
@@ -777,13 +777,13 @@ func (r *ARpcServerIStorageService) LoadChunk(c *arpc.Context) {
 		_ = c.Write(&resp)
 		return
 	}
-	fileId, ok := storage.ParseFileID(req.Val0)
+	storageKey, ok := storage.ParseStorageKey(req.Val0)
 	if !ok {
-		resp.Val1 = errcode.UnmarshalError{Error: storage.ErrInvalidFileID}
+		resp.Val1 = errcode.UnmarshalError{Error: storage.ErrInvalidStorageKey}
 		_ = c.Write(&resp)
 		return
 	}
-	reader, err := r.srv.Load(fileId, req.Val1, req.Val2)
+	reader, err := r.srv.Load(storageKey, req.Val1, req.Val2)
 	if err != nil {
 		resp.Val1 = errcode.UnmarshalError{Error: err}
 		_ = c.Write(&resp)

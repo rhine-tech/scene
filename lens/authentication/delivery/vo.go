@@ -33,8 +33,8 @@ func (v UserNoPassword) FromUser(u authentication.User) UserNoPassword {
 
 func UserNoPasswordFromUser(u authentication.User, storageSrv storage.IStorageService) UserNoPassword {
 	avatar := u.Avatar
-	if storageSrv != nil && storage.IsFileID(avatar) {
-		if url, err := storageSrv.GetPublicURL(storage.FileID(avatar)); err == nil {
+	if storageSrv != nil && storage.IsStorageKey(avatar) {
+		if url, err := storageSrv.GetPublicURL(storage.StorageKey(avatar)); err == nil {
 			avatar = url
 		}
 	}

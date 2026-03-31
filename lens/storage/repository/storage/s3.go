@@ -86,10 +86,10 @@ func (s *s3Storage) HealthCheck() error {
 	return nil
 }
 
-func (s *s3Storage) Meta(fileId storage.FileID) (storage.FileMeta, error) {
+func (s *s3Storage) Meta(storageKey storage.StorageKey) (storage.FileMeta, error) {
 	out, err := s.client.HeadObject(context.Background(), &s3.HeadObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(fileId.ID()),
+		Key:    aws.String(storageKey.FileID()),
 	})
 	if err != nil {
 		if isS3NotFound(err) {
@@ -98,10 +98,10 @@ func (s *s3Storage) Meta(fileId storage.FileID) (storage.FileMeta, error) {
 		return storage.FileMeta{}, storage.ErrStorageError.WithDetail(err)
 	}
 	return storage.FileMeta{
-		FileID:           fileId,
-		Provider:         fileId.Provider(),
-		Identifier:       fileId.ID(),
-		OriginalFilename: fileId.ID(),
+		StorageKey:       storageKey,
+		Provider:         storageKey.Provider(),
+		Identifier:       storageKey.FileID(),
+		OriginalFilename: storageKey.FileID(),
 		ContentType:      aws.ToString(out.ContentType),
 		ContentLength:    aws.ToInt64(out.ContentLength),
 		Md5Checksum:      strings.Trim(aws.ToString(out.ETag), "\""),
@@ -111,10 +111,10 @@ func (s *s3Storage) Meta(fileId storage.FileID) (storage.FileMeta, error) {
 	}, nil
 }
 
-func (s *s3Storage) Store(fileId storage.FileID, data io.Reader) error {
+func (s *s3Storage) Store(storageKey storage.StorageKey, data io.Reader) error {
 	_, err := s.client.PutObject(context.Background(), &s3.PutObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(fileId.ID()),
+		Key:    aws.String(storageKey.FileID()),
 		Body:   data,
 	})
 	if err != nil {
@@ -123,7 +123,7 @@ func (s *s3Storage) Store(fileId storage.FileID, data io.Reader) error {
 	return nil
 }
 
-func (s *s3Storage) Load(fileId storage.FileID, offset, length int64) (io.ReadCloser, error) {
+func (s *s3Storage) Load(storageKey storage.StorageKey, offset, length int64) (io.ReadCloser, error) {
 	if offset < 0 {
 		return nil, storage.ErrInvalidOffset
 	}
@@ -132,7 +132,7 @@ func (s *s3Storage) Load(fileId storage.FileID, offset, length int64) (io.ReadCl
 	}
 	resp, err := s.client.GetObject(context.Background(), &s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(fileId.ID()),
+		Key:    aws.String(storageKey.FileID()),
 		Range:  aws.String(fmt.Sprintf("bytes=%d-%d", offset, offset+length-1)),
 	})
 	if err != nil {
@@ -144,10 +144,10 @@ func (s *s3Storage) Load(fileId storage.FileID, offset, length int64) (io.ReadCl
 	return resp.Body, nil
 }
 
-func (s *s3Storage) LoadAll(fileId storage.FileID) (io.ReadCloser, error) {
+func (s *s3Storage) LoadAll(storageKey storage.StorageKey) (io.ReadCloser, error) {
 	resp, err := s.client.GetObject(context.Background(), &s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(fileId.ID()),
+		Key:    aws.String(storageKey.FileID()),
 	})
 	if err != nil {
 		if isS3NotFound(err) {
@@ -158,10 +158,10 @@ func (s *s3Storage) LoadAll(fileId storage.FileID) (io.ReadCloser, error) {
 	return resp.Body, nil
 }
 
-func (s *s3Storage) Delete(fileId storage.FileID) error {
+func (s *s3Storage) Delete(storageKey storage.StorageKey) error {
 	_, err := s.client.DeleteObject(context.Background(), &s3.DeleteObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(fileId.ID()),
+		Key:    aws.String(storageKey.FileID()),
 	})
 	if err != nil {
 		if isS3NotFound(err) {
@@ -172,10 +172,10 @@ func (s *s3Storage) Delete(fileId storage.FileID) error {
 	return nil
 }
 
-func (s *s3Storage) InitMultipartStore(fileId storage.FileID) (string, error) {
+func (s *s3Storage) InitMultipartStore(storageKey storage.StorageKey) (string, error) {
 	resp, err := s.client.CreateMultipartUpload(context.Background(), &s3.CreateMultipartUploadInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(fileId.ID()),
+		Key:    aws.String(storageKey.FileID()),
 	})
 	if err != nil {
 		return "", storage.ErrInitPartUploadFailed.WithDetail(err)
@@ -183,7 +183,7 @@ func (s *s3Storage) InitMultipartStore(fileId storage.FileID) (string, error) {
 	uploadId := aws.ToString(resp.UploadId)
 	s.uploadsLock.Lock()
 	s.uploads[uploadId] = &s3UploadSession{
-		objectKey: fileId.ID(),
+		objectKey: storageKey.FileID(),
 		parts:     make(map[int32]types.CompletedPart),
 	}
 	s.uploadsLock.Unlock()
@@ -279,8 +279,8 @@ func (s *s3Storage) AbortMultipartStore(uploadId string) error {
 	return nil
 }
 
-func (s *s3Storage) GetPublicURL(fileId storage.FileID) (string, error) {
-	return url.JoinPath(s.urlPrefix, fileId.ID())
+func (s *s3Storage) GetPublicURL(storageKey storage.StorageKey) (string, error) {
+	return url.JoinPath(s.urlPrefix, storageKey.FileID())
 }
 
 func isS3NotFound(err error) bool {
