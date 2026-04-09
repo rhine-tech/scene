@@ -1,4 +1,4 @@
-package service
+package base
 
 import (
 	"github.com/rhine-tech/scene"

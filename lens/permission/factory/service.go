@@ -5,7 +5,8 @@ import (
 	"github.com/rhine-tech/scene/lens/permission"
 	"github.com/rhine-tech/scene/lens/permission/gen/arpcimpl"
 	"github.com/rhine-tech/scene/lens/permission/repository"
-	"github.com/rhine-tech/scene/lens/permission/service"
+	"github.com/rhine-tech/scene/lens/permission/service/base"
+	"github.com/rhine-tech/scene/lens/permission/service/proxy"
 	"github.com/rhine-tech/scene/registry"
 	sarpc "github.com/rhine-tech/scene/scenes/arpc"
 )
@@ -28,7 +29,7 @@ type ServiceGorm struct {
 func (b ServiceGorm) Init() scene.LensInit {
 	return func() {
 		_ = registry.Register(repository.NewGormImpl(nil))
-		base := registry.Load(permission.PermissionService(&service.PermissionManagerImpl{}))
-		_ = registry.Register[permission.PermissionService](service.NewCachedPermissionService(base))
+		baseService := registry.Load(permission.PermissionService(&base.PermissionManagerImpl{}))
+		_ = registry.Register[permission.PermissionService](proxy.NewCachedPermissionService(baseService))
 	}
 }

@@ -1,4 +1,4 @@
-package service
+package proxy
 
 import (
 	"context"
@@ -7,8 +7,31 @@ import (
 
 	"github.com/rhine-tech/scene"
 	scache "github.com/rhine-tech/scene/infrastructure/cache"
+	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/rhine-tech/scene/lens/permission"
 )
+
+type stubLogger struct{}
+
+func (stubLogger) Debug(args ...interface{})                           {}
+func (stubLogger) Debugf(format string, args ...interface{})           {}
+func (stubLogger) DebugW(message string, keysAndValues ...interface{}) {}
+func (stubLogger) DebugS(message string, fields logger.LogField)       {}
+func (stubLogger) Info(args ...interface{})                            {}
+func (stubLogger) Infof(format string, args ...interface{})            {}
+func (stubLogger) InfoW(message string, keysAndValues ...interface{})  {}
+func (stubLogger) InfoS(message string, fields logger.LogField)        {}
+func (stubLogger) Warn(args ...interface{})                            {}
+func (stubLogger) Warnf(format string, args ...interface{})            {}
+func (stubLogger) WarnW(message string, keysAndValues ...interface{})  {}
+func (stubLogger) WarnS(message string, fields logger.LogField)        {}
+func (stubLogger) Error(args ...interface{})                           {}
+func (stubLogger) Errorf(format string, args ...interface{})           {}
+func (stubLogger) ErrorW(message string, keysAndValues ...interface{}) {}
+func (stubLogger) ErrorS(message string, fields logger.LogField)       {}
+func (stubLogger) WithPrefix(prefix string) logger.ILogger             { return stubLogger{} }
+func (stubLogger) SetLogLevel(level logger.LogLevel)                   {}
+func (stubLogger) WithOptions(opts ...logger.Option) logger.ILogger    { return stubLogger{} }
 
 type fakePermissionService struct {
 	listCalls int
@@ -128,13 +151,19 @@ func (f *fakeCache) InvalidateTags(_ context.Context, tags ...string) error {
 	return nil
 }
 
+func newCachedPermissionServiceForTest(base permission.PermissionService) *CachedPermissionService {
+	cached := NewCachedPermissionService(base).(*CachedPermissionService)
+	cached.cache = newFakeCache()
+	cached.log = stubLogger{}
+	if err := cached.Setup(); err != nil {
+		panic(err)
+	}
+	return cached
+}
+
 func TestCachedPermissionService_ListPermissionsCacheHit(t *testing.T) {
 	base := newFakePermissionService()
-	cached := NewCachedPermissionService(base)
-	cached.CacheRepo = newFakeCache()
-	if err := cached.Setup(); err != nil {
-		t.Fatalf("setup failed: %v", err)
-	}
+	cached := newCachedPermissionServiceForTest(base)
 
 	p1 := cached.ListPermissions("u1")
 	p2 := cached.ListPermissions("u1")
@@ -148,11 +177,7 @@ func TestCachedPermissionService_ListPermissionsCacheHit(t *testing.T) {
 
 func TestCachedPermissionService_InvalidateAfterAddRemove(t *testing.T) {
 	base := newFakePermissionService()
-	cached := NewCachedPermissionService(base)
-	cached.CacheRepo = newFakeCache()
-	if err := cached.Setup(); err != nil {
-		t.Fatalf("setup failed: %v", err)
-	}
+	cached := newCachedPermissionServiceForTest(base)
 
 	_ = cached.ListPermissions("u1")
 	if base.listCalls != 1 {

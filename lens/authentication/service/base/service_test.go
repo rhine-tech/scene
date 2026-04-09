@@ -1,4 +1,4 @@
-package service
+package base
 
 import (
 	"errors"
@@ -45,7 +45,7 @@ func (f *fakeAuthRepo) Authenticate(username string, password string) (string, e
 	panic("not used")
 }
 
-func (f *fakeAuthRepo) UserById(userId string) (authentication.User, error) {
+func (f *fakeAuthRepo) UserById(userID string) (authentication.User, error) {
 	panic("not used")
 }
 
@@ -61,7 +61,7 @@ func (f *fakeAuthRepo) AddUser(user authentication.User) (authentication.User, e
 	return f.addUserFn(user)
 }
 
-func (f *fakeAuthRepo) DeleteUser(userId string) error {
+func (f *fakeAuthRepo) DeleteUser(userID string) error {
 	panic("not used")
 }
 

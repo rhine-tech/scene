@@ -5,7 +5,8 @@ import (
 	"github.com/rhine-tech/scene/lens/authentication"
 	"github.com/rhine-tech/scene/lens/authentication/gen/arpcimpl"
 	"github.com/rhine-tech/scene/lens/authentication/repository"
-	"github.com/rhine-tech/scene/lens/authentication/service"
+	"github.com/rhine-tech/scene/lens/authentication/service/base"
+	"github.com/rhine-tech/scene/lens/authentication/service/proxy"
 	"github.com/rhine-tech/scene/lens/authentication/service/token"
 	"github.com/rhine-tech/scene/registry"
 	sarpc "github.com/rhine-tech/scene/scenes/arpc"
@@ -32,6 +33,7 @@ func (b ServiceGorm) Init() scene.LensInit {
 		repo := registry.Load(repository.NewGormAuthenticationRepository(nil))
 		repo2 := registry.Load(repository.NewGormAccessTokenRepository(nil))
 		srv := registry.Register[authentication.IAccessTokenService](token.NewAccessTokenService(repo2, nil))
-		registry.Register[authentication.IAuthenticationService](service.NewAuthenticationService(nil, repo, srv))
+		baseService := registry.Load(base.NewAuthenticationService(nil, repo, srv))
+		registry.Register[authentication.IAuthenticationService](proxy.NewCachedAuthenticationService(baseService))
 	}
 }

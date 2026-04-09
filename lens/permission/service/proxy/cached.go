@@ -1,4 +1,4 @@
-package service
+package proxy
 
 import (
 	"context"
@@ -30,11 +30,16 @@ func (c *CachedPermissionService) SrvImplName() scene.ImplName {
 }
 
 func (c *CachedPermissionService) Setup() error {
-	if c.cache != nil {
-		c.cacheCli = cache.NewClient(c.cache)
-		c.log.Infof("cache.ICache found, using cache with %s ", c.cache.ImplName().Identifier())
-	} else {
-		c.log.Warnf("cache.ICache not found, all request will directly pass to service")
+	if c.cache == nil {
+		if c.log != nil {
+			c.log.Warnf("cache.ICache not found, all request will directly pass to service")
+		}
+		return nil
+	}
+
+	c.cacheCli = cache.NewClient(c.cache)
+	if c.log != nil {
+		c.log.Infof("cache.ICache found, using cache with %s", c.cache.ImplName().Identifier())
 	}
 	return nil
 }

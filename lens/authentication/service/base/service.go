@@ -1,13 +1,14 @@
-package service
+package base
 
 import (
 	"errors"
+	"strings"
+
 	"github.com/google/uuid"
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/rhine-tech/scene/lens/authentication"
 	"github.com/rhine-tech/scene/model"
-	"strings"
 )
 
 type authenticationService struct {
