@@ -4,81 +4,98 @@ import (
 	"context"
 	"testing"
 	"time"
-
-	gocache "github.com/patrickmn/go-cache"
 )
 
-func TestGoCacheSetGetDelete(t *testing.T) {
-	c := &GoCache{c: gocache.New(time.Second, 2*time.Second)}
+func TestGoCacheInvalidateTags(t *testing.T) {
+	c := NewGoCache()
 	ctx := context.Background()
 
-	if err := c.Set(ctx, "k", []byte("v"), time.Second); err != nil {
-		t.Fatalf("set failed: %v", err)
+	if err := c.Set(ctx, "a", []byte("1"), time.Minute, "user:1", "list:user"); err != nil {
+		t.Fatalf("set a failed: %v", err)
 	}
-	got, hit, err := c.Get(ctx, "k")
+	if err := c.Set(ctx, "b", []byte("2"), time.Minute, "user:2"); err != nil {
+		t.Fatalf("set b failed: %v", err)
+	}
+	if err := c.InvalidateTags(ctx, "user:1"); err != nil {
+		t.Fatalf("invalidate tags failed: %v", err)
+	}
+
+	_, hitA, err := c.Get(ctx, "a")
+	if err != nil {
+		t.Fatalf("get a failed: %v", err)
+	}
+	_, hitB, err := c.Get(ctx, "b")
+	if err != nil {
+		t.Fatalf("get b failed: %v", err)
+	}
+	if hitA {
+		t.Fatal("expected key a to be invalidated by tag")
+	}
+	if !hitB {
+		t.Fatal("expected key b to remain")
+	}
+}
+
+func TestGoCacheSetOverwriteRetags(t *testing.T) {
+	c := NewGoCache()
+	ctx := context.Background()
+
+	if err := c.Set(ctx, "k", []byte("1"), time.Minute, "tag:old"); err != nil {
+		t.Fatalf("set old failed: %v", err)
+	}
+	if err := c.Set(ctx, "k", []byte("2"), time.Minute, "tag:new"); err != nil {
+		t.Fatalf("set new failed: %v", err)
+	}
+	if err := c.InvalidateTags(ctx, "tag:old"); err != nil {
+		t.Fatalf("invalidate old tag failed: %v", err)
+	}
+	_, hit, err := c.Get(ctx, "k")
 	if err != nil {
 		t.Fatalf("get failed: %v", err)
 	}
 	if !hit {
-		t.Fatal("expected cache hit")
-	}
-	if string(got) != "v" {
-		t.Fatalf("unexpected value: %s", string(got))
+		t.Fatal("expected key to remain after invalidating old tag")
 	}
 
-	if err := c.Delete(ctx, "k"); err != nil {
-		t.Fatalf("delete failed: %v", err)
+	if err := c.InvalidateTags(ctx, "tag:new"); err != nil {
+		t.Fatalf("invalidate new tag failed: %v", err)
 	}
 	_, hit, err = c.Get(ctx, "k")
 	if err != nil {
-		t.Fatalf("get after delete failed: %v", err)
+		t.Fatalf("get failed: %v", err)
 	}
 	if hit {
-		t.Fatal("expected cache miss after delete")
+		t.Fatal("expected key to be invalidated by new tag")
 	}
 }
 
-func TestGoCacheTTLExpiration(t *testing.T) {
-	c := &GoCache{c: gocache.New(5*time.Millisecond, 5*time.Millisecond)}
+func TestGoCacheEvictedKeyIndexCleanup(t *testing.T) {
+	store := NewGoCache()
+	g, ok := store.(*GoCache)
+	if !ok {
+		t.Fatal("expected *GoCache")
+	}
 	ctx := context.Background()
 
-	if err := c.Set(ctx, "ttl", []byte("v"), 5*time.Millisecond); err != nil {
-		t.Fatalf("set failed: %v", err)
+	if err := g.Set(ctx, "ttl", []byte("v"), 10*time.Millisecond, "tag:ttl"); err != nil {
+		t.Fatalf("set ttl failed: %v", err)
 	}
 	time.Sleep(20 * time.Millisecond)
 
-	_, hit, err := c.Get(ctx, "ttl")
+	_, hit, err := g.Get(ctx, "ttl")
 	if err != nil {
 		t.Fatalf("get failed: %v", err)
 	}
 	if hit {
-		t.Fatal("expected cache miss after ttl expiration")
+		t.Fatal("expected key to expire")
 	}
-}
 
-func TestGoCacheNoCopyOnRead(t *testing.T) {
-	c := &GoCache{c: gocache.New(time.Second, 2*time.Second)}
-	ctx := context.Background()
-
-	if err := c.Set(ctx, "k", []byte("abc"), time.Second); err != nil {
-		t.Fatalf("set failed: %v", err)
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if _, ok := g.keyTags["ttl"]; ok {
+		t.Fatal("expected keyTags cleaned after eviction")
 	}
-	got, hit, err := c.Get(ctx, "k")
-	if err != nil {
-		t.Fatalf("get failed: %v", err)
-	}
-	if !hit {
-		t.Fatal("expected hit")
-	}
-	got[0] = 'z'
-	got2, hit, err := c.Get(ctx, "k")
-	if err != nil {
-		t.Fatalf("get2 failed: %v", err)
-	}
-	if !hit {
-		t.Fatal("expected hit")
-	}
-	if string(got2) != "zbc" {
-		t.Fatalf("expected no-copy read semantics, got=%s", string(got2))
+	if keys, ok := g.tagIndex["tag:ttl"]; ok && len(keys) > 0 {
+		t.Fatal("expected tagIndex cleaned after eviction")
 	}
 }

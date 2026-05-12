@@ -63,7 +63,7 @@ func (s *authenticationService) AddUser(username, password string) (authenticati
 	newUser := authentication.User{
 		UserID:   strings.ReplaceAll(uuid.NewString(), "-", ""), // Service 层负责生成唯一ID
 		Username: username,
-		Password: password, // 注意：实际项目中应在此处加密密码
+		Password: password,
 	}
 	s.logger.InfoW("adding user", "username", username, "userId", newUser.UserID)
 
