@@ -11,7 +11,7 @@ import (
 
 type memoryItem struct {
 	value    []byte
-	expireAt time.Time
+	expireAt int64
 	tags     map[string]struct{}
 }
 
@@ -23,12 +23,12 @@ type MemoryCacheOptions struct {
 
 type MemoryCache struct {
 	mu       sync.RWMutex
-	items    map[string]memoryItem
+	items    map[string]*memoryItem
 	tagIndex map[string]map[string]struct{}
 	opts     MemoryCacheOptions
 }
 
-func NewMemoryCache() cache.ICache {
+func NewMemoryCache() cache.ITaggedCache {
 	return NewMemoryCacheWithOptions(MemoryCacheOptions{
 		CopyOnRead: false,
 	})
@@ -36,7 +36,7 @@ func NewMemoryCache() cache.ICache {
 
 func NewMemoryCacheWithOptions(opts MemoryCacheOptions) *MemoryCache {
 	return &MemoryCache{
-		items:    make(map[string]memoryItem),
+		items:    make(map[string]*memoryItem),
 		tagIndex: make(map[string]map[string]struct{}),
 		opts:     opts,
 	}
@@ -53,7 +53,7 @@ func (m *MemoryCache) Get(_ context.Context, key string) ([]byte, bool, error) {
 	if !ok {
 		return nil, false, nil
 	}
-	if !item.expireAt.IsZero() && time.Now().After(item.expireAt) {
+	if item.expireAt > 0 && time.Now().UnixNano() > item.expireAt {
 		m.mu.Lock()
 		m.deleteLocked(key)
 		m.mu.Unlock()
@@ -67,7 +67,11 @@ func (m *MemoryCache) Get(_ context.Context, key string) ([]byte, bool, error) {
 	return val, true, nil
 }
 
-func (m *MemoryCache) Set(_ context.Context, key string, value []byte, expiration time.Duration, tags ...string) error {
+func (m *MemoryCache) Set(ctx context.Context, key string, value []byte, expiration time.Duration) error {
+	return m.SetWithTags(ctx, key, value, expiration)
+}
+
+func (m *MemoryCache) SetWithTags(_ context.Context, key string, value []byte, expiration time.Duration, tags ...string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -75,12 +79,12 @@ func (m *MemoryCache) Set(_ context.Context, key string, value []byte, expiratio
 		m.deleteLocked(key)
 	}
 
-	item := memoryItem{
+	item := &memoryItem{
 		value: make([]byte, len(value)),
 	}
 	copy(item.value, value)
 	if expiration > 0 {
-		item.expireAt = time.Now().Add(expiration)
+		item.expireAt = time.Now().Add(expiration).UnixNano()
 	}
 	if len(tags) > 0 {
 		item.tags = make(map[string]struct{}, len(tags))

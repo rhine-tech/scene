@@ -15,7 +15,7 @@ const permissionListCacheTTL = 30 * time.Second
 
 type CachedPermissionService struct {
 	base  permission.PermissionService `aperture:"embed"`
-	cache cache.ICache                 `aperture:"optional"`
+	cache cache.ITaggedCache           `aperture:"optional"`
 	log   logger.ILogger               `aperture:"optional"`
 
 	cacheCli *cache.Client
@@ -32,14 +32,14 @@ func (c *CachedPermissionService) SrvImplName() scene.ImplName {
 func (c *CachedPermissionService) Setup() error {
 	if c.cache == nil {
 		if c.log != nil {
-			c.log.Warnf("cache.ICache not found, all request will directly pass to service")
+			c.log.Warnf("cache.ITaggedCache not found, all request will directly pass to service")
 		}
 		return nil
 	}
 
 	c.cacheCli = cache.NewClient(c.cache)
 	if c.log != nil {
-		c.log.Infof("cache.ICache found, using cache with %s", c.cache.ImplName().Identifier())
+		c.log.Infof("cache.ITaggedCache found, using cache with %s", c.cache.ImplName().Identifier())
 	}
 	return nil
 }

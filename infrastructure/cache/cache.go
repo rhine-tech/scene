@@ -21,6 +21,7 @@ var (
 	ErrCacheDelete        = _eg.CreateError(5, "cache delete failed")
 	ErrCacheEncode        = _eg.CreateError(6, "cache encode failed")
 	ErrCacheDecode        = _eg.CreateError(7, "cache decode failed")
+	ErrUnsupportedTags    = _eg.CreateError(8, "cache tags are not supported")
 )
 
 var NoExpiration = time.Duration(-1)
@@ -28,8 +29,13 @@ var NoExpiration = time.Duration(-1)
 type ICache interface {
 	scene.Named
 	Get(ctx context.Context, key string) (value []byte, hit bool, err error)
-	Set(ctx context.Context, key string, value []byte, expiration time.Duration, tags ...string) error
+	Set(ctx context.Context, key string, value []byte, expiration time.Duration) error
 	Delete(ctx context.Context, keys ...string) error
+}
+
+type ITaggedCache interface {
+	ICache
+	SetWithTags(ctx context.Context, key string, value []byte, expiration time.Duration, tags ...string) error
 	InvalidateTags(ctx context.Context, tags ...string) error
 }
 

@@ -145,7 +145,11 @@ func (f *fakeAuthCache) Get(_ context.Context, key string) ([]byte, bool, error)
 	return v, true, nil
 }
 
-func (f *fakeAuthCache) Set(_ context.Context, key string, value []byte, _ time.Duration, tags ...string) error {
+func (f *fakeAuthCache) Set(ctx context.Context, key string, value []byte, ttl time.Duration) error {
+	return f.SetWithTags(ctx, key, value, ttl)
+}
+
+func (f *fakeAuthCache) SetWithTags(_ context.Context, key string, value []byte, _ time.Duration, tags ...string) error {
 	f.items[key] = append([]byte(nil), value...)
 	for _, tag := range tags {
 		if tag == "" {

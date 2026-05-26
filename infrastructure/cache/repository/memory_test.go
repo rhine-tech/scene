@@ -112,10 +112,10 @@ func TestMemoryCacheInvalidateTags(t *testing.T) {
 	c := NewMemoryCache()
 	ctx := context.Background()
 
-	if err := c.Set(ctx, "a", []byte("1"), time.Minute, "user:1", "list:user"); err != nil {
+	if err := c.SetWithTags(ctx, "a", []byte("1"), time.Minute, "user:1", "list:user"); err != nil {
 		t.Fatalf("set a failed: %v", err)
 	}
-	if err := c.Set(ctx, "b", []byte("2"), time.Minute, "user:2"); err != nil {
+	if err := c.SetWithTags(ctx, "b", []byte("2"), time.Minute, "user:2"); err != nil {
 		t.Fatalf("set b failed: %v", err)
 	}
 
@@ -142,7 +142,7 @@ func TestMemoryCacheInvalidateTags(t *testing.T) {
 func TestMemoryCacheInvalidateTagsEmptyAndDuplicate(t *testing.T) {
 	c := NewMemoryCache()
 	ctx := context.Background()
-	if err := c.Set(ctx, "a", []byte("1"), time.Minute, "", "tag:a"); err != nil {
+	if err := c.SetWithTags(ctx, "a", []byte("1"), time.Minute, "", "tag:a"); err != nil {
 		t.Fatalf("set a failed: %v", err)
 	}
 	if err := c.InvalidateTags(ctx, "", "tag:a", "tag:a"); err != nil {
@@ -167,7 +167,7 @@ func TestMemoryCacheConcurrentAccess(t *testing.T) {
 			defer wg.Done()
 			for j := 0; j < 1000; j++ {
 				key := "k:" + strconv.Itoa(id) + ":" + strconv.Itoa(j%16)
-				_ = c.Set(ctx, key, []byte("v"), time.Second, "tag:"+strconv.Itoa(j%4))
+				_ = c.SetWithTags(ctx, key, []byte("v"), time.Second, "tag:"+strconv.Itoa(j%4))
 				_, _, _ = c.Get(ctx, key)
 				if j%5 == 0 {
 					_ = c.Delete(ctx, key)

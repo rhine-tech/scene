@@ -71,7 +71,26 @@ func (r *RedisDataRepo) GetValue(ctx context.Context, key string, value interfac
 }
 
 func (r *RedisDataRepo) Get(ctx context.Context, key string) (string, error) {
-	return r.rdb.Get(context.Background(), key).Result()
+	return r.rdb.Get(ctx, key).Result()
+}
+
+func (r *RedisDataRepo) MGet(ctx context.Context, keys ...string) ([]string, error) {
+	values, err := r.rdb.MGet(ctx, keys...).Result()
+	if err != nil {
+		return nil, err
+	}
+	result := make([]string, len(values))
+	for i, value := range values {
+		if value == nil {
+			continue
+		}
+		result[i] = cast.ToString(value)
+	}
+	return result, nil
+}
+
+func (r *RedisDataRepo) Incr(ctx context.Context, key string) (int64, error) {
+	return r.rdb.Incr(ctx, key).Result()
 }
 
 func (r *RedisDataRepo) Delete(ctx context.Context, key string) error {

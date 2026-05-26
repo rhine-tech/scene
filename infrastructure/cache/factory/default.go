@@ -13,7 +13,9 @@ type RedisCache struct {
 
 func (r RedisCache) Init() scene.LensInit {
 	return func() {
-		registry.Register[cache.ICache](repository.NewRedisCache(nil))
+		c := repository.NewRedisCache(nil)
+		registry.Register[cache.ICache](c)
+		registry.Register[cache.ITaggedCache](c)
 	}
 }
 
@@ -23,16 +25,26 @@ type MemoryCache struct {
 
 func (m MemoryCache) Init() scene.LensInit {
 	return func() {
-		registry.Register[cache.ICache](repository.NewMemoryCache())
+		c := repository.NewMemoryCache()
+		registry.Register[cache.ICache](c)
+		registry.Register[cache.ITaggedCache](c)
 	}
 }
 
-type GoCache struct {
+type LRUCache struct {
 	scene.ModuleFactory
+	Size int
 }
 
-func (g GoCache) Init() scene.LensInit {
+func (l LRUCache) Init() scene.LensInit {
 	return func() {
-		registry.Register[cache.ICache](repository.NewGoCache())
+		var c cache.ITaggedCache
+		if l.Size > 0 {
+			c = repository.NewLRUCacheWithSize(l.Size)
+		} else {
+			c = repository.NewLRUCache()
+		}
+		registry.Register[cache.ICache](c)
+		registry.Register[cache.ITaggedCache](c)
 	}
 }

@@ -48,7 +48,7 @@ func (m *memoryStore) Get(_ context.Context, key string) ([]byte, bool, error) {
 	return item.val, true, nil
 }
 
-func (m *memoryStore) Set(_ context.Context, key string, value []byte, ttl time.Duration, _ ...string) error {
+func (m *memoryStore) Set(_ context.Context, key string, value []byte, ttl time.Duration) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	item := memoryItem{val: value}
@@ -66,10 +66,6 @@ func (m *memoryStore) Delete(_ context.Context, keys ...string) error {
 	for _, key := range keys {
 		delete(m.items, key)
 	}
-	return nil
-}
-
-func (m *memoryStore) InvalidateTags(_ context.Context, _ ...string) error {
 	return nil
 }
 
@@ -143,6 +139,22 @@ func TestGetOrLoadSingleflight(t *testing.T) {
 	}
 	if got := atomic.LoadInt32(&loads); got != 1 {
 		t.Fatalf("loader called %d times, want 1", got)
+	}
+}
+
+func TestGetOrLoadWithTagsRequiresTaggedCache(t *testing.T) {
+	store := newMemoryStore()
+	client := NewClient(store, WithTTLJitter(0))
+	ctx := context.Background()
+
+	_, err := GetOrLoad(ctx, client, "tagged-key", GetOrLoadPolicy[string]{
+		TTL:  time.Second,
+		Tags: []string{"tag:a"},
+	}, func(context.Context) (string, error) {
+		return "v", nil
+	})
+	if err == nil {
+		t.Fatal("expected error when tags are used with plain ICache")
 	}
 }
 

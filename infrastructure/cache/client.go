@@ -120,7 +120,18 @@ func GetOrLoad[T any](
 				return zero, ErrCacheEncode.WithDetail(marshalErr)
 			}
 			setStart := time.Now()
-			setErr := client.store.Set(ctx, key, raw, client.withJitter(policy.TTL), policy.Tags...)
+			ttl := client.withJitter(policy.TTL)
+			var setErr error
+			if len(policy.Tags) > 0 {
+				tagged, ok := client.store.(ITaggedCache)
+				if !ok {
+					setErr = ErrUnsupportedTags
+				} else {
+					setErr = tagged.SetWithTags(ctx, key, raw, ttl, policy.Tags...)
+				}
+			} else {
+				setErr = client.store.Set(ctx, key, raw, ttl)
+			}
 			client.metrics.RecordSet(time.Since(setStart), setErr)
 			if setErr != nil {
 				return zero, ErrCacheWrite.WrapIfNot(setErr)
