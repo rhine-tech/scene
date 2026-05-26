@@ -106,7 +106,8 @@ const Lens scene.ModuleName = "authentication"
 
 ## Domain Layer Guidelines
 
-- Favor rich domain models (entities/value objects/domain helpers) to enforce invariants and pure business rules instead of spreading conditionals across services.
+- Favor rich domain models (entities/value objects/domain helpers) to enforce invariants and pure business rules instead of spreading conditionals across services. Prefer methods on domain entities/value objects/payload types for state transitions and validation; avoid anemic models where services manually inspect and mutate individual fields.
+- Put payload/domain invariant validation in the module root/domain layer when it expresses business meaning (required aggregate IDs, valid enum transitions, ordering/index ranges, state constraints). Delivery may still do transport binding checks, but services should call domain validation helpers instead of duplicating payload conditionals.
 - Prefer a rich domain model when the logic is stable, reusable, and does not depend on infrastructure. An anemic model also works for simple CRUD-style modules or transitional refactors, but do not let that become an excuse to leak business rules into delivery.
 - Keep structs JSON/BSON/GORM tags in sync to simplify reuse across transports/persistence.
 - When storing timestamps or enumerations, use strongly typed aliases or helper methods to avoid magic numbers in services.

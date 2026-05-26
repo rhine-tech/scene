@@ -9,6 +9,22 @@ type UnmarshalError struct {
 	Error error
 }
 
+func (ue UnmarshalError) MarshalJSON() ([]byte, error) {
+	if ue.Error == nil {
+		return json.Marshal(struct {
+			Error *Error
+		}{})
+	}
+	if e, ok := ue.Error.(*Error); ok {
+		return json.Marshal(struct {
+			Error *Error
+		}{Error: e})
+	}
+	return json.Marshal(struct {
+		Error string
+	}{Error: ue.Error.Error()})
+}
+
 func (ue *UnmarshalError) UnmarshalJSON(data []byte) error {
 	var s struct {
 		Error *Error

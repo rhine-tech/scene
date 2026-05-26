@@ -63,7 +63,7 @@ func NewLogrusLogger(fileName string, maxSize int64, redirectStderr bool) *Logru
 		if err == nil {
 			l.Out = io.MultiWriter(file, os.Stdout)
 		} else {
-			l.Warnf(err.Error())
+			l.Warn(err.Error())
 		}
 	}
 	if redirectStderr && file != nil {

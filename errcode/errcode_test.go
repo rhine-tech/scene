@@ -3,7 +3,6 @@ package errcode
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -30,17 +29,26 @@ func TestError_MarshalJSON(t *testing.T) {
 }
 
 type testE struct {
-	Error1 error
+	Error1 UnmarshalError
 }
 
-func TestAA(t *testing.T) {
-	val := testE{Error1: errors.New("err1")}
+func TestUnmarshalError_MarshalJSON_GenericError(t *testing.T) {
+	val := testE{Error1: UnmarshalError{Error: errors.New("err1")}}
 	data, err := json.Marshal(val)
 	require.NoError(t, err)
-	fmt.Println(string(data))
-	//data = []byte("{\"error1\":\"123\"}")
 	var val2 testE
 	err = json.Unmarshal(data, &val2)
 	require.NoError(t, err)
-	fmt.Println(val2)
+	require.EqualError(t, val2.Error1.Error, "err1")
+
+}
+
+func TestUnmarshalError_MarshalJSON_Errcode(t *testing.T) {
+	val := testE{Error1: UnmarshalError{Error: ParameterError.WithDetailStr("bad id")}}
+	data, err := json.Marshal(val)
+	require.NoError(t, err)
+	var val2 testE
+	err = json.Unmarshal(data, &val2)
+	require.NoError(t, err)
+	require.True(t, errors.Is(val2.Error1.Error, ParameterError))
 }

@@ -109,7 +109,7 @@ func (i ImplName) Identifier() string {
 // ExportName return interface name with capitalized module name
 // used by arpc
 func (i ImplName) ExportName() string {
-	return fmt.Sprintf(strings.ToUpper(i.Module[:1]) + i.Module[1:] + "." + i.Interface)
+	return strings.ToUpper(i.Module[:1]) + i.Module[1:] + "." + i.Interface
 }
 
 // MethodName return method name in the for this interface

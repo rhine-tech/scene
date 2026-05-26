@@ -1,18 +1,10 @@
 package utils
 
 import (
-	"github.com/spf13/viper"
 	"net"
 	"strconv"
 	"strings"
 )
-
-func CreateViper(path string) *viper.Viper {
-	v := viper.New()
-	v.SetConfigFile(path)
-	_ = v.ReadInConfig()
-	return v
-}
 
 func IsValidAddress(address string) bool {
 	if len(address) == 0 {
