@@ -132,6 +132,7 @@ func (q *Queue) Publish(ctx context.Context, task *asynctask.QueueTask) (*asynct
 		Body:        payload,
 		Timestamp:   task.CreatedAt,
 		Headers:     headers,
+		Priority:    normalizeAMQPPriority(task.Priority),
 	}); err != nil {
 		return nil, err
 	}
@@ -264,7 +265,8 @@ func (q *Queue) declareQueue(ch *amqp.Channel, queueName string) error {
 	); err != nil {
 		return err
 	}
-	if _, err := ch.QueueDeclare(queueName, q.config.Durable, q.config.AutoDelete, false, false, nil); err != nil {
+	args := amqp.Table{"x-max-priority": int32(9)}
+	if _, err := ch.QueueDeclare(queueName, q.config.Durable, q.config.AutoDelete, false, false, args); err != nil {
 		return err
 	}
 	return ch.QueueBind(queueName, queueName, q.config.Exchange, false, nil)
@@ -359,4 +361,14 @@ func sameConfig(left asynctask.TaskQueueConfig, right asynctask.TaskQueueConfig)
 	return left.Concurrency == right.Concurrency &&
 		left.MaxRetry == right.MaxRetry &&
 		left.RetryDelay == right.RetryDelay
+}
+
+func normalizeAMQPPriority(priority int) uint8 {
+	if priority <= 0 {
+		return 0
+	}
+	if priority >= 9 {
+		return 9
+	}
+	return uint8(priority)
 }

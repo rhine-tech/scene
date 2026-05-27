@@ -35,6 +35,9 @@ type QueueTask struct {
 	Payload []byte `json:"payload,omitempty"`
 	// Headers stores optional metadata for tracing or backend-specific routing.
 	Headers map[string]string `json:"headers,omitempty"`
+	// Priority orders queued tasks when the backend supports it.
+	// Higher values should be consumed before lower values within the same logical queue.
+	Priority int `json:"priority,omitempty"`
 	// Delay requests delayed execution.
 	// The exact behavior depends on the backend implementation.
 	Delay time.Duration `json:"delay,omitempty"`

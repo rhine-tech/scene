@@ -1,8 +1,10 @@
 package memoryqueue
 
 import (
+	"container/heap"
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -21,8 +23,13 @@ type handlerEntry struct {
 }
 
 type queueRuntime struct {
-	config asynctask.TaskQueueConfig
-	tasks  chan *asynctask.QueueTask
+	config   asynctask.TaskQueueConfig
+	lock     sync.Mutex
+	capacity chan struct{}
+	notify   chan struct{}
+	ready    priorityTaskHeap
+	delayed  delayedTaskHeap
+	sequence int64
 }
 
 type MemoryQueue struct {
@@ -42,7 +49,7 @@ func (m *MemoryQueue) ImplName() scene.ImplName {
 	return asynctask.Lens.ImplName("TaskQueue", "memory")
 }
 
-func (m *MemoryQueue) Publish(_ context.Context, task *asynctask.QueueTask) (*asynctask.QueueTask, error) {
+func (m *MemoryQueue) Publish(ctx context.Context, task *asynctask.QueueTask) (*asynctask.QueueTask, error) {
 	if task == nil || task.Queue == "" || task.Type == "" {
 		return nil, asynctask.ErrInvalidQueueTask
 	}
@@ -54,13 +61,9 @@ func (m *MemoryQueue) Publish(_ context.Context, task *asynctask.QueueTask) (*as
 	task.Status = asynctask.QueueTaskStatusPending
 
 	runtime := m.ensureQueue(task.Queue, asynctask.TaskQueueConfig{})
-	if task.Delay > 0 {
-		time.AfterFunc(task.Delay, func() {
-			runtime.tasks <- task
-		})
-		return task, nil
+	if err := runtime.push(ctx, task); err != nil {
+		return nil, err
 	}
-	runtime.tasks <- task
 	return task, nil
 }
 
@@ -112,9 +115,12 @@ func (m *MemoryQueue) RegisterHandler(queue string, taskType string, handler asy
 func (m *MemoryQueue) startQueueLocked(queue string, config asynctask.TaskQueueConfig) *queueRuntime {
 	normalized := normalizeConfig(config)
 	runtime := &queueRuntime{
-		config: normalized,
-		tasks:  make(chan *asynctask.QueueTask, normalized.BufferSize),
+		config:   normalized,
+		capacity: make(chan struct{}, normalized.BufferSize+normalized.Concurrency),
+		notify:   make(chan struct{}, 1),
 	}
+	heap.Init(&runtime.ready)
+	heap.Init(&runtime.delayed)
 	m.queues[queue] = runtime
 	for i := 0; i < runtime.config.Concurrency; i++ {
 		go m.worker(queue, runtime)
@@ -132,7 +138,8 @@ func (m *MemoryQueue) ensureQueue(queue string, config asynctask.TaskQueueConfig
 }
 
 func (m *MemoryQueue) worker(queue string, runtime *queueRuntime) {
-	for task := range runtime.tasks {
+	for {
+		task := runtime.pop()
 		m.handle(queue, runtime, task)
 	}
 }
@@ -142,6 +149,7 @@ func (m *MemoryQueue) handle(queue string, runtime *queueRuntime, task *asynctas
 	if err != nil {
 		task.Status = asynctask.QueueTaskStatusFailed
 		task.LastError = err.Error()
+		runtime.release()
 		return
 	}
 
@@ -151,11 +159,19 @@ func (m *MemoryQueue) handle(queue string, runtime *queueRuntime, task *asynctas
 	if task.Timeout > 0 {
 		ctx, cancel = context.WithTimeout(ctx, task.Timeout)
 	}
-	err = handler.HandleTask(ctx, task)
+	err = func() (err error) {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				err = fmt.Errorf("memoryqueue task panic: %v", recovered)
+			}
+		}()
+		return handler.HandleTask(ctx, task)
+	}()
 	cancel()
 	if err == nil {
 		task.Status = asynctask.QueueTaskStatusSucceeded
 		task.LastError = ""
+		runtime.release()
 		return
 	}
 
@@ -166,6 +182,7 @@ func (m *MemoryQueue) handle(queue string, runtime *queueRuntime, task *asynctas
 	}
 	if task.Attempt >= maxRetry {
 		task.Status = asynctask.QueueTaskStatusFailed
+		runtime.release()
 		return
 	}
 
@@ -175,10 +192,109 @@ func (m *MemoryQueue) handle(queue string, runtime *queueRuntime, task *asynctas
 	if delay <= 0 {
 		delay = defaultRetryDelay
 	}
-	time.AfterFunc(delay, func() {
-		task.Status = asynctask.QueueTaskStatusPending
-		runtime.tasks <- task
-	})
+	task.Delay = delay
+	task.AvailableAt = time.Now().Add(delay)
+	task.Status = asynctask.QueueTaskStatusPending
+	runtime.requeue(task)
+}
+
+func (r *queueRuntime) push(ctx context.Context, task *asynctask.QueueTask) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	select {
+	case r.capacity <- struct{}{}:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	r.enqueue(task)
+	return nil
+}
+
+func (r *queueRuntime) requeue(task *asynctask.QueueTask) {
+	r.enqueue(task)
+}
+
+func (r *queueRuntime) enqueue(task *asynctask.QueueTask) {
+	r.lock.Lock()
+	r.sequence++
+	item := priorityTask{task: task, sequence: r.sequence}
+	if task.AvailableAt.IsZero() || !task.AvailableAt.After(time.Now()) {
+		heap.Push(&r.ready, item)
+	} else {
+		heap.Push(&r.delayed, item)
+	}
+	r.lock.Unlock()
+	r.signal()
+}
+
+func (r *queueRuntime) release() {
+	select {
+	case <-r.capacity:
+	default:
+	}
+}
+
+func (r *queueRuntime) pop() *asynctask.QueueTask {
+	for {
+		task, wait, hasDelayed := r.popReady()
+		if task != nil {
+			return task
+		}
+		if !hasDelayed {
+			select {
+			case <-r.notify:
+			}
+			continue
+		}
+		timer := time.NewTimer(wait)
+		select {
+		case <-timer.C:
+		case <-r.notify:
+			if !timer.Stop() {
+				select {
+				case <-timer.C:
+				default:
+				}
+			}
+		}
+	}
+}
+
+func (r *queueRuntime) popReady() (*asynctask.QueueTask, time.Duration, bool) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	now := time.Now()
+	for r.delayed.Len() > 0 {
+		item := r.delayed[0]
+		if item.task.AvailableAt.After(now) {
+			break
+		}
+		heap.Push(&r.ready, heap.Pop(&r.delayed))
+	}
+	if r.ready.Len() > 0 {
+		item := heap.Pop(&r.ready).(priorityTask)
+		if r.ready.Len() > 0 {
+			r.signal()
+		}
+		return item.task, 0, false
+	}
+	if r.delayed.Len() == 0 {
+		return nil, 0, false
+	}
+	wait := time.Until(r.delayed[0].task.AvailableAt)
+	if wait <= 0 {
+		return nil, 0, true
+	}
+	return nil, wait, true
+}
+
+func (r *queueRuntime) signal() {
+	select {
+	case r.notify <- struct{}{}:
+	default:
+	}
 }
 
 func (m *MemoryQueue) lookupHandler(queue string, taskType string) (asynctask.TaskQueueHandler, error) {
@@ -219,4 +335,64 @@ func sameConfig(left asynctask.TaskQueueConfig, right asynctask.TaskQueueConfig)
 
 func IsHandlerNotFound(err error) bool {
 	return errors.Is(err, asynctask.ErrTaskHandlerNotFound)
+}
+
+type priorityTask struct {
+	task     *asynctask.QueueTask
+	sequence int64
+}
+
+type priorityTaskHeap []priorityTask
+
+func (h priorityTaskHeap) Len() int { return len(h) }
+
+func (h priorityTaskHeap) Less(i, j int) bool {
+	if h[i].task.Priority != h[j].task.Priority {
+		return h[i].task.Priority > h[j].task.Priority
+	}
+	return h[i].sequence < h[j].sequence
+}
+
+func (h priorityTaskHeap) Swap(i, j int) { h[i], h[j] = h[j], h[i] }
+
+func (h *priorityTaskHeap) Push(x any) {
+	*h = append(*h, x.(priorityTask))
+}
+
+func (h *priorityTaskHeap) Pop() any {
+	old := *h
+	n := len(old)
+	item := old[n-1]
+	*h = old[:n-1]
+	return item
+}
+
+type delayedTaskHeap []priorityTask
+
+func (h delayedTaskHeap) Len() int { return len(h) }
+
+func (h delayedTaskHeap) Less(i, j int) bool {
+	left := h[i].task.AvailableAt
+	right := h[j].task.AvailableAt
+	if !left.Equal(right) {
+		return left.Before(right)
+	}
+	if h[i].task.Priority != h[j].task.Priority {
+		return h[i].task.Priority > h[j].task.Priority
+	}
+	return h[i].sequence < h[j].sequence
+}
+
+func (h delayedTaskHeap) Swap(i, j int) { h[i], h[j] = h[j], h[i] }
+
+func (h *delayedTaskHeap) Push(x any) {
+	*h = append(*h, x.(priorityTask))
+}
+
+func (h *delayedTaskHeap) Pop() any {
+	old := *h
+	n := len(old)
+	item := old[n-1]
+	*h = old[:n-1]
+	return item
 }
