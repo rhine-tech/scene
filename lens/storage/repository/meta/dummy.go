@@ -10,8 +10,10 @@ type dummyImpl struct {
 }
 
 func (d dummyImpl) List(provider string, offset, limit int64) (model.PaginationResult[storage.FileMeta], error) {
-	//TODO implement me
-	panic("implement me")
+	return model.PaginationResult[storage.FileMeta]{
+		Offset:  offset,
+		Results: []storage.FileMeta{},
+	}, storage.ErrLoadingMeta
 }
 
 func NewDummyImpl() storage.IFileMetaRepository {

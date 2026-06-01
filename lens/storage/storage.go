@@ -1,54 +1,14 @@
 package storage
 
 import (
-	"github.com/google/uuid"
+	"io"
+	"time"
+
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/model"
-	"io"
-	"strings"
-	"time"
 )
 
 const Lens scene.ModuleName = "storage"
-
-// StorageKey is the unique identifier of a file in storage.
-// it is composed with {Provider}://{ID}
-// example: tos.buketName://objectName
-// example: local.name://objectName
-type StorageKey string
-
-func NewStorageKey(provider string, path ...string) StorageKey {
-	return StorageKey(provider + "://" + strings.TrimPrefix(strings.Join(path, "/"), "/"))
-}
-
-func NewStorageKeyWithUUID(provider string) StorageKey {
-	return StorageKey(provider + "://" + strings.ReplaceAll(uuid.NewString(), "-", ""))
-}
-
-func ParseStorageKey(storageKey string) (StorageKey, bool) {
-	parts := strings.Split(storageKey, "://")
-	if len(parts) != 2 {
-		return "", false
-	}
-	return StorageKey(storageKey), true
-}
-
-func IsStorageKey(storageKey string) bool {
-	parts := strings.Split(storageKey, "://")
-	return len(parts) == 2
-}
-
-func (f StorageKey) Provider() string {
-	return strings.Split(string(f), "://")[0]
-}
-
-func (f StorageKey) FileID() string {
-	val := strings.Split(string(f), "://")
-	if len(val) != 2 {
-		return ""
-	}
-	return val[1]
-}
 
 type FileMeta struct {
 	StorageKey       StorageKey `gorm:"primaryKey;column:storage_key" json:"storage_key"`

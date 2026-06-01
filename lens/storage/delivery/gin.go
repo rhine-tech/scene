@@ -2,7 +2,6 @@ package delivery
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/rhine-tech/scene/lens/permission"
 	permMdw "github.com/rhine-tech/scene/lens/permission/middleware"
 	"github.com/rhine-tech/scene/lens/storage"
 	sgin "github.com/rhine-tech/scene/scenes/gin"
@@ -61,7 +60,7 @@ type putDataRequest struct {
 	sgin.BaseAction
 	sgin.RequestURI
 	Provider   string `uri:"provider" binding:"required"`
-	StorageKey string `uri:"fileid" binding:"required"`
+	StorageKey string `uri:"fileid"`
 }
 
 func (p *putDataRequest) GetRoute() sgin.HttpRouteInfo {
@@ -79,17 +78,16 @@ func (p *putDataRequest) Middleware() gin.HandlersChain {
 }
 
 func (p *putDataRequest) Process(ctx *sgin.Context[*appContext]) (data any, err error) {
-	p.StorageKey = strings.TrimPrefix(p.StorageKey, "/")
-	storageKey := storage.NewStorageKey(p.Provider, p.StorageKey)
-	if !permission.HasPermissionInCtx(ctx, storage.PermFileNaming) {
-		storageKey = storage.NewStorageKeyWithUUID(p.Provider)
-	}
+	identifier := storage.NormalizeIdentifier(p.StorageKey)
 	fileName := ctx.Query("filename")
 	if fileName == "" {
 		fileName = ctx.Request.Header.Get("filename")
 	}
 	if fileName == "" {
-		fileName = storageKey.FileID()
+		fileName = identifier
+	}
+	if fileName == "" {
+		fileName = "upload"
 	}
 	contentType := ctx.Query("content_type")
 	if contentType == "" {
@@ -100,7 +98,6 @@ func (p *putDataRequest) Process(ctx *sgin.Context[*appContext]) (data any, err 
 	}
 	// Construct metadata (can be expanded from headers as needed)
 	meta := storage.FileMeta{
-		StorageKey:       storageKey,
 		Provider:         p.Provider,
 		OriginalFilename: fileName,
 		ContentType:      contentType,
@@ -111,7 +108,7 @@ func (p *putDataRequest) Process(ctx *sgin.Context[*appContext]) (data any, err 
 	}
 
 	// Init multipart session
-	storageKey, uploadId, err := ctx.App.srv.InitMultipartStore(p.Provider, p.StorageKey, meta)
+	storageKey, uploadId, err := ctx.App.srv.InitMultipartStore(p.Provider, identifier, meta)
 	if err != nil {
 		return nil, err
 	}

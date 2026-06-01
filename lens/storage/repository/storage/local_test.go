@@ -47,6 +47,23 @@ func TestLocalStorage_Simple(t *testing.T) {
 	require.NoError(t, os.RemoveAll("./data"))
 }
 
+func TestLocalStorage_StoreDoesNotOverwriteExistingFile(t *testing.T) {
+	basePath := t.TempDir()
+	storageApi := NewLocalStorage("default", basePath, "")
+	storageKey := storage.NewStorageKey("local.default", "safe", "object.txt")
+
+	require.NoError(t, storageApi.Store(storageKey, bytes.NewReader([]byte("first"))))
+	err := storageApi.Store(storageKey, bytes.NewReader([]byte("second")))
+	require.ErrorIs(t, err, storage.ErrStorageKeyExists)
+
+	reader, err := storageApi.LoadAll(storageKey)
+	require.NoError(t, err)
+	content, err := io.ReadAll(reader)
+	require.NoError(t, err)
+	require.NoError(t, reader.Close())
+	require.Equal(t, []byte("first"), content)
+}
+
 func TestLocalStorage_Load(t *testing.T) {
 	require.NoError(t, os.MkdirAll("./data", 0755))
 	storageApi := NewLocalStorage("default", "./data", "")

@@ -167,17 +167,26 @@ func (l *localStorage) Store(storageKey storage.StorageKey, data io.Reader) (err
 	dir := filepath.Dir(path)
 	err = os.MkdirAll(dir, 0755)
 	if err != nil {
-		return errors.New("failed to create directory")
+		return storage.ErrStorageFailed.WithDetail(err)
 	}
-	file, err := os.Create(path)
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
 	if err != nil {
-		return errors.New("failed to create file")
+		if os.IsExist(err) {
+			return storage.ErrStorageKeyExists
+		}
+		return storage.ErrStorageFailed.WithDetail(err)
 	}
 	_, err = io.Copy(file, data)
 	if err != nil {
-		return err
+		_ = file.Close()
+		_ = os.Remove(path)
+		return storage.ErrStorageFailed.WithDetail(err)
 	}
-	return file.Close()
+	if err := file.Close(); err != nil {
+		_ = os.Remove(path)
+		return storage.ErrStorageFailed.WithDetail(err)
+	}
+	return nil
 }
 
 func (l *localStorage) Load(storageKey storage.StorageKey, offset, length int64) (reader io.ReadCloser, err error) {

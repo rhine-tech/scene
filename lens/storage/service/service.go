@@ -11,7 +11,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rhine-tech/scene"
-	"github.com/rhine-tech/scene/errcode"
 	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/rhine-tech/scene/lens/storage"
 	"github.com/rhine-tech/scene/model"
@@ -92,6 +91,9 @@ func (s *StorageService) StoreAt(provider, identifier string, data io.Reader, me
 	err = storageProvider.Store(storageKey, reader)
 	if err != nil {
 		s.log.ErrorW("failed to store file", "storageKey", storageKey, "err", err)
+		if errors.Is(err, storage.ErrStorageKeyExists) {
+			return "", storage.ErrStorageKeyExists
+		}
 		return "", storage.ErrFailToStore
 	}
 	meta.Finished = true
@@ -102,7 +104,8 @@ func (s *StorageService) StoreAt(provider, identifier string, data io.Reader, me
 	meta.Md5Checksum = hex.EncodeToString(hash.Sum(nil))
 	err = s.metaRepo.Store(meta)
 	if err != nil {
-		return "", err
+		s.log.ErrorW("failed to store file meta", "storageKey", storageKey, "err", err)
+		return "", storage.ErrFailToStore
 	}
 	s.log.InfoW("file stored", "storageKey", storageKey)
 	return storageKey, nil
@@ -110,20 +113,23 @@ func (s *StorageService) StoreAt(provider, identifier string, data io.Reader, me
 
 // Meta retrieves the metadata of a file based on storageKey.
 func (s *StorageService) Meta(storageKey storage.StorageKey) (meta storage.FileMeta, err error) {
+	storager, err := s.providerFor(storageKey)
+	if err != nil {
+		return meta, err
+	}
 	meta, err = s.metaRepo.Load(storageKey)
 	if err == nil {
 		meta.FillMissing()
 		return meta, nil
 	}
 	s.log.ErrorW("failed to load meta, fallback to provider meta", "storageKey", storageKey, "err", err)
-	storager, exists := s.providers[storageKey.Provider()]
-	if !exists {
-		return meta, storage.ErrLoadingMeta.WrapIfNot(err)
-	}
 	meta, err2 := storager.Meta(storageKey)
 	if err2 != nil {
 		s.log.ErrorW("fail to load meta from storage provider", "storageKey", storageKey, "err", err2)
-		return meta, storage.ErrLoadingMeta.WrapIfNot(err)
+		if errors.Is(err2, storage.ErrFileNotFound) {
+			return meta, storage.ErrFileNotFound
+		}
+		return meta, storage.ErrLoadingMeta
 	}
 	meta.FillMissing()
 	return meta, nil
@@ -131,43 +137,46 @@ func (s *StorageService) Meta(storageKey storage.StorageKey) (meta storage.FileM
 
 // Load retrieves data based on storageKey.
 func (s *StorageService) Load(storageKey storage.StorageKey, offset, length int64) (io.ReadCloser, error) {
-	storager, exists := s.providers[storageKey.Provider()]
-	if !exists {
-		return nil, storage.ErrStorageNotFound
+	storager, err := s.providerFor(storageKey)
+	if err != nil {
+		return nil, err
 	}
 
 	reader, err := storager.Load(storageKey, offset, length)
 	if err != nil {
 		s.log.ErrorW("failed to load file", "storageKey", storageKey, "err", err)
-		return nil, errcode.Must(err, storage.ErrFailToLoad)
+		return nil, loadError(err)
 	}
 	return reader, nil
 }
 
 // LoadAll retrieves data based on storageKey.
 func (s *StorageService) LoadAll(storageKey storage.StorageKey) (io.ReadCloser, error) {
-	storager, exists := s.providers[storageKey.Provider()]
-	if !exists {
-		return nil, storage.ErrStorageNotFound
+	storager, err := s.providerFor(storageKey)
+	if err != nil {
+		return nil, err
 	}
 
 	reader, err := storager.LoadAll(storageKey)
 	if err != nil {
 		s.log.ErrorW("failed to load file", "storageKey", storageKey, "err", err)
-		return nil, errcode.Must(err, storage.ErrFailToLoad)
+		return nil, loadError(err)
 	}
 	return reader, nil
 }
 
 // Delete deletes a file based on storageKey.
 func (s *StorageService) Delete(storageKey storage.StorageKey) error {
-	storager, exists := s.providers[storageKey.Provider()]
-	if !exists {
-		return storage.ErrStorageNotFound
+	storager, err := s.providerFor(storageKey)
+	if err != nil {
+		return err
 	}
-	err := storager.Delete(storageKey)
+	err = storager.Delete(storageKey)
 	if err != nil {
 		s.log.ErrorW("failed to delete file", "storageKey", storageKey, "err", err)
+		if errors.Is(err, storage.ErrFileNotFound) {
+			return storage.ErrFileNotFound
+		}
 		return storage.ErrFailToDelete
 	}
 	err = s.metaRepo.Delete(storageKey)
@@ -191,12 +200,13 @@ func (s *StorageService) InitMultipartStore(provider, identifier string, meta st
 		return "", "", storage.ErrStorageKeyExists
 	}
 	if !errors.Is(err, storage.ErrMetaNotFound) {
-		return "", "", err
+		s.log.ErrorW("failed to check multipart upload meta", "storageKey", storageKey, "err", err)
+		return "", "", storage.ErrInitPartUploadFailed
 	}
 	uploadId, err := pvd.InitMultipartStore(storageKey)
 	if err != nil {
 		s.log.ErrorW("failed to initiate multipart upload", "storageKey", storageKey, "err", err)
-		return "", "", storage.ErrInitPartUploadFailed.WrapIfNot(err)
+		return "", "", storage.ErrInitPartUploadFailed
 	}
 	err = s.uploadSessions.Save(uploadId, storage.UploadSession{
 		StorageKey: storageKey,
@@ -207,7 +217,8 @@ func (s *StorageService) InitMultipartStore(provider, identifier string, meta st
 		if err2 != nil {
 			s.log.ErrorW("failed to abort multipart upload", "storageKey", storageKey, "err", err2)
 		}
-		return "", "", err
+		s.log.ErrorW("failed to save multipart upload session", "storageKey", storageKey, "uploadId", uploadId, "err", err)
+		return "", "", storage.ErrInitPartUploadFailed
 	}
 	meta.Finished = false
 	meta.StorageKey = storageKey
@@ -222,7 +233,7 @@ func (s *StorageService) InitMultipartStore(provider, identifier string, meta st
 		if err2 != nil {
 			s.log.ErrorW("failed to abort multipart upload", "storageKey", storageKey, "err", err2)
 		}
-		return "", "", storage.ErrInitPartUploadFailed.WrapIfNot(err)
+		return "", "", storage.ErrInitPartUploadFailed
 	}
 	return storageKey, uploadId, nil
 }
@@ -244,7 +255,10 @@ func (s *StorageService) StorePartReader(uploadId string, partNumber int, data i
 	err = pvd.StorePart(uploadId, partNumber, data)
 	if err != nil {
 		s.log.ErrorW("failed to store part upload", "uploadId", uploadId, "err", err)
-		return storage.ErrStorePartFailed.WrapIfNot(err)
+		if errors.Is(err, storage.ErrUploadSessionNotFound) {
+			return storage.ErrUploadSessionNotFound
+		}
+		return storage.ErrStorePartFailed
 	}
 	return nil
 }
@@ -264,7 +278,10 @@ func (s *StorageService) CompleteMultipartStore(uploadId string) error {
 	err = pvd.CompleteMultipartStore(uploadId)
 	if err != nil {
 		s.log.ErrorW("failed to complete multipart upload", "uploadId", uploadId, "err", err)
-		return storage.ErrStorePartFailed.WrapIfNot(err)
+		if errors.Is(err, storage.ErrUploadSessionNotFound) {
+			return storage.ErrUploadSessionNotFound
+		}
+		return storage.ErrStorePartFailed
 	}
 
 	// update meta
@@ -301,7 +318,7 @@ func (s *StorageService) AbortMultiPartStore(uploadId string) error {
 	err = pvd.AbortMultipartStore(uploadId)
 	if err != nil {
 		s.log.ErrorW("failed to abort multipart upload", "uploadId", uploadId, "err", err)
-		return storage.ErrStorePartFailed.WrapIfNot(err)
+		return storage.ErrFailToAbortMultipartStore
 	}
 
 	if err := s.uploadSessions.Delete(uploadId); err != nil {
@@ -312,16 +329,21 @@ func (s *StorageService) AbortMultiPartStore(uploadId string) error {
 }
 
 func (s *StorageService) resolveStorageKey(provider, identifier string) (storage.StorageKey, error) {
+	provider = strings.TrimSpace(provider)
 	if provider == "" {
 		provider = s.defaultProvider
 	}
-	if _, exists := s.providers[provider]; !exists {
-		return "", storage.ErrStorageNotFound
-	}
+	identifier = storage.NormalizeIdentifier(identifier)
 	if identifier == "" {
 		identifier = randString(4) + strings.ReplaceAll(uuid.NewString(), "-", "")
 	}
 	storageKey := storage.NewStorageKey(provider, identifier)
+	if err := storage.ValidateStorageKey(storageKey); err != nil {
+		return "", err
+	}
+	if _, exists := s.providers[provider]; !exists {
+		return "", storage.ErrStorageNotFound
+	}
 	return storageKey, nil
 }
 
@@ -331,13 +353,48 @@ func (s *StorageService) ListMeta(provider string, offset, limit int64) (model.P
 		return model.PaginationResult[storage.FileMeta]{}, storage.ErrStorageNotFound
 	}
 	reuslt, err := s.metaRepo.List(provider, offset, limit)
-	return reuslt, storage.ErrFailToListMeta.WrapIfNot(err)
+	if err != nil {
+		s.log.ErrorW("failed to list file meta", "provider", provider, "offset", offset, "limit", limit, "err", err)
+		return model.PaginationResult[storage.FileMeta]{}, storage.ErrFailToListMeta
+	}
+	return reuslt, nil
 }
 
 func (s *StorageService) GetPublicURL(storageKey storage.StorageKey) (string, error) {
+	storager, err := s.providerFor(storageKey)
+	if err != nil {
+		return "", err
+	}
+	url, err := storager.GetPublicURL(storageKey)
+	if err != nil {
+		s.log.ErrorW("failed to get public url", "storageKey", storageKey, "err", err)
+		return "", storage.ErrStorageError
+	}
+	return url, nil
+}
+
+func (s *StorageService) providerFor(storageKey storage.StorageKey) (storage.IStorageProvider, error) {
+	if err := storage.ValidateStorageKey(storageKey); err != nil {
+		return nil, err
+	}
 	storager, exists := s.providers[storageKey.Provider()]
 	if !exists {
-		return "", storage.ErrStorageNotFound
+		return nil, storage.ErrStorageNotFound
 	}
-	return storager.GetPublicURL(storageKey)
+	return storager, nil
+}
+
+func loadError(err error) error {
+	switch {
+	case errors.Is(err, storage.ErrFileNotFound):
+		return storage.ErrFileNotFound
+	case errors.Is(err, storage.ErrInvalidStorageKey):
+		return storage.ErrInvalidStorageKey
+	case errors.Is(err, storage.ErrInvalidOffset):
+		return storage.ErrInvalidOffset
+	case errors.Is(err, storage.ErrInvalidLength):
+		return storage.ErrInvalidLength
+	default:
+		return storage.ErrFailToLoad
+	}
 }

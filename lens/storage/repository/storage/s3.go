@@ -27,22 +27,52 @@ type s3UploadSession struct {
 }
 
 type s3Storage struct {
-	client    *s3.Client
-	bucket    string
-	name      string
-	urlPrefix string
+	client          *s3.Client
+	presignClient   *s3.PresignClient
+	bucket          string
+	name            string
+	urlPrefix       string
+	directPublicURL bool
+	presignedURLTTL time.Duration
 
 	uploads     map[string]*s3UploadSession
 	uploadsLock sync.RWMutex
 }
+
+const defaultS3PresignedURLTTL = 15 * time.Minute
 
 func NewS3Storage(
 	endpoint, accessKey, secretKey, bucket, name, urlPrefix string,
 	useSSL, forcePathStyle bool,
 	region string,
 ) (storage.IStorageProvider, error) {
+	return NewS3StorageWithPublicURLMode(
+		endpoint,
+		accessKey,
+		secretKey,
+		bucket,
+		name,
+		urlPrefix,
+		useSSL,
+		forcePathStyle,
+		region,
+		false,
+		defaultS3PresignedURLTTL,
+	)
+}
+
+func NewS3StorageWithPublicURLMode(
+	endpoint, accessKey, secretKey, bucket, name, urlPrefix string,
+	useSSL, forcePathStyle bool,
+	region string,
+	directPublicURL bool,
+	presignedURLTTL time.Duration,
+) (storage.IStorageProvider, error) {
 	if region == "" {
 		region = "us-east-1"
+	}
+	if presignedURLTTL <= 0 {
+		presignedURLTTL = defaultS3PresignedURLTTL
 	}
 	awsCfg := aws.Config{
 		Region: region,
@@ -60,11 +90,14 @@ func NewS3Storage(
 		return nil, errors.New("failed to initialize s3 client")
 	}
 	return &s3Storage{
-		client:    client,
-		bucket:    bucket,
-		name:      name,
-		urlPrefix: strings.TrimRight(urlPrefix, "/"),
-		uploads:   make(map[string]*s3UploadSession),
+		client:          client,
+		presignClient:   s3.NewPresignClient(client),
+		bucket:          bucket,
+		name:            name,
+		urlPrefix:       strings.TrimRight(urlPrefix, "/"),
+		directPublicURL: directPublicURL,
+		presignedURLTTL: presignedURLTTL,
+		uploads:         make(map[string]*s3UploadSession),
 	}, nil
 }
 
@@ -138,6 +171,9 @@ func (s *s3Storage) Load(storageKey storage.StorageKey, offset, length int64) (i
 	if err != nil {
 		if isS3NotFound(err) {
 			return nil, storage.ErrFileNotFound
+		}
+		if isS3InvalidRange(err) {
+			return nil, storage.ErrInvalidOffset
 		}
 		return nil, storage.ErrStorageFailed.WithDetail(err)
 	}
@@ -280,6 +316,18 @@ func (s *s3Storage) AbortMultipartStore(uploadId string) error {
 }
 
 func (s *s3Storage) GetPublicURL(storageKey storage.StorageKey) (string, error) {
+	if s.directPublicURL {
+		resp, err := s.presignClient.PresignGetObject(context.Background(), &s3.GetObjectInput{
+			Bucket: aws.String(s.bucket),
+			Key:    aws.String(storageKey.FileID()),
+		}, func(options *s3.PresignOptions) {
+			options.Expires = s.presignedURLTTL
+		})
+		if err != nil {
+			return "", storage.ErrStorageError.WithDetail(err)
+		}
+		return resp.URL, nil
+	}
 	return url.JoinPath(s.urlPrefix, storageKey.FileID())
 }
 
@@ -290,6 +338,19 @@ func isS3NotFound(err error) bool {
 	}
 	switch apiErr.ErrorCode() {
 	case "NotFound", "NoSuchKey", "NoSuchUpload", "NoSuchBucket", "404":
+		return true
+	default:
+		return false
+	}
+}
+
+func isS3InvalidRange(err error) bool {
+	var apiErr smithy.APIError
+	if !errors.As(err, &apiErr) {
+		return false
+	}
+	switch apiErr.ErrorCode() {
+	case "InvalidRange", "InvalidArgument", "416":
 		return true
 	default:
 		return false
