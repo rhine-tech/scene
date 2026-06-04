@@ -347,23 +347,35 @@ That means:
 Example:
 
 ```go
+type cachePayload struct {
+	MediaID string `json:"media_id"`
+}
+
 type CacheWorker struct {
 	queueCon asynctask.TaskQueueConsumer `aperture:""`
 }
 
 func (w *CacheWorker) Run() error {
-	if err := w.queueCon.RegisterQueue("meowsic.media-cache", asynctask.TaskQueueConfig{
-		Concurrency: 2,
-		MaxRetry:    3,
-		RetryDelay:  3 * time.Second,
-	}); err != nil {
-		return err
-	}
-
-	return w.queueCon.RegisterHandler(
-		"meowsic.media-cache",
-		"meowsic.media-cache.file",
-		asynctask.TaskQueueHandlerFunc(w.handleCacheFile),
+	return asynctask.RegisterQueueSpecs(
+		w.queueCon,
+		asynctask.QueueSpec{
+			Queue: "meowsic.media-cache",
+			Config: asynctask.TaskQueueConfig{
+				Concurrency: 2,
+				MaxRetry:    3,
+				RetryDelay:  3 * time.Second,
+			},
+			Handlers: []asynctask.HandlerSpec{
+				{
+					Type: "meowsic.media-cache.file",
+					Handler: asynctask.PayloadHandler(
+						func(ctx context.Context, task *asynctask.QueueTask, payload cachePayload) error {
+							return w.handleCacheFile(ctx, payload.MediaID)
+						},
+					),
+				},
+			},
+		},
 	)
 }
 ```
@@ -374,21 +386,53 @@ This matches the current `void` contract:
 - delivery layer starts after that
 - `void` app `Run()` starts background delivery behavior and returns quickly
 
-### 1. Register a queue and then register a handler
+### 1. Register queue specs in a worker
 
-Usually do this in `Setup()` of a service.
+Usually do this in `Run()` of a module-owned `void.VoidApp`.
+The helper only simplifies registration; the module still owns the worker app lifecycle.
 
 ```go
 type myTaskPayload struct {
 	UserID string `json:"user_id"`
 }
 
-type myService struct {
+type UserSyncWorker struct {
 	queueCon asynctask.TaskQueueConsumer `aperture:""`
 }
 
-func (s *myService) Setup() error {
-	if err := s.queueCon.RegisterQueue("user.sync", asynctask.TaskQueueConfig{
+func (w *UserSyncWorker) Run() error {
+	return asynctask.RegisterQueueSpecs(
+		w.queueCon,
+		asynctask.QueueSpec{
+			Queue: "user.sync",
+			Config: asynctask.TaskQueueConfig{
+				Concurrency: 2,
+				MaxRetry:    3,
+				RetryDelay:  5 * time.Second,
+			},
+			Handlers: []asynctask.HandlerSpec{
+				{
+					Type: "user.sync.profile",
+					Handler: asynctask.PayloadHandler(
+						func(ctx context.Context, task *asynctask.QueueTask, payload myTaskPayload) error {
+							return w.handleUserSync(ctx, payload.UserID)
+						},
+					),
+				},
+			},
+		},
+	)
+}
+```
+
+### 2. Register manually
+
+The helper is optional.
+When a worker needs custom branching or local registration logic, call the consumer directly.
+
+```go
+func (w *UserSyncWorker) Run() error {
+	if err := w.queueCon.RegisterQueue("user.sync", asynctask.TaskQueueConfig{
 		Concurrency: 2,
 		MaxRetry:    3,
 		RetryDelay:  5 * time.Second,
@@ -396,7 +440,7 @@ func (s *myService) Setup() error {
 		return err
 	}
 
-	return s.queueCon.RegisterHandler(
+	return w.queueCon.RegisterHandler(
 		"user.sync",
 		"user.sync.profile",
 		asynctask.TaskQueueHandlerFunc(func(ctx context.Context, task *asynctask.QueueTask) error {
@@ -404,13 +448,13 @@ func (s *myService) Setup() error {
 			if err := asynctask.UnmarshalPayload(task, &payload); err != nil {
 				return err
 			}
-			return s.handleUserSync(ctx, payload.UserID)
+			return w.handleUserSync(ctx, payload.UserID)
 		}),
 	)
 }
 ```
 
-### 2. Publish a task
+### 3. Publish a task
 
 ```go
 func (s *myService) EnqueueUserSync(userID string) error {
