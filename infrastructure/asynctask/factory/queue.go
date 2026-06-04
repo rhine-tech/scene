@@ -1,12 +1,15 @@
 package factory
 
 import (
+	"time"
+
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/asynctask"
 	queueimpl "github.com/rhine-tech/scene/infrastructure/asynctask/queue"
 	"github.com/rhine-tech/scene/infrastructure/asynctask/queue/asynq"
 	"github.com/rhine-tech/scene/infrastructure/asynctask/queue/rabbitmq"
 	"github.com/rhine-tech/scene/infrastructure/asynctask/queue/redisstream"
+	"github.com/rhine-tech/scene/infrastructure/asynctask/reporter/memoryreporter"
 	"github.com/rhine-tech/scene/infrastructure/datasource"
 	"github.com/rhine-tech/scene/registry"
 )
@@ -17,9 +20,32 @@ type MemoryQueue struct {
 
 func (b MemoryQueue) Init() scene.LensInit {
 	return func() {
-		taskQueue := queueimpl.NewMemoryTaskQueue()
+		taskQueue := registry.Load(queueimpl.NewMemoryTaskQueue())
 		registry.Register[asynctask.TaskQueuePublisher](taskQueue)
 		registry.Register[asynctask.TaskQueueConsumer](taskQueue)
+	}
+}
+
+type MemoryReporter struct {
+	scene.ModuleFactory
+	Config memoryreporter.Config
+}
+
+func (b MemoryReporter) Init() scene.LensInit {
+	return func() {
+		reporter := memoryreporter.NewMemoryReporter(b.Config)
+		registry.Register[asynctask.TaskReporter](reporter)
+		registry.Register[asynctask.TaskQueueInspector](reporter)
+	}
+}
+
+func (b MemoryReporter) Default() MemoryReporter {
+	return MemoryReporter{
+		Config: memoryreporter.Config{
+			EventTTL:        time.Duration(registry.Config.GetInt("asynctask.memoryreporter.event_ttl_seconds")) * time.Second,
+			MaxTasks:        int(registry.Config.GetInt("asynctask.memoryreporter.max_tasks")),
+			CleanupInterval: time.Duration(registry.Config.GetInt("asynctask.memoryreporter.cleanup_interval_seconds")) * time.Second,
+		},
 	}
 }
 
@@ -30,7 +56,7 @@ type RabbitMQ struct {
 
 func (b RabbitMQ) Init() scene.LensInit {
 	return func() {
-		taskQueue := rabbitmq.New(b.Config)
+		taskQueue := registry.Load(rabbitmq.New(b.Config))
 		registry.Register[asynctask.TaskQueuePublisher](taskQueue)
 		registry.Register[asynctask.TaskQueueConsumer](taskQueue)
 	}
@@ -55,7 +81,7 @@ type Asynq struct {
 
 func (b Asynq) Init() scene.LensInit {
 	return func() {
-		taskQueue := asynq.New(b.Config)
+		taskQueue := registry.Load(asynq.New(b.Config))
 		registry.Register[asynctask.TaskQueuePublisher](taskQueue)
 		registry.Register[asynctask.TaskQueueConsumer](taskQueue)
 	}
@@ -82,7 +108,7 @@ type RedisStream struct {
 
 func (b RedisStream) Init() scene.LensInit {
 	return func() {
-		taskQueue := redisstream.New(b.Config)
+		taskQueue := registry.Load(redisstream.New(b.Config))
 		registry.Register[asynctask.TaskQueuePublisher](taskQueue)
 		registry.Register[asynctask.TaskQueueConsumer](taskQueue)
 	}

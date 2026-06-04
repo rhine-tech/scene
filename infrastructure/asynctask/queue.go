@@ -44,13 +44,9 @@ type QueueTask struct {
 	// Timeout is the handler execution timeout for this task.
 	Timeout time.Duration `json:"timeout,omitempty"`
 	// MaxRetry overrides the queue-level retry limit when greater than zero.
-	MaxRetry int `json:"max_retry,omitempty"`
-	// Attempt is the current retry attempt count.
-	Attempt     int             `json:"attempt,omitempty"`
-	Status      QueueTaskStatus `json:"status,omitempty"`
-	LastError   string          `json:"last_error,omitempty"`
-	CreatedAt   time.Time       `json:"created_at"`
-	AvailableAt time.Time       `json:"available_at"`
+	MaxRetry    int       `json:"max_retry,omitempty"`
+	CreatedAt   time.Time `json:"created_at"`
+	AvailableAt time.Time `json:"available_at"`
 }
 
 func (t *QueueTask) Identifier() string {
@@ -78,7 +74,7 @@ type TaskQueueConfig struct {
 type TaskQueuePublisher interface {
 	scene.Named
 	// Publish enqueues a task to the backend and returns the stored task model.
-	// The implementation may populate fields such as ID, CreatedAt and Status.
+	// The implementation may populate fields such as ID and CreatedAt.
 	Publish(ctx context.Context, task *QueueTask) (*QueueTask, error)
 }
 

@@ -48,10 +48,16 @@ type consumerRuntime struct {
 type Queue struct {
 	config    Config
 	lock      sync.RWMutex
+	reporter  asynctask.TaskReporter `aperture:"optional"`
 	rdb       *redis.Client
 	handlers  map[string]map[string]handlerEntry
 	consumers map[string]*consumerRuntime
 	stopCh    chan struct{}
+}
+
+type taskMessage struct {
+	Task    *asynctask.QueueTask `json:"task"`
+	Attempt int                  `json:"attempt,omitempty"`
 }
 
 func New(config Config) *Queue {
@@ -116,6 +122,10 @@ func (q *Queue) Dispose() error {
 }
 
 func (q *Queue) Publish(ctx context.Context, task *asynctask.QueueTask) (*asynctask.QueueTask, error) {
+	return q.publishWithAttempt(ctx, task, 0)
+}
+
+func (q *Queue) publishWithAttempt(ctx context.Context, task *asynctask.QueueTask, attempt int) (*asynctask.QueueTask, error) {
 	if task == nil || strings.TrimSpace(task.Queue) == "" || strings.TrimSpace(task.Type) == "" {
 		return nil, asynctask.ErrInvalidQueueTask
 	}
@@ -124,9 +134,11 @@ func (q *Queue) Publish(ctx context.Context, task *asynctask.QueueTask) (*asynct
 		task.CreatedAt = time.Now()
 	}
 	task.AvailableAt = task.CreatedAt.Add(task.Delay)
-	task.Status = asynctask.QueueTaskStatusPending
 
-	payload, err := json.Marshal(task)
+	payload, err := json.Marshal(taskMessage{
+		Task:    task,
+		Attempt: attempt,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -147,6 +159,7 @@ func (q *Queue) Publish(ctx context.Context, task *asynctask.QueueTask) (*asynct
 	if err != nil {
 		return nil, err
 	}
+	q.report(ctx, q.event(task, asynctask.QueueTaskStatusPending, attempt, ""))
 	return task, nil
 }
 
@@ -319,7 +332,7 @@ func (q *Queue) handleStreams(queueName string, stream string, group string, str
 
 func (q *Queue) handleMessages(queueName string, stream string, group string, messages []redis.XMessage, config asynctask.TaskQueueConfig) {
 	for _, msg := range messages {
-		task, err := decodeTask(msg)
+		task, attempt, err := decodeTask(msg)
 		if err != nil {
 			_, _ = q.rdb.XAck(context.Background(), stream, group, msg.ID).Result()
 			continue
@@ -330,12 +343,12 @@ func (q *Queue) handleMessages(queueName string, stream string, group string, me
 			continue
 		}
 		if !task.AvailableAt.IsZero() && time.Now().Before(task.AvailableAt) {
-			if err := q.requeueAfterDelay(task, time.Until(task.AvailableAt)); err == nil {
+			if err := q.requeueAfterDelay(task, attempt, time.Until(task.AvailableAt)); err == nil {
 				_, _ = q.rdb.XAck(context.Background(), stream, group, msg.ID).Result()
 			}
 			continue
 		}
-		task.Status = asynctask.QueueTaskStatusRunning
+		q.report(context.Background(), q.event(task, asynctask.QueueTaskStatusRunning, attempt, ""))
 		ctx := context.Background()
 		cancel := func() {}
 		if task.Timeout > 0 {
@@ -351,55 +364,58 @@ func (q *Queue) handleMessages(queueName string, stream string, group string, me
 		}()
 		cancel()
 		if handleErr == nil {
-			task.Status = asynctask.QueueTaskStatusSucceeded
+			q.report(context.Background(), q.event(task, asynctask.QueueTaskStatusSucceeded, attempt, ""))
 			_, _ = q.rdb.XAck(context.Background(), stream, group, msg.ID).Result()
 			continue
 		}
 
-		task.LastError = handleErr.Error()
 		maxRetry := config.MaxRetry
 		if task.MaxRetry > 0 {
 			maxRetry = task.MaxRetry
 		}
-		if task.Attempt >= maxRetry {
-			task.Status = asynctask.QueueTaskStatusFailed
+		if attempt >= maxRetry {
+			q.report(context.Background(), q.event(task, asynctask.QueueTaskStatusFailed, attempt, handleErr.Error()))
 			_, _ = q.rdb.XAck(context.Background(), stream, group, msg.ID).Result()
 			continue
 		}
 
-		task.Attempt++
-		task.Status = asynctask.QueueTaskStatusRetrying
-		if err := q.requeueAfterDelay(task, config.RetryDelay); err != nil {
+		nextAttempt := attempt + 1
+		q.report(context.Background(), q.event(task, asynctask.QueueTaskStatusRetrying, nextAttempt, handleErr.Error()))
+		if err := q.requeueAfterDelay(task, nextAttempt, config.RetryDelay); err != nil {
 			continue
 		}
 		_, _ = q.rdb.XAck(context.Background(), stream, group, msg.ID).Result()
 	}
 }
 
-func (q *Queue) requeueAfterDelay(task *asynctask.QueueTask, delay time.Duration) error {
+func (q *Queue) requeueAfterDelay(task *asynctask.QueueTask, attempt int, delay time.Duration) error {
 	if delay < 0 {
 		delay = 0
 	}
 	task.Delay = delay
 	task.AvailableAt = time.Now().Add(delay)
-	_, err := q.Publish(context.Background(), task)
+	_, err := q.publishWithAttempt(context.Background(), task, attempt)
 	return err
 }
 
-func decodeTask(msg redis.XMessage) (*asynctask.QueueTask, error) {
+func decodeTask(msg redis.XMessage) (*asynctask.QueueTask, int, error) {
 	raw, ok := msg.Values["task"]
 	if !ok {
-		return nil, asynctask.ErrInvalidQueuePayload.WithDetailStr("task payload missing")
+		return nil, 0, asynctask.ErrInvalidQueuePayload.WithDetailStr("task payload missing")
 	}
 	payload, ok := raw.(string)
 	if !ok {
-		return nil, asynctask.ErrInvalidQueuePayload.WithDetailStr("task payload invalid")
+		return nil, 0, asynctask.ErrInvalidQueuePayload.WithDetailStr("task payload invalid")
+	}
+	message := taskMessage{}
+	if err := json.Unmarshal([]byte(payload), &message); err == nil && message.Task != nil {
+		return message.Task, message.Attempt, nil
 	}
 	task := &asynctask.QueueTask{}
 	if err := json.Unmarshal([]byte(payload), task); err != nil {
-		return nil, asynctask.ErrInvalidQueuePayload.WrapIfNot(err)
+		return nil, 0, asynctask.ErrInvalidQueuePayload.WrapIfNot(err)
 	}
-	return task, nil
+	return task, 0, nil
 }
 
 func (q *Queue) lookupHandler(queueName string, taskType string) (asynctask.TaskQueueHandler, error) {
@@ -414,6 +430,18 @@ func (q *Queue) lookupHandler(queueName string, taskType string) (asynctask.Task
 		return nil, asynctask.ErrTaskHandlerNotFound.WithDetailStr(queueName + ":" + taskType)
 	}
 	return entry.handler, nil
+}
+
+func (q *Queue) event(task *asynctask.QueueTask, status asynctask.QueueTaskStatus, attempt int, err string) asynctask.TaskEvent {
+	event := asynctask.NewTaskEvent(task)
+	event.Status = status
+	event.Attempt = attempt
+	event.Error = err
+	return event
+}
+
+func (q *Queue) report(ctx context.Context, event asynctask.TaskEvent) {
+	_ = asynctask.ReportTaskEvent(ctx, q.reporter, event)
 }
 
 func (q *Queue) streamName(queueName string) string {

@@ -63,7 +63,7 @@ func BenchmarkQueueRuntimePopReady(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		task, _, _ := runtime.popReady()
-		if task == nil {
+		if task.task == nil {
 			b.Fatal("expected ready task")
 		}
 	}

@@ -4,12 +4,38 @@ import (
 	"container/heap"
 	"context"
 	"reflect"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/asynctask"
 )
+
+type fakeTaskReporter struct {
+	lock   sync.Mutex
+	events []asynctask.TaskEvent
+}
+
+func (f *fakeTaskReporter) ImplName() scene.ImplName {
+	return asynctask.Lens.ImplName("TaskReporter", "fake")
+}
+
+func (f *fakeTaskReporter) ReportTaskEvent(ctx context.Context, event asynctask.TaskEvent) error {
+	f.lock.Lock()
+	defer f.lock.Unlock()
+	f.events = append(f.events, event)
+	return nil
+}
+
+func (f *fakeTaskReporter) Events() []asynctask.TaskEvent {
+	f.lock.Lock()
+	defer f.lock.Unlock()
+	events := make([]asynctask.TaskEvent, len(f.events))
+	copy(events, f.events)
+	return events
+}
 
 func newTestRuntime(bufferSize int) *queueRuntime {
 	if bufferSize <= 0 {
@@ -23,6 +49,71 @@ func newTestRuntime(bufferSize int) *queueRuntime {
 	heap.Init(&runtime.ready)
 	heap.Init(&runtime.delayed)
 	return runtime
+}
+
+func TestMemoryQueueReportsLifecycleEvents(t *testing.T) {
+	reporter := &fakeTaskReporter{}
+	queue := NewMemoryQueue()
+	queue.reporter = reporter
+	done := make(chan struct{}, 1)
+
+	err := queue.RegisterQueue("report.queue", asynctask.TaskQueueConfig{Concurrency: 1})
+	if err != nil {
+		t.Fatalf("register queue failed: %v", err)
+	}
+	err = queue.RegisterHandler("report.queue", "handle", asynctask.TaskQueueHandlerFunc(func(ctx context.Context, task *asynctask.QueueTask) error {
+		close(done)
+		return nil
+	}))
+	if err != nil {
+		t.Fatalf("register handler failed: %v", err)
+	}
+
+	if _, err := queue.Publish(context.Background(), &asynctask.QueueTask{
+		ID:    "reported",
+		Queue: "report.queue",
+		Type:  "handle",
+	}); err != nil {
+		t.Fatalf("publish failed: %v", err)
+	}
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("task not handled in time")
+	}
+
+	want := []asynctask.QueueTaskStatus{
+		asynctask.QueueTaskStatusPending,
+		asynctask.QueueTaskStatusRunning,
+		asynctask.QueueTaskStatusSucceeded,
+	}
+	deadline := time.After(2 * time.Second)
+	for {
+		events := reporter.Events()
+		if len(events) >= len(want) {
+			got := make([]asynctask.QueueTaskStatus, 0, len(events))
+			for _, event := range events {
+				got = append(got, event.Status)
+				if event.TaskID != "reported" || event.Queue != "report.queue" || event.TaskType != "handle" {
+					t.Fatalf("unexpected task identity in event: %+v", event)
+				}
+				if event.UpdatedAt.IsZero() {
+					t.Fatalf("expected UpdatedAt to be set: %+v", event)
+				}
+			}
+			if !reflect.DeepEqual(got[:len(want)], want) {
+				t.Fatalf("unexpected statuses: got=%v want=%v", got, want)
+			}
+			return
+		}
+		select {
+		case <-deadline:
+			t.Fatalf("events not reported in time: %+v", events)
+		default:
+			time.Sleep(time.Millisecond)
+		}
+	}
 }
 
 func TestMemoryQueuePublish(t *testing.T) {
@@ -266,7 +357,7 @@ func TestQueueRuntimePopReadySignalsWhenReadyTasksRemain(t *testing.T) {
 
 drained:
 	task, _, _ := runtime.popReady()
-	if task == nil {
+	if task.task == nil {
 		t.Fatal("expected ready task")
 	}
 	select {

@@ -34,6 +34,7 @@ type queueRuntime struct {
 
 type MemoryQueue struct {
 	lock     sync.RWMutex
+	reporter asynctask.TaskReporter `aperture:"optional"`
 	handlers map[string]map[string]handlerEntry
 	queues   map[string]*queueRuntime
 }
@@ -58,12 +59,12 @@ func (m *MemoryQueue) Publish(ctx context.Context, task *asynctask.QueueTask) (*
 		task.CreatedAt = time.Now()
 	}
 	task.AvailableAt = task.CreatedAt.Add(task.Delay)
-	task.Status = asynctask.QueueTaskStatusPending
 
 	runtime := m.ensureQueue(task.Queue, asynctask.TaskQueueConfig{})
 	if err := runtime.push(ctx, task); err != nil {
 		return nil, err
 	}
+	m.report(ctx, m.event(task, asynctask.QueueTaskStatusPending, 0, ""))
 	return task, nil
 }
 
@@ -139,21 +140,21 @@ func (m *MemoryQueue) ensureQueue(queue string, config asynctask.TaskQueueConfig
 
 func (m *MemoryQueue) worker(queue string, runtime *queueRuntime) {
 	for {
-		task := runtime.pop()
-		m.handle(queue, runtime, task)
+		item := runtime.pop()
+		m.handle(queue, runtime, item)
 	}
 }
 
-func (m *MemoryQueue) handle(queue string, runtime *queueRuntime, task *asynctask.QueueTask) {
+func (m *MemoryQueue) handle(queue string, runtime *queueRuntime, item priorityTask) {
+	task := item.task
 	handler, err := m.lookupHandler(queue, task.Type)
 	if err != nil {
-		task.Status = asynctask.QueueTaskStatusFailed
-		task.LastError = err.Error()
+		m.report(context.Background(), m.event(task, asynctask.QueueTaskStatusFailed, item.attempt, err.Error()))
 		runtime.release()
 		return
 	}
 
-	task.Status = asynctask.QueueTaskStatusRunning
+	m.report(context.Background(), m.event(task, asynctask.QueueTaskStatusRunning, item.attempt, ""))
 	ctx := context.Background()
 	cancel := func() {}
 	if task.Timeout > 0 {
@@ -169,33 +170,30 @@ func (m *MemoryQueue) handle(queue string, runtime *queueRuntime, task *asynctas
 	}()
 	cancel()
 	if err == nil {
-		task.Status = asynctask.QueueTaskStatusSucceeded
-		task.LastError = ""
+		m.report(context.Background(), m.event(task, asynctask.QueueTaskStatusSucceeded, item.attempt, ""))
 		runtime.release()
 		return
 	}
 
-	task.LastError = err.Error()
 	maxRetry := runtime.config.MaxRetry
 	if task.MaxRetry > 0 {
 		maxRetry = task.MaxRetry
 	}
-	if task.Attempt >= maxRetry {
-		task.Status = asynctask.QueueTaskStatusFailed
+	if item.attempt >= maxRetry {
+		m.report(context.Background(), m.event(task, asynctask.QueueTaskStatusFailed, item.attempt, err.Error()))
 		runtime.release()
 		return
 	}
 
-	task.Attempt++
-	task.Status = asynctask.QueueTaskStatusRetrying
+	nextAttempt := item.attempt + 1
+	m.report(context.Background(), m.event(task, asynctask.QueueTaskStatusRetrying, nextAttempt, err.Error()))
 	delay := runtime.config.RetryDelay
 	if delay <= 0 {
 		delay = defaultRetryDelay
 	}
 	task.Delay = delay
 	task.AvailableAt = time.Now().Add(delay)
-	task.Status = asynctask.QueueTaskStatusPending
-	runtime.requeue(task)
+	runtime.requeue(task, nextAttempt)
 }
 
 func (r *queueRuntime) push(ctx context.Context, task *asynctask.QueueTask) error {
@@ -207,18 +205,18 @@ func (r *queueRuntime) push(ctx context.Context, task *asynctask.QueueTask) erro
 	case <-ctx.Done():
 		return ctx.Err()
 	}
-	r.enqueue(task)
+	r.enqueue(task, 0)
 	return nil
 }
 
-func (r *queueRuntime) requeue(task *asynctask.QueueTask) {
-	r.enqueue(task)
+func (r *queueRuntime) requeue(task *asynctask.QueueTask, attempt int) {
+	r.enqueue(task, attempt)
 }
 
-func (r *queueRuntime) enqueue(task *asynctask.QueueTask) {
+func (r *queueRuntime) enqueue(task *asynctask.QueueTask, attempt int) {
 	r.lock.Lock()
 	r.sequence++
-	item := priorityTask{task: task, sequence: r.sequence}
+	item := priorityTask{task: task, attempt: attempt, sequence: r.sequence}
 	if task.AvailableAt.IsZero() || !task.AvailableAt.After(time.Now()) {
 		heap.Push(&r.ready, item)
 	} else {
@@ -235,10 +233,10 @@ func (r *queueRuntime) release() {
 	}
 }
 
-func (r *queueRuntime) pop() *asynctask.QueueTask {
+func (r *queueRuntime) pop() priorityTask {
 	for {
 		task, wait, hasDelayed := r.popReady()
-		if task != nil {
+		if task.task != nil {
 			return task
 		}
 		if !hasDelayed {
@@ -261,7 +259,7 @@ func (r *queueRuntime) pop() *asynctask.QueueTask {
 	}
 }
 
-func (r *queueRuntime) popReady() (*asynctask.QueueTask, time.Duration, bool) {
+func (r *queueRuntime) popReady() (priorityTask, time.Duration, bool) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
@@ -278,16 +276,16 @@ func (r *queueRuntime) popReady() (*asynctask.QueueTask, time.Duration, bool) {
 		if r.ready.Len() > 0 {
 			r.signal()
 		}
-		return item.task, 0, false
+		return item, 0, false
 	}
 	if r.delayed.Len() == 0 {
-		return nil, 0, false
+		return priorityTask{}, 0, false
 	}
 	wait := time.Until(r.delayed[0].task.AvailableAt)
 	if wait <= 0 {
-		return nil, 0, true
+		return priorityTask{}, 0, true
 	}
-	return nil, wait, true
+	return priorityTask{}, wait, true
 }
 
 func (r *queueRuntime) signal() {
@@ -309,6 +307,18 @@ func (m *MemoryQueue) lookupHandler(queue string, taskType string) (asynctask.Ta
 		return nil, asynctask.ErrTaskHandlerNotFound.WithDetailStr(queue + ":" + taskType)
 	}
 	return entry.handler, nil
+}
+
+func (m *MemoryQueue) event(task *asynctask.QueueTask, status asynctask.QueueTaskStatus, attempt int, err string) asynctask.TaskEvent {
+	event := asynctask.NewTaskEvent(task)
+	event.Status = status
+	event.Attempt = attempt
+	event.Error = err
+	return event
+}
+
+func (m *MemoryQueue) report(ctx context.Context, event asynctask.TaskEvent) {
+	_ = asynctask.ReportTaskEvent(ctx, m.reporter, event)
 }
 
 func normalizeConfig(config asynctask.TaskQueueConfig) asynctask.TaskQueueConfig {
@@ -339,6 +349,7 @@ func IsHandlerNotFound(err error) bool {
 
 type priorityTask struct {
 	task     *asynctask.QueueTask
+	attempt  int
 	sequence int64
 }
 

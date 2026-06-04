@@ -130,9 +130,6 @@ Important fields:
   - Task-level retry override.
   - If zero, the queue config is used.
 
-- `Attempt`
-  - Current retry count.
-
 ## Queue Config
 
 Each logical queue is configured through `TaskQueueConfig`.
@@ -523,8 +520,9 @@ This separation is important:
 When `HandleTask` returns a non-nil error:
 
 - the queue backend marks the task as retrying
-- if `Attempt < MaxRetry`, the task is requeued
+- if the backend's internal attempt count is lower than `MaxRetry`, the task is requeued
 - if retry count is exhausted, the task becomes failed
+- retry attempt is reported through `TaskEvent.Attempt` when a `TaskReporter` is configured
 
 Current behavior:
 
@@ -654,7 +652,7 @@ func (s *svc) Setup() error {
 
 ## Current Limitations
 
-- queue task status is tracked in-memory in the task object; there is no built-in task status repository yet
+- queue task status can be reported through `TaskReporter`, but there is no built-in task status repository yet
 - no built-in dead-letter queue abstraction yet
 - delayed execution semantics are not equally strong across all backends
 - RabbitMQ and Redis Stream implementations are functional first versions and can still be extended for richer production features
@@ -662,7 +660,7 @@ func (s *svc) Setup() error {
 ## Task Status Limitation
 
 `Publish` only tells the caller whether the task was accepted by the queue backend.
-It does not provide a reliable way to query the final execution result.
+It does not directly provide a reliable way to query the final execution result.
 
 This is especially important when:
 
@@ -670,25 +668,91 @@ This is especially important when:
 - the backend is RabbitMQ or Redis Stream
 - tasks may retry or be consumed by another instance
 
-Today, `QueueTask.Status` is only a runtime field on the task object itself.
-It is not backed by a shared task status store.
+`QueueTask` is the delivery payload model.
+Runtime state such as status, attempt, error and progress is reported through `TaskReporter`.
 
 That means:
 
 - publisher can know whether publish succeeded
 - publisher cannot reliably know whether the task eventually succeeded or failed
-- there is currently no built-in `GetTaskStatus(id)` style API
+- querying task state requires a `TaskQueueInspector` backed by reporter state
 
-For `memoryqueue`, the publisher may appear to observe status changes when it still holds the same in-memory `*QueueTask` pointer.
-This is only an implementation side effect of sharing the same process memory.
-It is not a portable or stable task status mechanism, and business code should not depend on it.
+### Task Reporter
 
-If final task status is required, the recommended next step is to add a dedicated task status repository or let business handlers persist their own result state explicitly.
+Queue backends can optionally report lifecycle status events if a `TaskReporter` implementation is registered in DI.
+Business handlers can also inject `TaskReporter` directly to report progress.
+
+```go
+type CacheHandler struct {
+	reporter asynctask.TaskReporter `aperture:""`
+}
+
+func (h *CacheHandler) HandleTask(ctx context.Context, task *asynctask.QueueTask) error {
+	if err := asynctask.ReportTaskProgress(ctx, h.reporter, task, 40, "fetching metadata"); err != nil {
+		return err
+	}
+	return nil
+}
+```
+
+Reporter implementations decide where to store the latest state, for example Redis, MongoDB, SQL, or a remote service.
+Task query APIs should read that reporter-backed state instead of reading queue backend internals directly.
+
+### In-memory Reporter and Inspector
+
+The framework includes an in-memory implementation for local development and single-process workers.
+It implements both `TaskReporter` and `TaskQueueInspector`.
+
+```go
+factories := []scene.Factory{
+	asynctask.MemoryReporter{},
+	asynctask.MemoryQueue{},
+}
+```
+
+Query code should depend on the inspector interface:
+
+```go
+type TaskAdminService struct {
+	inspector asynctask.TaskQueueInspector `aperture:""`
+}
+
+func (s *TaskAdminService) List(ctx context.Context) (*model.PaginationResult[asynctask.TaskEvent], error) {
+	return s.inspector.ListTasks(ctx, asynctask.TaskQuery{
+		Queue: "meowsic.media-cache",
+	})
+}
+```
+
+The in-memory implementation is not suitable for multi-process status sharing.
+For distributed workers, register a persistent reporter/inspector implementation instead.
+
+The memory reporter has bounded retention to avoid unbounded memory growth:
+
+- `EventTTL`: removes old task event snapshots by `UpdatedAt`; default is 24 hours.
+- `MaxTasks`: keeps at most this many task snapshots, evicting the oldest first; default is 10000.
+- `CleanupInterval`: controls opportunistic cleanup frequency triggered by reports; default is 1 minute.
+
+Use negative values to disable a limit:
+
+```go
+factories := []scene.Factory{
+	asynctask.MemoryReporter{
+		Config: memoryreporter.Config{
+			EventTTL:        6 * time.Hour,
+			MaxTasks:        5000,
+			CleanupInterval: time.Minute,
+		},
+	},
+}
+```
+
+When `MaxTasks` is exceeded, memory reporter treats observability as best-effort:
+it evicts old events first and may drop the newest event only in extreme overflow cases to protect process memory.
 
 ## Next Recommended Enhancements
 
 - dead-letter queue abstraction
-- task status persistence and query API
-- metrics hooks for publish, success, retry and failure
+- persistent reporter/inspector implementations
 - backend-specific integration tests
 - delayed queue support with stronger semantics

@@ -35,9 +35,15 @@ type consumerRuntime struct {
 type Queue struct {
 	config    Config
 	lock      sync.Mutex
+	reporter  asynctask.TaskReporter `aperture:"optional"`
 	conn      *amqp.Connection
 	handlers  map[string]map[string]handlerEntry
 	consumers map[string]*consumerRuntime
+}
+
+type taskMessage struct {
+	Task    *asynctask.QueueTask `json:"task"`
+	Attempt int                  `json:"attempt,omitempty"`
 }
 
 func New(config Config) *Queue {
@@ -90,6 +96,10 @@ func (q *Queue) Dispose() error {
 }
 
 func (q *Queue) Publish(ctx context.Context, task *asynctask.QueueTask) (*asynctask.QueueTask, error) {
+	return q.publishWithAttempt(ctx, task, 0)
+}
+
+func (q *Queue) publishWithAttempt(ctx context.Context, task *asynctask.QueueTask, attempt int) (*asynctask.QueueTask, error) {
 	if task == nil || task.Queue == "" || task.Type == "" {
 		return nil, asynctask.ErrInvalidQueueTask
 	}
@@ -98,7 +108,6 @@ func (q *Queue) Publish(ctx context.Context, task *asynctask.QueueTask) (*asynct
 		task.CreatedAt = time.Now()
 	}
 	task.AvailableAt = task.CreatedAt.Add(task.Delay)
-	task.Status = asynctask.QueueTaskStatusPending
 
 	q.lock.Lock()
 	err := q.ensureConnectedLocked()
@@ -107,7 +116,10 @@ func (q *Queue) Publish(ctx context.Context, task *asynctask.QueueTask) (*asynct
 		return nil, err
 	}
 
-	payload, err := json.Marshal(task)
+	payload, err := json.Marshal(taskMessage{
+		Task:    task,
+		Attempt: attempt,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +137,7 @@ func (q *Queue) Publish(ctx context.Context, task *asynctask.QueueTask) (*asynct
 		headers[k] = v
 	}
 	headers["x-task-type"] = task.Type
-	headers["x-task-attempt"] = int32(task.Attempt)
+	headers["x-task-attempt"] = int32(attempt)
 
 	if err := ch.PublishWithContext(ctx, q.config.Exchange, task.Queue, false, false, amqp.Publishing{
 		ContentType: "application/json",
@@ -136,6 +148,7 @@ func (q *Queue) Publish(ctx context.Context, task *asynctask.QueueTask) (*asynct
 	}); err != nil {
 		return nil, err
 	}
+	q.report(ctx, q.event(task, asynctask.QueueTaskStatusPending, attempt, ""))
 	return task, nil
 }
 
@@ -274,8 +287,8 @@ func (q *Queue) declareQueue(ch *amqp.Channel, queueName string) error {
 
 func (q *Queue) consume(queueName string, runtime *consumerRuntime, deliveries <-chan amqp.Delivery) {
 	for delivery := range deliveries {
-		task := &asynctask.QueueTask{}
-		if err := json.Unmarshal(delivery.Body, task); err != nil {
+		task, attempt, err := decodeTaskMessage(delivery.Body)
+		if err != nil {
 			_ = delivery.Reject(false)
 			continue
 		}
@@ -284,7 +297,7 @@ func (q *Queue) consume(queueName string, runtime *consumerRuntime, deliveries <
 			_ = delivery.Reject(false)
 			continue
 		}
-		task.Status = asynctask.QueueTaskStatusRunning
+		q.report(context.Background(), q.event(task, asynctask.QueueTaskStatusRunning, attempt, ""))
 		ctx := context.Background()
 		cancel := func() {}
 		if task.Timeout > 0 {
@@ -300,35 +313,58 @@ func (q *Queue) consume(queueName string, runtime *consumerRuntime, deliveries <
 		}()
 		cancel()
 		if handleErr == nil {
-			task.Status = asynctask.QueueTaskStatusSucceeded
+			q.report(context.Background(), q.event(task, asynctask.QueueTaskStatusSucceeded, attempt, ""))
 			_ = delivery.Ack(false)
 			continue
 		}
 
-		task.LastError = handleErr.Error()
 		maxRetry := runtime.config.MaxRetry
 		if task.MaxRetry > 0 {
 			maxRetry = task.MaxRetry
 		}
-		if task.Attempt >= maxRetry {
-			task.Status = asynctask.QueueTaskStatusFailed
+		if attempt >= maxRetry {
+			q.report(context.Background(), q.event(task, asynctask.QueueTaskStatusFailed, attempt, handleErr.Error()))
 			_ = delivery.Ack(false)
 			continue
 		}
 
-		task.Attempt++
-		task.Status = asynctask.QueueTaskStatusRetrying
+		nextAttempt := attempt + 1
+		q.report(context.Background(), q.event(task, asynctask.QueueTaskStatusRetrying, nextAttempt, handleErr.Error()))
 		delay := runtime.config.RetryDelay
 		if delay <= 0 {
 			delay = time.Second
 		}
 		time.Sleep(delay)
-		if _, err := q.Publish(context.Background(), task); err != nil {
+		if _, err := q.publishWithAttempt(context.Background(), task, nextAttempt); err != nil {
 			_ = delivery.Nack(false, true)
 			continue
 		}
 		_ = delivery.Ack(false)
 	}
+}
+
+func decodeTaskMessage(body []byte) (*asynctask.QueueTask, int, error) {
+	message := taskMessage{}
+	if err := json.Unmarshal(body, &message); err == nil && message.Task != nil {
+		return message.Task, message.Attempt, nil
+	}
+	task := &asynctask.QueueTask{}
+	if err := json.Unmarshal(body, task); err != nil {
+		return nil, 0, err
+	}
+	return task, 0, nil
+}
+
+func (q *Queue) event(task *asynctask.QueueTask, status asynctask.QueueTaskStatus, attempt int, err string) asynctask.TaskEvent {
+	event := asynctask.NewTaskEvent(task)
+	event.Status = status
+	event.Attempt = attempt
+	event.Error = err
+	return event
+}
+
+func (q *Queue) report(ctx context.Context, event asynctask.TaskEvent) {
+	_ = asynctask.ReportTaskEvent(ctx, q.reporter, event)
 }
 
 func (q *Queue) lookupHandler(queueName string, taskType string) (asynctask.TaskQueueHandler, error) {

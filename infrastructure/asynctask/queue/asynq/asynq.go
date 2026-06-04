@@ -36,6 +36,7 @@ type queueRuntime struct {
 type Queue struct {
 	config    Config
 	lock      sync.Mutex
+	reporter  asynctask.TaskReporter `aperture:"optional"`
 	client    *libasynq.Client
 	handlers  map[string]map[string]handlerEntry
 	queues    map[string]*queueRuntime
@@ -106,7 +107,6 @@ func (q *Queue) Publish(ctx context.Context, task *asynctask.QueueTask) (*asynct
 		task.CreatedAt = time.Now()
 	}
 	task.AvailableAt = task.CreatedAt.Add(task.Delay)
-	task.Status = asynctask.QueueTaskStatusPending
 
 	payload, err := json.Marshal(task)
 	if err != nil {
@@ -115,6 +115,7 @@ func (q *Queue) Publish(ctx context.Context, task *asynctask.QueueTask) (*asynct
 	internalTask := libasynq.NewTask(task.Type, payload)
 	opts := []libasynq.Option{
 		libasynq.Queue(task.Queue),
+		libasynq.TaskID(task.ID),
 	}
 	if task.Delay > 0 {
 		opts = append(opts, libasynq.ProcessIn(task.Delay))
@@ -140,6 +141,7 @@ func (q *Queue) Publish(ctx context.Context, task *asynctask.QueueTask) (*asynct
 	if info != nil {
 		task.ID = info.ID
 	}
+	q.report(ctx, q.event(task, asynctask.QueueTaskStatusPending, 0, ""))
 	return task, nil
 }
 
@@ -198,14 +200,19 @@ func (q *Queue) RegisterHandler(queueName string, taskType string, handler async
 		if err != nil {
 			return err
 		}
-		queueTask.Status = asynctask.QueueTaskStatusRunning
+		attempt, _ := libasynq.GetRetryCount(ctx)
+		q.report(ctx, q.event(queueTask, asynctask.QueueTaskStatusRunning, attempt, ""))
 		runErr := handler.HandleTask(ctx, queueTask)
 		if runErr == nil {
-			queueTask.Status = asynctask.QueueTaskStatusSucceeded
+			q.report(ctx, q.event(queueTask, asynctask.QueueTaskStatusSucceeded, attempt, ""))
 			return nil
 		}
-		queueTask.Status = asynctask.QueueTaskStatusFailed
-		queueTask.LastError = runErr.Error()
+		maxRetry, ok := libasynq.GetMaxRetry(ctx)
+		if ok && attempt >= maxRetry {
+			q.report(ctx, q.event(queueTask, asynctask.QueueTaskStatusFailed, attempt, runErr.Error()))
+			return runErr
+		}
+		q.report(ctx, q.event(queueTask, asynctask.QueueTaskStatusRetrying, attempt+1, runErr.Error()))
 		return runErr
 	})
 	return nil
@@ -233,6 +240,18 @@ func decodeTask(task *libasynq.Task) (*asynctask.QueueTask, error) {
 		queueTask.ID = uuid.NewString()
 	}
 	return queueTask, nil
+}
+
+func (q *Queue) event(task *asynctask.QueueTask, status asynctask.QueueTaskStatus, attempt int, err string) asynctask.TaskEvent {
+	event := asynctask.NewTaskEvent(task)
+	event.Status = status
+	event.Attempt = attempt
+	event.Error = err
+	return event
+}
+
+func (q *Queue) report(ctx context.Context, event asynctask.TaskEvent) {
+	_ = asynctask.ReportTaskEvent(ctx, q.reporter, event)
 }
 
 func normalizeConfig(config asynctask.TaskQueueConfig) asynctask.TaskQueueConfig {
