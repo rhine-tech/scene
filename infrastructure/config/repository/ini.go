@@ -1,36 +1,19 @@
-package cfgur
+package repository
 
 import (
-	"gopkg.in/ini.v1"
 	"strings"
+
+	"github.com/rhine-tech/scene/infrastructure/config"
+	"gopkg.in/ini.v1"
 )
 
-// iniCfg holds the INI file data
 type iniCfg struct {
 	file     *ini.File
 	filename string
 }
 
-// NewIniConfig creates a new instance of INI configuration manager
-func NewIniConfig(filename string) ConfigUnmarshaler {
-	return &commonMarshaller{ConfigProvider: &iniCfg{
-		filename: filename,
-	}}
-}
-
-// parseKey splits the key into section and key
-func (cfg *iniCfg) parseKey(key string) (string, string) {
-	parts := strings.Split(key, ".")
-	if len(parts) >= 2 {
-		return parts[0], strings.Join(parts[1:], "_")
-	}
-	return "", parts[0]
-}
-
-// getValue is a helper function to get the value from the INI file
-func (cfg *iniCfg) getValue(key string) *ini.Key {
-	section, key := cfg.parseKey(key)
-	return cfg.file.Section(section).Key(key)
+func NewIniConfig(filename string) config.IConfig {
+	return config.NewConfigUnmarshaler(&iniCfg{filename: filename})
 }
 
 func (cfg *iniCfg) Init() error {
@@ -40,6 +23,28 @@ func (cfg *iniCfg) Init() error {
 	}
 	cfg.file = file
 	return nil
+}
+
+func (cfg *iniCfg) parseKey(key string) (string, string) {
+	parts := strings.Split(key, ".")
+	if len(parts) >= 2 {
+		return parts[0], strings.Join(parts[1:], "_")
+	}
+	return "", parts[0]
+}
+
+func (cfg *iniCfg) getValue(key string) *ini.Key {
+	section, key := cfg.parseKey(key)
+	return cfg.file.Section(section).Key(key)
+}
+
+func (cfg *iniCfg) hasValue(key string) bool {
+	section, key := cfg.parseKey(key)
+	sec, err := cfg.file.GetSection(section)
+	if err != nil {
+		return false
+	}
+	return sec.HasKey(key)
 }
 
 func (cfg *iniCfg) GetString(key string) string {
@@ -58,15 +63,24 @@ func (cfg *iniCfg) GetBool(key string) bool {
 }
 
 func (cfg *iniCfg) GetStringE(key string) (string, bool) {
+	if !cfg.hasValue(key) {
+		return "", false
+	}
 	return cfg.getValue(key).String(), true
 }
 
 func (cfg *iniCfg) GetIntE(key string) (int64, bool) {
+	if !cfg.hasValue(key) {
+		return 0, false
+	}
 	v, err := cfg.getValue(key).Int64()
 	return v, err == nil
 }
 
 func (cfg *iniCfg) GetBoolE(key string) (bool, bool) {
+	if !cfg.hasValue(key) {
+		return false, false
+	}
 	v, err := cfg.getValue(key).Bool()
 	return v, err == nil
 }

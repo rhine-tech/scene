@@ -1,19 +1,20 @@
-package cfgur
+package repository
 
 import (
-	"github.com/spf13/cast"
 	"os"
+
+	"github.com/rhine-tech/scene/infrastructure/config"
+	"github.com/spf13/cast"
 )
 
-type envCfg struct {
+type envCfg struct{}
+
+func NewEnvMarshaller() config.IConfig {
+	return config.NewConfigUnmarshaler(&envCfg{})
 }
 
 func (cfg *envCfg) Init() error {
 	return nil
-}
-
-func NewEnvMarshaller() ConfigUnmarshaler {
-	return &commonMarshaller{ConfigProvider: &envCfg{}}
 }
 
 func (cfg *envCfg) GetStringE(key string) (string, bool) {
@@ -27,7 +28,8 @@ func (cfg *envCfg) GetStringE(key string) (string, bool) {
 func (cfg *envCfg) GetIntE(key string) (int64, bool) {
 	key = toUnderscoreKey(key)
 	if v, ok := os.LookupEnv(key); ok {
-		return cast.ToInt64(v), true
+		val, err := cast.ToInt64E(v)
+		return val, err == nil
 	}
 	return 0, false
 }
@@ -35,7 +37,8 @@ func (cfg *envCfg) GetIntE(key string) (int64, bool) {
 func (cfg *envCfg) GetBoolE(key string) (bool, bool) {
 	key = toUnderscoreKey(key)
 	if v, ok := os.LookupEnv(key); ok {
-		return cast.ToBool(v), true
+		val, err := cast.ToBoolE(v)
+		return val, err == nil
 	}
 	return false, false
 }

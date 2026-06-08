@@ -39,3 +39,10 @@ func InitINI(configFile string) {
 		panic(err)
 	}
 }
+
+func InitToml(configFile string) {
+	registry.RegisterConfig(repository.NewTomlCfgur(configFile))
+	if err := registry.Config.Init(); err != nil {
+		panic(err)
+	}
+}

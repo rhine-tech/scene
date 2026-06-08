@@ -1,4 +1,4 @@
-package cfgur
+package repository
 
 import "strings"
 

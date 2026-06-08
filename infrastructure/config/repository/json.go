@@ -1,13 +1,20 @@
-package cfgur
+package repository
 
 import (
-	"github.com/tidwall/gjson"
 	"os"
+	"strconv"
+
+	"github.com/rhine-tech/scene/infrastructure/config"
+	"github.com/tidwall/gjson"
 )
 
 type jsonCfg struct {
 	filepath string
 	val      gjson.Result
+}
+
+func NewJsonMarshaller(filepath string) config.IConfig {
+	return config.NewConfigUnmarshaler(&jsonCfg{filepath: filepath})
 }
 
 func (cfg *jsonCfg) Init() error {
@@ -17,10 +24,6 @@ func (cfg *jsonCfg) Init() error {
 	}
 	cfg.val = gjson.ParseBytes(bytes)
 	return nil
-}
-
-func NewJsonMarshaller(filepath string) ConfigUnmarshaler {
-	return &commonMarshaller{ConfigProvider: &jsonCfg{filepath: filepath}}
 }
 
 func (cfg *jsonCfg) GetStringE(key string) (string, bool) {
@@ -33,16 +36,30 @@ func (cfg *jsonCfg) GetStringE(key string) (string, bool) {
 
 func (cfg *jsonCfg) GetIntE(key string) (int64, bool) {
 	result := cfg.val.Get(key)
-	if result.Exists() {
+	if !result.Exists() {
+		return 0, false
+	}
+	if result.Type == gjson.Number {
 		return result.Int(), true
+	}
+	if result.Type == gjson.String {
+		v, err := strconv.ParseInt(result.String(), 10, 64)
+		return v, err == nil
 	}
 	return 0, false
 }
 
 func (cfg *jsonCfg) GetBoolE(key string) (bool, bool) {
 	result := cfg.val.Get(key)
-	if result.Exists() {
+	if !result.Exists() {
+		return false, false
+	}
+	if result.Type == gjson.True || result.Type == gjson.False {
 		return result.Bool(), true
+	}
+	if result.Type == gjson.String {
+		v, err := strconv.ParseBool(result.String())
+		return v, err == nil
 	}
 	return false, false
 }

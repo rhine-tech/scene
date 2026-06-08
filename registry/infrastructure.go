@@ -9,17 +9,19 @@ import (
 // Infrastructure
 
 var TaskDispatcher asynctask.TaskDispatcher = nil
-var Config config.ConfigUnmarshaler
+var Config config.IConfig
 var Logger logger.ILogger
 
 func AcquireInfrastructure() {
 	TaskDispatcher = AcquireSingleton(asynctask.TaskDispatcher(nil))
-	Config = AcquireSingleton(config.ConfigUnmarshaler(nil))
+	Config = AcquireSingleton(config.IConfig(nil))
 	Logger = AcquireSingleton(logger.ILogger(nil))
 }
 
-func RegisterConfig(config config.ConfigUnmarshaler) {
-	Config = Register(config)
+func RegisterConfig(cfg config.IConfig) {
+	Config = Register(cfg)
+	RegisterSingleton[config.ConfigUnmarshaler](cfg)
+	RegisterSingleton[config.ConfigProviderWithDefault](cfg)
 }
 
 func RegisterLogger(logger logger.ILogger) {

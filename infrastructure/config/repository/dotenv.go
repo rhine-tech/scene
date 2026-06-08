@@ -1,13 +1,18 @@
-package cfgur
+package repository
 
 import (
 	"github.com/joho/godotenv"
+	"github.com/rhine-tech/scene/infrastructure/config"
 	"github.com/spf13/cast"
 )
 
 type dotenvCfg struct {
 	filenames []string
 	envs      map[string]string
+}
+
+func NewDotenvMarshaller(filenames ...string) config.IConfig {
+	return config.NewConfigUnmarshaler(&dotenvCfg{filenames: filenames})
 }
 
 func (cfg *dotenvCfg) Init() error {
@@ -17,10 +22,6 @@ func (cfg *dotenvCfg) Init() error {
 	}
 	cfg.envs = envs
 	return nil
-}
-
-func NewDotenvMarshaller(filenames ...string) ConfigUnmarshaler {
-	return &commonMarshaller{ConfigProvider: &dotenvCfg{filenames: filenames}}
 }
 
 func (cfg *dotenvCfg) GetStringE(key string) (string, bool) {
@@ -34,7 +35,8 @@ func (cfg *dotenvCfg) GetStringE(key string) (string, bool) {
 func (cfg *dotenvCfg) GetIntE(key string) (int64, bool) {
 	key = toUnderscoreKey(key)
 	if v, ok := cfg.envs[key]; ok {
-		return cast.ToInt64(v), true
+		val, err := cast.ToInt64E(v)
+		return val, err == nil
 	}
 	return 0, false
 }
@@ -42,7 +44,8 @@ func (cfg *dotenvCfg) GetIntE(key string) (int64, bool) {
 func (cfg *dotenvCfg) GetBoolE(key string) (bool, bool) {
 	key = toUnderscoreKey(key)
 	if v, ok := cfg.envs[key]; ok {
-		return cast.ToBool(v), true
+		val, err := cast.ToBoolE(v)
+		return val, err == nil
 	}
 	return false, false
 }
