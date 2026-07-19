@@ -41,7 +41,7 @@ func (a Service) Init() scene.LensInit {
 			a.DefaultProvider = providers[0].ProviderName()
 		}
 		registry.Register[storageApi.IStorageService](service.NewStorageService(
-			registry.Load(meta.NewGormFileMetaRepository()),
+			registry.Load(meta.NewGormFileMetaRepository(nil)),
 			a.SessionTracker.Provide(),
 			a.DefaultProvider,
 			providers...))

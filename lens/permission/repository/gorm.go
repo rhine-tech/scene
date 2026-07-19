@@ -1,67 +1,96 @@
 package repository
 
 import (
+	"context"
+
 	"github.com/rhine-tech/scene"
-	"github.com/rhine-tech/scene/composition/orm"
+	sceneorm "github.com/rhine-tech/scene/composition/orm"
 	"github.com/rhine-tech/scene/lens/permission"
+	"gorm.io/gorm/clause"
 )
 
-type tablePermission struct {
-	ID    int64  `gorm:"column:id;primary_key;auto_increment"`
-	Owner string `gorm:"column:owner;type:varchar(255);not null"`
-	Perm  string `gorm:"column:perm;type:varchar(255);not null"`
+type permissionRow struct {
+	ID    int64  `gorm:"column:id;primaryKey;autoIncrement"`
+	Owner string `gorm:"column:owner;type:varchar(255);not null;uniqueIndex:idx_permission_owner_perm,priority:1"`
+	Perm  string `gorm:"column:perm;type:varchar(255);not null;uniqueIndex:idx_permission_owner_perm,priority:2"`
 }
 
-func (tablePermission) TableName() string {
+func (permissionRow) TableName() string {
 	return permission.Lens.TableName("permissions")
 }
 
-var _ = permission.PermissionRepository(&gormImpl{})
+var _ permission.PermissionRepository = (*gormImpl)(nil)
 
 type gormImpl struct {
-	gorm orm.Gorm `aperture:""`
+	db *sceneorm.Gorm `aperture:""`
 }
 
-func NewGormImpl(gorm orm.Gorm) permission.PermissionRepository {
-	return &gormImpl{gorm: gorm}
+func NewGormImpl(db *sceneorm.Gorm) permission.PermissionRepository {
+	return &gormImpl{db: db}
 }
 
-func (m *gormImpl) Setup() error {
-	err := m.gorm.RegisterModel(new(tablePermission))
-	if err != nil {
-		return err
-	}
-	return nil
+func (r *gormImpl) Setup() error {
+	return r.db.AutoMigrate(&permissionRow{})
 }
 
-func (g *gormImpl) ImplName() scene.ImplName {
+func (r *gormImpl) ImplName() scene.ImplName {
 	return permission.Lens.ImplName("PermissionRepository", "gorm")
 }
 
-func (g *gormImpl) GetPermissions(owner string) []*permission.Permission {
-	perms := make([]*permission.Permission, 0)
-	permResult := make([]tablePermission, 0)
-	g.gorm.DB().Where("owner = ?", owner).Find(&permResult)
-	for _, perm := range permResult {
-		perms = append(perms, permission.MustParsePermission(perm.Perm))
+func (r *gormImpl) GetPermissions(
+	ctx context.Context,
+	owner string,
+) ([]*permission.Permission, error) {
+	var rows []permissionRow
+	if err := r.db.Session(ctx).
+		Where(&permissionRow{Owner: owner}).
+		Find(&rows).Error; err != nil {
+		return nil, err
 	}
-	return perms
+
+	permissions := make([]*permission.Permission, len(rows))
+	for i, row := range rows {
+		parsed, err := permission.ParsePermission(row.Perm)
+		if err != nil {
+			return nil, err
+		}
+		permissions[i] = parsed
+	}
+	return permissions, nil
 }
 
-func (g *gormImpl) AddPermission(owner string, perm string) (*permission.Permission, error) {
-	// check if permission exists
-	var count int64
-	g.gorm.DB().Model(&tablePermission{}).Where("owner = ? AND perm = ?", owner, perm).Count(&count)
-	if count > 0 {
-		return permission.MustParsePermission(perm), nil
-	}
-	err := g.gorm.DB().Create(&tablePermission{Owner: owner, Perm: perm}).Error
+func (r *gormImpl) AddPermission(
+	ctx context.Context,
+	owner string,
+	value string,
+) (*permission.Permission, error) {
+	parsed, err := permission.ParsePermission(value)
 	if err != nil {
 		return nil, err
 	}
-	return permission.MustParsePermission(perm), nil
+
+	row := permissionRow{Owner: owner, Perm: value}
+	err = r.db.Session(ctx).
+		Clauses(clause.OnConflict{
+			Columns: []clause.Column{
+				{Name: "owner"},
+				{Name: "perm"},
+			},
+			DoNothing: true,
+		}).
+		Create(&row).Error
+	if err != nil {
+		return nil, err
+	}
+	return parsed, nil
 }
 
-func (g *gormImpl) RemovePermission(owner string, perm string) error {
-	return g.gorm.DB().Delete(&tablePermission{}, "owner = ? AND perm = ?", owner, perm).Error
+func (r *gormImpl) RemovePermission(
+	ctx context.Context,
+	owner string,
+	value string,
+) error {
+	return r.db.Session(ctx).
+		Where(&permissionRow{Owner: owner, Perm: value}).
+		Delete(&permissionRow{}).Error
 }

@@ -1,6 +1,7 @@
 package base
 
 import (
+	"context"
 	"errors"
 	"strings"
 
@@ -18,7 +19,7 @@ type authenticationService struct {
 }
 
 func (s *authenticationService) HasUser(userId string) (bool, error) {
-	_, err := s.userRepo.UserById(userId)
+	_, err := s.userRepo.UserById(context.Background(), userId)
 	if err == nil {
 		return true, nil
 	}
@@ -51,7 +52,8 @@ func NewAuthenticationService(
 }
 
 func (s *authenticationService) AddUser(username, password string) (authentication.User, error) {
-	_, err := s.userRepo.UserByName(username)
+	ctx := context.Background()
+	_, err := s.userRepo.UserByName(ctx, username)
 	if err == nil {
 		return authentication.User{}, authentication.ErrUserAlreadyExists
 	}
@@ -67,7 +69,7 @@ func (s *authenticationService) AddUser(username, password string) (authenticati
 	}
 	s.logger.InfoW("adding user", "username", username, "userId", newUser.UserID)
 
-	createdUser, err := s.userRepo.AddUser(newUser)
+	createdUser, err := s.userRepo.AddUser(ctx, newUser)
 	if err != nil {
 		s.logger.ErrorW("failed to add user in repository", "username", username, "error", err)
 		return authentication.User{}, authentication.ErrFailToAddUser.WrapIfNot(err)
@@ -77,7 +79,7 @@ func (s *authenticationService) AddUser(username, password string) (authenticati
 
 func (s *authenticationService) DeleteUser(userId string) error {
 	s.logger.Warnf("deleting user %s", userId)
-	err := s.userRepo.DeleteUser(userId)
+	err := s.userRepo.DeleteUser(context.Background(), userId)
 	if err != nil {
 		s.logger.ErrorW("failed to delete user in repository", "username", userId, "error", err)
 		return authentication.ErrInternalError.WrapIfNot(err)
@@ -87,7 +89,7 @@ func (s *authenticationService) DeleteUser(userId string) error {
 
 func (s *authenticationService) UpdateUser(user authentication.User) error {
 	s.logger.Infof("updating user %s", user.UserID)
-	err := s.userRepo.UpdateUser(user)
+	err := s.userRepo.UpdateUser(context.Background(), user)
 	if err != nil {
 		s.logger.ErrorW("failed to update user in repository", "username", user.UserID, "error", err)
 		return authentication.ErrInternalError.WrapIfNot(err)
@@ -97,7 +99,7 @@ func (s *authenticationService) UpdateUser(user authentication.User) error {
 
 func (s *authenticationService) Authenticate(username string, password string) (string, error) {
 	s.logger.Debugf("authenticating user %s by password", username)
-	userId, err := s.userRepo.Authenticate(username, password)
+	userId, err := s.userRepo.Authenticate(context.Background(), username, password)
 	if err != nil {
 		s.logger.Debugf("failed to authenticate user", "username", username, "error", err)
 		return "", authentication.ErrAuthenticationFailed.WrapIfNot(err)
@@ -124,7 +126,7 @@ func (s *authenticationService) AuthenticateByToken(token string) (string, error
 
 func (s *authenticationService) UserById(userId string) (authentication.User, error) {
 	s.logger.Debugf("getting user by id %s", userId)
-	user, err := s.userRepo.UserById(userId)
+	user, err := s.userRepo.UserById(context.Background(), userId)
 	if err != nil {
 		s.logger.ErrorW("failed to get user by id", "userId", userId, "error", err)
 		return authentication.User{}, authentication.ErrInternalError.WrapIfNot(err)
@@ -134,7 +136,7 @@ func (s *authenticationService) UserById(userId string) (authentication.User, er
 
 func (s *authenticationService) UserByName(username string) (authentication.User, error) {
 	s.logger.Debugf("getting user by name %s", username)
-	user, err := s.userRepo.UserByName(username)
+	user, err := s.userRepo.UserByName(context.Background(), username)
 	if err != nil {
 		s.logger.ErrorW("failed to get user by name", "username", username, "error", err)
 		return authentication.User{}, authentication.ErrInternalError.WrapIfNot(err)
@@ -144,7 +146,7 @@ func (s *authenticationService) UserByName(username string) (authentication.User
 
 func (s *authenticationService) UserByEmail(email string) (authentication.User, error) {
 	s.logger.Debugf("getting user by email %s", email)
-	user, err := s.userRepo.UserByEmail(email)
+	user, err := s.userRepo.UserByEmail(context.Background(), email)
 	if err != nil {
 		s.logger.ErrorW("failed to get user by email", "email", email, "error", err)
 		return authentication.User{}, authentication.ErrInternalError.WrapIfNot(err)
@@ -153,5 +155,5 @@ func (s *authenticationService) UserByEmail(email string) (authentication.User, 
 }
 
 func (s *authenticationService) ListUsers(offset, limit int64) (model.PaginationResult[authentication.User], error) {
-	return s.userRepo.ListUsers(offset, limit)
+	return s.userRepo.ListUsers(context.Background(), offset, limit)
 }

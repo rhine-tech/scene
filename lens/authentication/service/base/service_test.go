@@ -1,6 +1,7 @@
 package base
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -37,35 +38,39 @@ func (f *fakeAuthRepo) ImplName() scene.ImplName {
 	return authentication.Lens.ImplName("IAuthenticationRepository", "fake")
 }
 
-func (f *fakeAuthRepo) Authenticate(username string, password string) (string, error) {
+func (f *fakeAuthRepo) Authenticate(context.Context, string, string) (string, error) {
 	panic("not used")
 }
 
-func (f *fakeAuthRepo) UserById(userID string) (authentication.User, error) {
+func (f *fakeAuthRepo) UserById(context.Context, string) (authentication.User, error) {
 	panic("not used")
 }
 
-func (f *fakeAuthRepo) UserByName(username string) (authentication.User, error) {
+func (f *fakeAuthRepo) UserByName(_ context.Context, username string) (authentication.User, error) {
 	return f.userByNameFn(username)
 }
 
-func (f *fakeAuthRepo) UserByEmail(email string) (authentication.User, error) {
+func (f *fakeAuthRepo) UserByEmail(context.Context, string) (authentication.User, error) {
 	panic("not used")
 }
 
-func (f *fakeAuthRepo) AddUser(user authentication.User) (authentication.User, error) {
+func (f *fakeAuthRepo) AddUser(_ context.Context, user authentication.User) (authentication.User, error) {
 	return f.addUserFn(user)
 }
 
-func (f *fakeAuthRepo) DeleteUser(userID string) error {
+func (f *fakeAuthRepo) DeleteUser(context.Context, string) error {
 	panic("not used")
 }
 
-func (f *fakeAuthRepo) UpdateUser(user authentication.User) error {
+func (f *fakeAuthRepo) UpdateUser(context.Context, authentication.User) error {
 	panic("not used")
 }
 
-func (f *fakeAuthRepo) ListUsers(offset, limit int64) (model.PaginationResult[authentication.User], error) {
+func (f *fakeAuthRepo) ListUsers(
+	context.Context,
+	int64,
+	int64,
+) (model.PaginationResult[authentication.User], error) {
 	panic("not used")
 }
 

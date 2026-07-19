@@ -1,0 +1,107 @@
+package repository
+
+import (
+	"context"
+	"strings"
+	"sync"
+	"testing"
+
+	"github.com/rhine-tech/scene"
+	sceneorm "github.com/rhine-tech/scene/composition/orm"
+	"github.com/rhine-tech/scene/infrastructure/datasource"
+	"github.com/rhine-tech/scene/infrastructure/datasource/datasources"
+	"github.com/rhine-tech/scene/infrastructure/logger"
+	loggerrepo "github.com/rhine-tech/scene/infrastructure/logger/repository"
+	"github.com/rhine-tech/scene/lens/authentication"
+	"github.com/rhine-tech/scene/registry"
+	"github.com/stretchr/testify/require"
+)
+
+var registerRepositoryTestLogger sync.Once
+
+func newRepositoryTestGorm(t *testing.T) *sceneorm.Gorm {
+	t.Helper()
+
+	registerRepositoryTestLogger.Do(func() {
+		registry.Register[logger.ILogger](loggerrepo.NewZapColoredLogger())
+	})
+
+	dsnName := strings.NewReplacer("/", "_", " ", "_").Replace(t.Name())
+	ds := datasources.SqliteDatasource(datasource.DatabaseConfig{
+		Host:    "file:" + dsnName,
+		Options: "mode=memory&cache=shared",
+	})
+	registry.Inject(ds)
+	require.NoError(t, ds.Setup())
+	ds.Connection().SetMaxOpenConns(1)
+	t.Cleanup(func() {
+		require.NoError(t, ds.Dispose())
+	})
+
+	db := sceneorm.NewGormWithSQLite(ds)
+	registry.Inject(db)
+	require.NoError(t, db.Setup())
+	return db
+}
+
+func TestGormAuthenticationRepositories(t *testing.T) {
+	ctx := context.Background()
+	db := newRepositoryTestGorm(t)
+
+	users := NewGormAuthenticationRepository(db)
+	require.NoError(t, users.(scene.Setupable).Setup())
+
+	alice := authentication.User{
+		UserID:   "user-1",
+		Username: "alice",
+		Password: "secret",
+		Email:    "alice@example.com",
+	}
+	created, err := users.AddUser(ctx, alice)
+	require.NoError(t, err)
+	require.Equal(t, alice, created)
+
+	loaded, err := users.UserById(ctx, alice.UserID)
+	require.NoError(t, err)
+	require.Equal(t, alice, loaded)
+
+	userID, err := users.Authenticate(ctx, alice.Username, alice.Password)
+	require.NoError(t, err)
+	require.Equal(t, alice.UserID, userID)
+
+	_, err = users.AddUser(ctx, authentication.User{
+		UserID:   "user-2",
+		Username: alice.Username,
+	})
+	require.ErrorIs(t, err, authentication.ErrUserAlreadyExists)
+
+	alice.DisplayName = ""
+	alice.Email = "renamed@example.com"
+	require.NoError(t, users.UpdateUser(ctx, alice))
+	updated, err := users.UserByEmail(ctx, alice.Email)
+	require.NoError(t, err)
+	require.Equal(t, alice, updated)
+
+	page, err := users.ListUsers(ctx, 0, 10)
+	require.NoError(t, err)
+	require.Equal(t, int64(1), page.Total)
+	require.Equal(t, int64(1), page.Count)
+	require.Equal(t, []authentication.User{alice}, page.Results)
+
+	tokens := NewGormAccessTokenRepository(db)
+	require.NoError(t, tokens.(scene.Setupable).Setup())
+
+	for _, token := range []authentication.AccessToken{
+		{Token: "token-1", UserID: alice.UserID, Name: "first"},
+		{Token: "token-2", UserID: alice.UserID, Name: "second"},
+		{Token: "token-3", UserID: "user-else", Name: "other"},
+	} {
+		_, err := tokens.CreateToken(ctx, token)
+		require.NoError(t, err)
+	}
+
+	tokenPage, err := tokens.ListTokensByUser(ctx, alice.UserID, 0, 10)
+	require.NoError(t, err)
+	require.Equal(t, int64(2), tokenPage.Total)
+	require.Equal(t, int64(2), tokenPage.Count)
+}

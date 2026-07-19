@@ -1,6 +1,8 @@
 package base
 
 import (
+	"context"
+
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/rhine-tech/scene/lens/permission"
@@ -22,7 +24,11 @@ func (p *PermissionManagerImpl) Setup() error {
 }
 
 func (p *PermissionManagerImpl) HasPermission(owner string, perm *permission.Permission) bool {
-	perms := p.repo.GetPermissions(owner)
+	perms, err := p.repo.GetPermissions(context.Background(), owner)
+	if err != nil {
+		p.logger.ErrorW("failed to get permissions", "owner", owner, "error", err)
+		return false
+	}
 	for _, p0 := range perms {
 		if p0.HasPermission(perm) {
 			return true
@@ -49,11 +55,16 @@ func (p *PermissionManagerImpl) HasPermissionStr(owner string, perm string) bool
 //}
 
 func (p *PermissionManagerImpl) ListPermissions(role string) []*permission.Permission {
-	return p.repo.GetPermissions(role)
+	perms, err := p.repo.GetPermissions(context.Background(), role)
+	if err != nil {
+		p.logger.ErrorW("failed to list permissions", "owner", role, "error", err)
+		return nil
+	}
+	return perms
 }
 
 func (p *PermissionManagerImpl) AddPermission(role string, perm string) error {
-	_, err := p.repo.AddPermission(role, perm)
+	_, err := p.repo.AddPermission(context.Background(), role, perm)
 	if err != nil {
 		p.logger.Errorf("failed to add permission %s: %s", perm, err)
 		return err
@@ -62,7 +73,7 @@ func (p *PermissionManagerImpl) AddPermission(role string, perm string) error {
 }
 
 func (p *PermissionManagerImpl) RemovePermission(role string, perm string) error {
-	err := p.repo.RemovePermission(role, perm)
+	err := p.repo.RemovePermission(context.Background(), role, perm)
 	if err != nil {
 		p.logger.Errorf("failed to remove permission %s: %s", perm, err)
 		return err

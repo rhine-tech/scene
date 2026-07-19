@@ -76,7 +76,7 @@ const Lens scene.ModuleName = "authentication"
    - Define repository interfaces (outbound ports) in `<module>/repository.go`. They extend `scene.Named` and only return domain types.
 
 3. **Implement repositories (infrastructure layer)**
-   - Add infrastructure-specific packages under `repository/` (gorm, mongo, redis…). Each struct embeds/uses shared components such as `composition/orm` repositories.
+   - Add infrastructure-specific packages under `repository/` (gorm, mongo, redis…). GORM adapters inject the concrete `*orm.Gorm` component and use a context-bound native GORM session; `composition/orm` does not provide a generic repository or query DSL.
    - Implement `ImplName()` to describe the adapter, e.g. `AuthenticationRepository.gorm`.
    - Repository methods interact with external systems and can return low-level errors. Translate them to domain errors where it clarifies intent, otherwise bubble up and let the service decide.
    - Keep transport/logging minimal—repositories may log for troubleshooting but must never swallow errors.
@@ -109,7 +109,7 @@ const Lens scene.ModuleName = "authentication"
 - Favor rich domain models (entities/value objects/domain helpers) to enforce invariants and pure business rules instead of spreading conditionals across services. Prefer methods on domain entities/value objects/payload types for state transitions and validation; avoid anemic models where services manually inspect and mutate individual fields.
 - Put payload/domain invariant validation in the module root/domain layer when it expresses business meaning (required aggregate IDs, valid enum transitions, ordering/index ranges, state constraints). Delivery may still do transport binding checks, but services should call domain validation helpers instead of duplicating payload conditionals.
 - Prefer a rich domain model when the logic is stable, reusable, and does not depend on infrastructure. An anemic model also works for simple CRUD-style modules or transitional refactors, but do not let that become an excuse to leak business rules into delivery.
-- Keep structs JSON/BSON/GORM tags in sync to simplify reuse across transports/persistence.
+- Keep persistence rows and GORM tags private to the concrete repository package. Domain structs may carry transport/serialization tags when they are part of the module contract, but must not carry GORM-only metadata.
 - When storing timestamps or enumerations, use strongly typed aliases or helper methods to avoid magic numbers in services.
 - Offer helper APIs (e.g. `IsLoginInCtx`) for common cross-module queries.
 - Good candidates for root-layer/domain helpers:

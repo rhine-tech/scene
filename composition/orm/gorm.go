@@ -2,133 +2,116 @@ package orm
 
 import (
 	"context"
-	"errors"
-	"github.com/rhine-tech/scene/model"
-	"github.com/rhine-tech/scene/model/query"
+	"time"
+
+	"github.com/rhine-tech/scene"
+	"github.com/rhine-tech/scene/infrastructure/datasource"
+	"github.com/rhine-tech/scene/infrastructure/logger"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
+	gormlog "gorm.io/gorm/logger"
 )
 
-type Gorm interface {
-	ORM
-	query.QueryBuilder[*gorm.DB]
-	DB() *gorm.DB
-	RegisterModel(model ...any) error
-	WithDB(db *gorm.DB) Gorm
+const Lens scene.CompositionName = "orm"
+
+// Gorm owns the configured GORM database handle.
+//
+// Gorm is deliberately a concrete type. Database substitutability belongs at
+// the module repository boundary; repositories using GORM should depend on
+// *Gorm and use Session to build native GORM queries.
+type Gorm struct {
+	db        *gorm.DB
+	dialector func() gorm.Dialector
+	ds        datasource.DataSource
+	log       logger.ILogger `aperture:""`
 }
 
-func (g *GormRepository[Model]) Setup() error {
-	return g.db.RegisterModel(new(Model))
-}
+var _ scene.Named = (*Gorm)(nil)
 
-type GormRepository[Model any] struct {
-	db          Gorm `aperture:""`
-	fieldMapper query.FieldMapper
-}
-
-func NewGormRepository[Model any](
-	db Gorm, fieldMapper query.FieldMapper) *GormRepository[Model] {
-	return &GormRepository[Model]{
-		db:          db,
-		fieldMapper: fieldMapper,
+// NewGorm creates a GORM component. The dialector factory is evaluated during
+// Setup, after the injected data source has completed its own setup.
+func NewGorm(dialector func() gorm.Dialector, ds datasource.DataSource) *Gorm {
+	return &Gorm{
+		dialector: dialector,
+		ds:        ds,
 	}
 }
 
-func (g *GormRepository[Model]) Create(data *Model) error {
-	return g.db.DB().Create(data).Error
+func (g *Gorm) ImplName() scene.ImplName {
+	return Lens.ImplNameNoVer("Gorm")
 }
 
-func (g *GormRepository[Model]) Update(updates any, options ...query.Option) error {
-	db := g.db.WithFieldMapper(g.fieldMapper).Build(options...)
-	if db.Error != nil {
-		return db.Error
-	}
-	// Using UpdateColumns instead of Save to update the fields specified by the options
-	return db.Model(new(Model)).Updates(updates).Error
-}
+// Setup opens the GORM handle over the configured data source.
+func (g *Gorm) Setup() error {
+	g.log.Infof("setup gorm with datasource %s", g.ds.DataSourceName().Interface)
 
-func (g *GormRepository[Model]) Delete(options ...query.Option) error {
-	db := g.db.WithFieldMapper(g.fieldMapper).Build(options...)
-	if db.Error != nil {
-		return db.Error
-	}
-	return db.Delete(new(Model)).Error
-}
-
-func (g *GormRepository[Model]) FindFirst(options ...query.Option) (data Model, found bool, err error) {
-	err = g.db.WithFieldMapper(g.fieldMapper).Build(options...).First(&data).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return data, false, nil
-		}
-		return data, false, err
-	}
-	return data, true, nil
-}
-
-func (g *GormRepository[Model]) Count(options ...query.Option) (count int64, err error) {
-	err = g.db.WithFieldMapper(g.fieldMapper).Build(options...).Model(new(Model)).Count(&count).Error
-	return count, err
-}
-
-func (g *GormRepository[Model]) List(offset, limit int64, options ...query.Option) (model.PaginationResult[Model], error) {
-	var result = model.PaginationResult[Model]{
-		Results: make([]Model, 0),
-	}
-	qry := g.db.WithFieldMapper(g.fieldMapper).Build(options...).Session(&gorm.Session{})
-	err := qry.Model(new(Model)).Count(&result.Total).Error
-	if err != nil {
-		return result, err
-	}
-	err = qry.Offset(int(offset)).Limit(int(limit)).Find(&result.Results).Error
-	if err != nil {
-		return result, err
-	}
-	result.Offset = offset
-	result.Count = int64(len(result.Results))
-	return result, nil
-}
-
-func (g *GormRepository[Model]) WithTx(fn func(repo GenericRepository[Model]) error) error {
-	return g.db.DB().Transaction(func(tx *gorm.DB) error {
-		// 克隆 gorm 包装器并替换为事务上下文
-		txDB := g.db.WithDB(tx)
-
-		// 重新构造仓库（复用 fieldMapper）
-		txRepo := &GormRepository[Model]{
-			db:          txDB,
-			fieldMapper: g.fieldMapper,
-		}
-		return fn(txRepo)
+	db, err := gorm.Open(g.dialector(), &gorm.Config{
+		Logger:         &gormLogger{prefix: "GormInternal: ", log: g.log},
+		TranslateError: true,
 	})
+	if err != nil {
+		g.log.ErrorW("create gorm instance failed", "error", err)
+		return err
+	}
+	g.db = db
+	return nil
 }
 
-func (g *GormRepository[Model]) WithContext(ctx context.Context) GenericRepository[Model] {
-	return NewGormRepository[Model](g.db.WithDB(g.db.DB().WithContext(ctx)), g.fieldMapper)
+// Session returns a native GORM session carrying ctx.
+//
+// Callers should obtain a new session for each repository operation instead
+// of retaining the returned *gorm.DB.
+func (g *Gorm) Session(ctx context.Context) *gorm.DB {
+	return g.db.WithContext(ctx)
 }
 
-func (g *GormRepository[Model]) Upsert(data *Model, conflictKeys []query.Field, updateKeys []query.Field) error {
-	if len(conflictKeys) == 0 {
-		return g.Create(data)
+// Transaction executes fn in a GORM transaction carrying ctx.
+//
+// Repositories that need to update multiple models can use the supplied
+// *gorm.DB for every operation in the transaction.
+func (g *Gorm) Transaction(ctx context.Context, fn func(tx *gorm.DB) error) error {
+	return g.Session(ctx).Transaction(fn)
+}
+
+// AutoMigrate applies GORM's model migration.
+//
+// This is a concrete startup capability rather than a separate framework
+// interface. GORM repository adapters normally call it from Setup.
+func (g *Gorm) AutoMigrate(models ...any) error {
+	if err := g.db.AutoMigrate(models...); err != nil {
+		g.log.ErrorW("auto migrate models failed", "models", len(models), "error", err)
+		return err
 	}
+	g.log.Infof("auto migrated %d models", len(models))
+	return nil
+}
 
-	// 使用 fieldMapper 映射字段
-	mappedConflictKeys := g.fieldMapper.Map(conflictKeys)
+type gormLogger struct {
+	prefix string
+	log    logger.ILogger
+}
 
-	db := g.db.DB()
+func (g *gormLogger) LogMode(gormlog.LogLevel) gormlog.Interface {
+	return g
+}
 
-	if len(updateKeys) == 0 {
-		// updateKeys 为空 -> 使用 UpdateAll
-		return db.Clauses(clause.OnConflict{
-			Columns:   g.toClauseColumns(mappedConflictKeys),
-			UpdateAll: true,
-		}).Create(data).Error
-	}
+func (g *gormLogger) Info(_ context.Context, message string, args ...any) {
+	g.log.Infof(g.prefix+message, args...)
+}
 
-	mappedUpdateKeys := g.fieldMapper.Map(updateKeys)
+func (g *gormLogger) Warn(_ context.Context, message string, args ...any) {
+	g.log.Warnf(g.prefix+message, args...)
+}
 
-	return db.Clauses(clause.OnConflict{
-		Columns:   g.toClauseColumns(mappedConflictKeys),
-		DoUpdates: clause.AssignmentColumns(mappedUpdateKeys),
-	}).Create(data).Error
+func (g *gormLogger) Error(_ context.Context, message string, args ...any) {
+	g.log.Errorf(g.prefix+message, args...)
+}
+
+func (g *gormLogger) Trace(
+	_ context.Context,
+	_ time.Time,
+	sql func() (statement string, rowsAffected int64),
+	_ error,
+) {
+	statement, _ := sql()
+	g.log.Debugf("trace sql: %s", statement)
 }

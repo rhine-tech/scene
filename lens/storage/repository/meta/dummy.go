@@ -1,6 +1,8 @@
 package meta
 
 import (
+	"context"
+
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/lens/storage"
 	"github.com/rhine-tech/scene/model"
@@ -9,7 +11,11 @@ import (
 type dummyImpl struct {
 }
 
-func (d dummyImpl) List(provider string, offset, limit int64) (model.PaginationResult[storage.FileMeta], error) {
+func (d dummyImpl) List(
+	_ context.Context,
+	_ string,
+	offset, _ int64,
+) (model.PaginationResult[storage.FileMeta], error) {
 	return model.PaginationResult[storage.FileMeta]{
 		Offset:  offset,
 		Results: []storage.FileMeta{},
@@ -24,14 +30,14 @@ func (d dummyImpl) ImplName() scene.ImplName {
 	return storage.Lens.ImplName("IFileMetaRepository", "dummy")
 }
 
-func (d dummyImpl) Store(meta storage.FileMeta) error {
+func (d dummyImpl) Store(context.Context, storage.FileMeta) error {
 	return storage.ErrLoadingMeta
 }
 
-func (d dummyImpl) Load(storageKey storage.StorageKey) (meta storage.FileMeta, err error) {
+func (d dummyImpl) Load(context.Context, storage.StorageKey) (meta storage.FileMeta, err error) {
 	return meta, storage.ErrLoadingMeta
 }
 
-func (d dummyImpl) Delete(storageKey storage.StorageKey) error {
+func (d dummyImpl) Delete(context.Context, storage.StorageKey) error {
 	return storage.ErrLoadingMeta
 }

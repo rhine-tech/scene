@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"crypto/md5"
 	"encoding/hex"
 	"errors"
@@ -102,7 +103,7 @@ func (s *StorageService) StoreAt(provider, identifier string, data io.Reader, me
 	meta.Identifier = storageKey.FileID()
 	meta.FillMissing()
 	meta.Md5Checksum = hex.EncodeToString(hash.Sum(nil))
-	err = s.metaRepo.Store(meta)
+	err = s.metaRepo.Store(context.Background(), meta)
 	if err != nil {
 		s.log.ErrorW("failed to store file meta", "storageKey", storageKey, "err", err)
 		return "", storage.ErrFailToStore
@@ -117,7 +118,7 @@ func (s *StorageService) Meta(storageKey storage.StorageKey) (meta storage.FileM
 	if err != nil {
 		return meta, err
 	}
-	meta, err = s.metaRepo.Load(storageKey)
+	meta, err = s.metaRepo.Load(context.Background(), storageKey)
 	if err == nil {
 		meta.FillMissing()
 		return meta, nil
@@ -179,7 +180,7 @@ func (s *StorageService) Delete(storageKey storage.StorageKey) error {
 		}
 		return storage.ErrFailToDelete
 	}
-	err = s.metaRepo.Delete(storageKey)
+	err = s.metaRepo.Delete(context.Background(), storageKey)
 	if err != nil {
 		s.log.ErrorW("failed to delete file meta", "storageKey", storageKey, "err", err)
 	}
@@ -195,7 +196,7 @@ func (s *StorageService) InitMultipartStore(provider, identifier string, meta st
 	if !ok {
 		return "", "", storage.ErrStorageNotFound
 	}
-	_, err = s.metaRepo.Load(storageKey)
+	_, err = s.metaRepo.Load(context.Background(), storageKey)
 	if err == nil {
 		return "", "", storage.ErrStorageKeyExists
 	}
@@ -225,7 +226,7 @@ func (s *StorageService) InitMultipartStore(provider, identifier string, meta st
 	meta.Provider = storageKey.Provider()
 	meta.Identifier = storageKey.FileID()
 	meta.FillMissing()
-	err = s.metaRepo.Store(meta)
+	err = s.metaRepo.Store(context.Background(), meta)
 	if err != nil {
 		s.log.ErrorW("failed to store multipart upload", "storageKey", storageKey, "err", err)
 		// cancel store
@@ -285,12 +286,12 @@ func (s *StorageService) CompleteMultipartStore(uploadId string) error {
 	}
 
 	// update meta
-	meta, err := s.metaRepo.Load(get.StorageKey)
+	meta, err := s.metaRepo.Load(context.Background(), get.StorageKey)
 	if err != nil {
 		s.log.ErrorW("failed to load meta", "storageKey", get.StorageKey, "err", err)
 	} else {
 		meta.Finished = true
-		err = s.metaRepo.Store(meta)
+		err = s.metaRepo.Store(context.Background(), meta)
 		if err != nil {
 			s.log.ErrorW("failed to store meta for multipart upload", "storageKey", get.StorageKey, "err", err)
 		}
@@ -352,7 +353,7 @@ func (s *StorageService) ListMeta(provider string, offset, limit int64) (model.P
 	if !ok {
 		return model.PaginationResult[storage.FileMeta]{}, storage.ErrStorageNotFound
 	}
-	reuslt, err := s.metaRepo.List(provider, offset, limit)
+	reuslt, err := s.metaRepo.List(context.Background(), provider, offset, limit)
 	if err != nil {
 		s.log.ErrorW("failed to list file meta", "provider", provider, "offset", offset, "limit", limit, "err", err)
 		return model.PaginationResult[storage.FileMeta]{}, storage.ErrFailToListMeta

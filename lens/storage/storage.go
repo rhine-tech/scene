@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"io"
 	"time"
 
@@ -11,16 +12,16 @@ import (
 const Lens scene.ModuleName = "storage"
 
 type FileMeta struct {
-	StorageKey       StorageKey `gorm:"primaryKey;column:storage_key" json:"storage_key"`
-	Provider         string     `gorm:"column:provider" json:"provider"`
-	Identifier       string     `gorm:"column:identifier" json:"identifier"`
-	OriginalFilename string     `json:"original_filename" gorm:"column:original_filename"`
-	ContentType      string     `json:"content_type" gorm:"column:content_type"`
-	ContentLength    int64      `json:"content_length" gorm:"column:content_length"`
-	Md5Checksum      string     `json:"md5_checksum" gorm:"column:md5_checksum"`
-	Finished         bool       `json:"finished" gorm:"column:finished"`
-	CreatedAt        time.Time  `json:"created_at" gorm:"column:created_at"`
-	UpdatedAt        time.Time  `json:"updated_at" gorm:"column:updated_at"`
+	StorageKey       StorageKey `json:"storage_key"`
+	Provider         string     `json:"provider"`
+	Identifier       string     `json:"identifier"`
+	OriginalFilename string     `json:"original_filename"`
+	ContentType      string     `json:"content_type"`
+	ContentLength    int64      `json:"content_length"`
+	Md5Checksum      string     `json:"md5_checksum"`
+	Finished         bool       `json:"finished"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
 }
 
 func (f *FileMeta) FillMissing() FileMeta {
@@ -63,10 +64,10 @@ type IFileMetaRepository interface {
 	scene.Named
 	// Store will store the metadata in the repository
 	// will overwrite the old metadata if exists
-	Store(meta FileMeta) error
-	Load(storageKey StorageKey) (meta FileMeta, err error)
-	Delete(storageKey StorageKey) error
-	List(provider string, offset, limit int64) (model.PaginationResult[FileMeta], error)
+	Store(ctx context.Context, meta FileMeta) error
+	Load(ctx context.Context, storageKey StorageKey) (meta FileMeta, err error)
+	Delete(ctx context.Context, storageKey StorageKey) error
+	List(ctx context.Context, provider string, offset, limit int64) (model.PaginationResult[FileMeta], error)
 }
 
 type IStorageService interface {

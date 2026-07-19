@@ -2,6 +2,7 @@ package service
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"testing"
@@ -41,19 +42,24 @@ func (r *testMetaRepo) ImplName() scene.ImplName {
 	return storageapi.Lens.ImplName("IFileMetaRepository", "test")
 }
 
-func (r *testMetaRepo) Store(meta storageapi.FileMeta) error {
+func (r *testMetaRepo) Store(context.Context, storageapi.FileMeta) error {
 	return r.storeErr
 }
 
-func (r *testMetaRepo) Load(storageKey storageapi.StorageKey) (storageapi.FileMeta, error) {
+func (r *testMetaRepo) Load(context.Context, storageapi.StorageKey) (storageapi.FileMeta, error) {
 	return storageapi.FileMeta{}, r.loadErr
 }
 
-func (r *testMetaRepo) Delete(storageKey storageapi.StorageKey) error {
+func (r *testMetaRepo) Delete(context.Context, storageapi.StorageKey) error {
 	return nil
 }
 
-func (r *testMetaRepo) List(provider string, offset, limit int64) (model.PaginationResult[storageapi.FileMeta], error) {
+func (r *testMetaRepo) List(
+	context.Context,
+	string,
+	int64,
+	int64,
+) (model.PaginationResult[storageapi.FileMeta], error) {
 	return model.PaginationResult[storageapi.FileMeta]{}, r.listErr
 }
 

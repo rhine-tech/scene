@@ -2,6 +2,8 @@
 package permission
 
 import (
+	"context"
+
 	"github.com/rhine-tech/scene"
 )
 
@@ -20,7 +22,7 @@ type PermissionService interface {
 type PermissionRepository interface {
 	scene.Named
 	//GetOwners() []string
-	GetPermissions(owner string) []*Permission
-	AddPermission(owner string, perm string) (*Permission, error)
-	RemovePermission(owner string, perm string) error
+	GetPermissions(ctx context.Context, owner string) ([]*Permission, error)
+	AddPermission(ctx context.Context, owner string, perm string) (*Permission, error)
+	RemovePermission(ctx context.Context, owner string, perm string) error
 }

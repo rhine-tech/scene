@@ -5,8 +5,6 @@ import (
 	"github.com/rhine-tech/scene/composition/orm"
 	"github.com/rhine-tech/scene/infrastructure/datasource"
 	"github.com/rhine-tech/scene/registry"
-
-	gormImpl "github.com/rhine-tech/scene/composition/orm/internal/gorm"
 )
 
 type GormMysql struct {
@@ -14,7 +12,7 @@ type GormMysql struct {
 
 func (g GormMysql) Init() scene.LensInit {
 	return func() {
-		registry.Register[orm.Gorm](gormImpl.GormWithMysql(registry.Use(datasource.MysqlDataSource(nil))))
+		registry.Register[*orm.Gorm](orm.NewGormWithMySQL(registry.Use(datasource.MysqlDataSource(nil))))
 	}
 }
 
@@ -26,7 +24,7 @@ type GormSqlite struct{}
 
 func (g GormSqlite) Init() scene.LensInit {
 	return func() {
-		registry.Register[orm.Gorm](gormImpl.GormWithSqlite(registry.Use(datasource.SqliteDataSource(nil))))
+		registry.Register[*orm.Gorm](orm.NewGormWithSQLite(registry.Use(datasource.SqliteDataSource(nil))))
 	}
 }
 

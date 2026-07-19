@@ -1,14 +1,16 @@
 package token
 
 import (
+	"context"
 	"errors"
+	"strings"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/rhine-tech/scene/lens/authentication"
 	"github.com/rhine-tech/scene/model"
-	"strings"
-	"time"
 )
 
 func maskSecretValue(raw string) string {
@@ -71,7 +73,7 @@ func (s *accessTokenService) Create(userId, name string, expireAt int64) (authen
 	}
 
 	// Persist the token using the repository
-	createdToken, err := s.tokenRepo.CreateToken(newToken)
+	createdToken, err := s.tokenRepo.CreateToken(context.Background(), newToken)
 	if err != nil {
 		s.logger.ErrorW("failed to create token in repository", "userId", userId, "error", err)
 		return authentication.AccessToken{}, err
@@ -85,7 +87,7 @@ func (s *accessTokenService) Create(userId, name string, expireAt int64) (authen
 func (s *accessTokenService) ListByUser(userId string, offset, limit int64) (model.PaginationResult[authentication.AccessToken], error) {
 	s.logger.Debugf("listing tokens for user %s with offset %d and limit %d", userId, offset, limit)
 
-	result, err := s.tokenRepo.ListTokensByUser(userId, offset, limit)
+	result, err := s.tokenRepo.ListTokensByUser(context.Background(), userId, offset, limit)
 	if err != nil {
 		s.logger.ErrorW("failed to list tokens by user from repository", "userId", userId, "error", err)
 		return model.PaginationResult[authentication.AccessToken]{}, authentication.ErrFailToGetToken.WrapIfNot(err)
@@ -98,7 +100,7 @@ func (s *accessTokenService) ListByUser(userId string, offset, limit int64) (mod
 func (s *accessTokenService) List(offset, limit int64) (model.PaginationResult[authentication.AccessToken], error) {
 	s.logger.Debugf("listing all tokens with offset %d and limit %d", offset, limit)
 
-	result, err := s.tokenRepo.ListTokens(offset, limit)
+	result, err := s.tokenRepo.ListTokens(context.Background(), offset, limit)
 	if err != nil {
 		s.logger.ErrorW("failed to list all tokens from repository", "error", err)
 		return model.PaginationResult[authentication.AccessToken]{}, authentication.ErrFailToGetToken.WrapIfNot(err)
@@ -112,7 +114,7 @@ func (s *accessTokenService) Delete(tokenValue string) error {
 	s.logger.InfoW("deleting token", "tokenValue", maskSecretValue(tokenValue))
 
 	// Proceed with deletion
-	if err := s.tokenRepo.DeleteToken(tokenValue); err != nil {
+	if err := s.tokenRepo.DeleteToken(context.Background(), tokenValue); err != nil {
 		s.logger.ErrorW("failed to delete token from repository", "tokenValue", maskSecretValue(tokenValue), "error", err)
 		return authentication.ErrInternalError.WrapIfNot(err)
 	}
@@ -125,7 +127,7 @@ func (s *accessTokenService) Delete(tokenValue string) error {
 func (s *accessTokenService) Validate(tokenValue string) (userId string, valid bool, err error) {
 	s.logger.Debugf("validating token")
 
-	token, err := s.tokenRepo.GetTokenByValue(tokenValue)
+	token, err := s.tokenRepo.GetTokenByValue(context.Background(), tokenValue)
 	if err != nil {
 		// If the token is not found in the repository
 		if errors.Is(err, authentication.ErrTokenNotFound) {
