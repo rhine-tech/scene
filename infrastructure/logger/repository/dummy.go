@@ -13,17 +13,7 @@ func (l *DummyLogger) DebugW(message string, keysAndValues ...interface{}) {
 	panic("implement me")
 }
 
-func (l *DummyLogger) DebugS(message string, fields logger.LogField) {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (l *DummyLogger) InfoW(message string, keysAndValues ...interface{}) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (l *DummyLogger) InfoS(message string, fields logger.LogField) {
 	//TODO implement me
 	panic("implement me")
 }
@@ -33,17 +23,7 @@ func (l *DummyLogger) WarnW(message string, keysAndValues ...interface{}) {
 	panic("implement me")
 }
 
-func (l *DummyLogger) WarnS(message string, fields logger.LogField) {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (l *DummyLogger) ErrorW(message string, keysAndValues ...interface{}) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (l *DummyLogger) ErrorS(message string, fields logger.LogField) {
 	//TODO implement me
 	panic("implement me")
 }

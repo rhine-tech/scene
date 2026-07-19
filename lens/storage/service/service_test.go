@@ -18,19 +18,15 @@ type testLogger struct{}
 func (testLogger) Debug(args ...interface{})                           {}
 func (testLogger) Debugf(format string, args ...interface{})           {}
 func (testLogger) DebugW(message string, keysAndValues ...interface{}) {}
-func (testLogger) DebugS(message string, fields logger.LogField)       {}
 func (testLogger) Info(args ...interface{})                            {}
 func (testLogger) Infof(format string, args ...interface{})            {}
 func (testLogger) InfoW(message string, keysAndValues ...interface{})  {}
-func (testLogger) InfoS(message string, fields logger.LogField)        {}
 func (testLogger) Warn(args ...interface{})                            {}
 func (testLogger) Warnf(format string, args ...interface{})            {}
 func (testLogger) WarnW(message string, keysAndValues ...interface{})  {}
-func (testLogger) WarnS(message string, fields logger.LogField)        {}
 func (testLogger) Error(args ...interface{})                           {}
 func (testLogger) Errorf(format string, args ...interface{})           {}
 func (testLogger) ErrorW(message string, keysAndValues ...interface{}) {}
-func (testLogger) ErrorS(message string, fields logger.LogField)       {}
 func (l testLogger) WithPrefix(prefix string) logger.ILogger           { return l }
 func (testLogger) SetLogLevel(level logger.LogLevel)                   {}
 func (l testLogger) WithOptions(opts ...logger.Option) logger.ILogger  { return l }

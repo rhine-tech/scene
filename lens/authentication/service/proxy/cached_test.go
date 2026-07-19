@@ -17,19 +17,15 @@ type stubLogger struct{}
 func (stubLogger) Debug(args ...interface{})                           {}
 func (stubLogger) Debugf(format string, args ...interface{})           {}
 func (stubLogger) DebugW(message string, keysAndValues ...interface{}) {}
-func (stubLogger) DebugS(message string, fields logger.LogField)       {}
 func (stubLogger) Info(args ...interface{})                            {}
 func (stubLogger) Infof(format string, args ...interface{})            {}
 func (stubLogger) InfoW(message string, keysAndValues ...interface{})  {}
-func (stubLogger) InfoS(message string, fields logger.LogField)        {}
 func (stubLogger) Warn(args ...interface{})                            {}
 func (stubLogger) Warnf(format string, args ...interface{})            {}
 func (stubLogger) WarnW(message string, keysAndValues ...interface{})  {}
-func (stubLogger) WarnS(message string, fields logger.LogField)        {}
 func (stubLogger) Error(args ...interface{})                           {}
 func (stubLogger) Errorf(format string, args ...interface{})           {}
 func (stubLogger) ErrorW(message string, keysAndValues ...interface{}) {}
-func (stubLogger) ErrorS(message string, fields logger.LogField)       {}
 func (stubLogger) WithPrefix(prefix string) logger.ILogger             { return stubLogger{} }
 func (stubLogger) SetLogLevel(level logger.LogLevel)                   {}
 func (stubLogger) WithOptions(opts ...logger.Option) logger.ILogger    { return stubLogger{} }

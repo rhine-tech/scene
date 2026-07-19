@@ -86,22 +86,6 @@ func (z *namedZapLoggerImpl) ErrorW(message string, keysAndValues ...interface{}
 	z.skip1.Errorw(message, keysAndValues...)
 }
 
-func (z *namedZapLoggerImpl) DebugS(message string, fields logger.LogField) {
-	z.skip1.Debugw(message, fields.Flatten()...)
-}
-
-func (z *namedZapLoggerImpl) InfoS(message string, fields logger.LogField) {
-	z.skip1.Infow(message, fields.Flatten()...)
-}
-
-func (z *namedZapLoggerImpl) WarnS(message string, fields logger.LogField) {
-	z.skip1.Warnw(message, fields.Flatten()...)
-}
-
-func (z *namedZapLoggerImpl) ErrorS(message string, fields logger.LogField) {
-	z.skip1.Errorw(message, fields.Flatten()...)
-}
-
 func NewZapLogger() logger.ILogger {
 	zapLog, _ := zap.NewProduction()
 	sugar := zapLog.Sugar()
@@ -171,20 +155,4 @@ func (z *zapLoggerImpl) WarnW(message string, keysAndValues ...interface{}) {
 
 func (z *zapLoggerImpl) ErrorW(message string, keysAndValues ...interface{}) {
 	z.skip1.Errorw(message, keysAndValues...)
-}
-
-func (z *zapLoggerImpl) DebugS(message string, fields logger.LogField) {
-	z.skip1.Debugw(message, fields.Flatten()...)
-}
-
-func (z *zapLoggerImpl) InfoS(message string, fields logger.LogField) {
-	z.skip1.Infow(message, fields.Flatten()...)
-}
-
-func (z *zapLoggerImpl) WarnS(message string, fields logger.LogField) {
-	z.skip1.Warnw(message, fields.Flatten()...)
-}
-
-func (z *zapLoggerImpl) ErrorS(message string, fields logger.LogField) {
-	z.skip1.Errorw(message, fields.Flatten()...)
 }
