@@ -124,14 +124,14 @@ func (p *putDataRequest) Process(ctx *sgin.Context[*appContext]) (data any, err 
 	}
 
 	// Store single part from body
-	err = ctx.App.srv.StorePartReader(uploadId, 1, ctx.Request.Body)
+	err = ctx.App.srv.StoreMultipart(uploadId, 1, ctx.Request.Body)
 	if err != nil {
-		_ = ctx.App.srv.AbortMultiPartStore(uploadId) // cleanup on failure
+		_ = ctx.App.srv.AbortMultipart(uploadId) // cleanup on failure
 		return nil, err
 	}
 
 	// Complete the multipart upload
-	err = ctx.App.srv.CompleteMultipartStore(uploadId)
+	err = ctx.App.srv.CompleteMultipart(uploadId)
 	if err != nil {
 		return nil, err
 	}

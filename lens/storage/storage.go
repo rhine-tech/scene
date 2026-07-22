@@ -53,9 +53,9 @@ type IStorageProvider interface {
 	Delete(storageKey StorageKey) error
 	// Multipart related
 	InitMultipartStore(storageKey StorageKey) (uploadId string, err error)
-	StorePart(uploadId string, partNumber int, data io.Reader) error
-	CompleteMultipartStore(uploadId string) error
-	AbortMultipartStore(uploadId string) error
+	StoreMultipart(uploadId string, partNumber int, data io.Reader) error
+	CompleteMultipart(uploadId string) error
+	AbortMultipart(uploadId string) error
 	// GetDirectURL returns a URL that accesses the provider directly.
 	// Providers that cannot expose direct URLs return ErrDirectURLUnsupported.
 	GetDirectURL(storageKey StorageKey) (url string, err error)
@@ -99,10 +99,9 @@ type IStorageService interface {
 	// If identifier is empty, the service will generate one internally.
 	// It returns both the resolved storage key and the upload id.
 	InitMultipartStore(provider, identifier string, meta FileMeta) (storageKey StorageKey, uploadId string, err error)
-	StorePart(uploadId string, partNumber int, data io.Reader) error
-	StorePartReader(uploadId string, partNumber int, data io.Reader) error
-	CompleteMultipartStore(uploadId string) error
-	AbortMultiPartStore(uploadId string) error
+	StoreMultipart(uploadId string, partNumber int, data io.Reader) error
+	CompleteMultipart(uploadId string) error
+	AbortMultipart(uploadId string) error
 	// GetDirectURL returns a URL that accesses the storage provider directly.
 	GetDirectURL(storageKey StorageKey) (url string, err error)
 	// todo ListMultipartParts(uploadId)

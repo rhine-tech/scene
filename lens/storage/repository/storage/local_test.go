@@ -117,8 +117,8 @@ func TestLocalStorage_MultipartUpload(t *testing.T) {
 	// 2. Upload parts
 	part1 := []byte("hello ")
 	part2 := []byte("world!")
-	require.NoError(t, storageApi.StorePart(uploadId, 1, bytes.NewReader(part1)))
-	require.NoError(t, storageApi.StorePart(uploadId, 2, bytes.NewReader(part2)))
+	require.NoError(t, storageApi.StoreMultipart(uploadId, 1, bytes.NewReader(part1)))
+	require.NoError(t, storageApi.StoreMultipart(uploadId, 2, bytes.NewReader(part2)))
 
 	// 3. Verify part files exist before completion
 	part1Path := filepath.Join(basePath, fmt.Sprintf(".%s.part-%d", uploadId, 1))
@@ -129,7 +129,7 @@ func TestLocalStorage_MultipartUpload(t *testing.T) {
 	require.NoError(t, err)
 
 	// 4. Complete upload
-	require.NoError(t, storageApi.CompleteMultipartStore(uploadId))
+	require.NoError(t, storageApi.CompleteMultipart(uploadId))
 
 	// 5. Check final file exists and is concatenated correctly
 	finalReader, err := storageApi.LoadAll(storageKey)

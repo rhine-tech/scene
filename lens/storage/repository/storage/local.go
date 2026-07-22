@@ -300,7 +300,7 @@ func (l *localStorage) InitMultipartStore(storageKey storage.StorageKey) (string
 	return uploadId, nil
 }
 
-func (l *localStorage) StorePart(uploadId string, partNumber int, data io.Reader) error {
+func (l *localStorage) StoreMultipart(uploadId string, partNumber int, data io.Reader) error {
 	l.uploadsLock.RLock()
 	sess, ok := l.uploads[uploadId]
 	l.uploadsLock.RUnlock()
@@ -325,7 +325,7 @@ func (l *localStorage) StorePart(uploadId string, partNumber int, data io.Reader
 	return nil
 }
 
-func (l *localStorage) CompleteMultipartStore(uploadId string) error {
+func (l *localStorage) CompleteMultipart(uploadId string) error {
 	l.uploadsLock.RLock()
 	sess, ok := l.uploads[uploadId]
 	l.uploadsLock.RUnlock()
@@ -386,7 +386,7 @@ func (l *localStorage) CompleteMultipartStore(uploadId string) error {
 	return nil
 }
 
-func (l *localStorage) AbortMultipartStore(uploadId string) error {
+func (l *localStorage) AbortMultipart(uploadId string) error {
 	l.uploadsLock.Lock()
 	sess, ok := l.uploads[uploadId]
 	if !ok {

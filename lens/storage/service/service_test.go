@@ -84,6 +84,7 @@ func (t *testSessionTracker) Delete(uploadId string) error {
 }
 
 type testProvider struct {
+	name           string
 	storeErr       error
 	initErr        error
 	directURLErr   error
@@ -95,8 +96,14 @@ func (p *testProvider) ImplName() scene.ImplName {
 	return storageapi.Lens.ImplName("IStorageProvider", "test")
 }
 
-func (p *testProvider) ProviderName() string { return "local.test" }
-func (p *testProvider) HealthCheck() error   { return nil }
+func (p *testProvider) ProviderName() string {
+	if p.name != "" {
+		return p.name
+	}
+	return "local.test"
+}
+
+func (p *testProvider) HealthCheck() error { return nil }
 
 func (p *testProvider) Meta(storageKey storageapi.StorageKey) (storageapi.FileMeta, error) {
 	return storageapi.FileMeta{}, storageapi.ErrFileNotFound
@@ -124,15 +131,15 @@ func (p *testProvider) InitMultipartStore(storageKey storageapi.StorageKey) (str
 	return "upload-test", p.initErr
 }
 
-func (p *testProvider) StorePart(uploadId string, partNumber int, data io.Reader) error {
+func (p *testProvider) StoreMultipart(uploadId string, partNumber int, data io.Reader) error {
 	return nil
 }
 
-func (p *testProvider) CompleteMultipartStore(uploadId string) error {
+func (p *testProvider) CompleteMultipart(uploadId string) error {
 	return nil
 }
 
-func (p *testProvider) AbortMultipartStore(uploadId string) error {
+func (p *testProvider) AbortMultipart(uploadId string) error {
 	p.abortCalled = true
 	return nil
 }
@@ -145,6 +152,43 @@ func newTestService(repo *testMetaRepo, tracker *testSessionTracker, provider *t
 	srv := NewStorageService(repo, tracker, "local.test", provider)
 	srv.log = testLogger{}
 	return srv
+}
+
+func TestListProvidersSortedAndReturnsCopy(t *testing.T) {
+	srv := NewStorageService(
+		&testMetaRepo{},
+		&testSessionTracker{},
+		"local.default",
+		&testProvider{name: "s3.archive"},
+		&testProvider{name: "local.default"},
+		&testProvider{name: "s3.default"},
+	)
+	want := []string{"local.default", "s3.archive", "s3.default"}
+
+	got := srv.ListProviders()
+	require.Equal(t, want, got)
+
+	got[0] = "modified"
+	require.Equal(t, want, srv.ListProviders())
+}
+
+func TestListProvidersConcurrentFirstRead(t *testing.T) {
+	srv := NewStorageService(
+		&testMetaRepo{},
+		&testSessionTracker{},
+		"local.default",
+		&testProvider{name: "s3.archive"},
+		&testProvider{name: "local.default"},
+		&testProvider{name: "s3.default"},
+	)
+	want := []string{"local.default", "s3.archive", "s3.default"}
+
+	for range 16 {
+		t.Run("reader", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, want, srv.ListProviders())
+		})
+	}
 }
 
 func TestStoreAtWrapsMetaRepositoryError(t *testing.T) {

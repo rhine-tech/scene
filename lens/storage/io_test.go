@@ -80,19 +80,15 @@ func (t *testStorageService) InitMultipartStore(provider, identifier string, met
 	return "", "", nil
 }
 
-func (t *testStorageService) StorePart(uploadId string, partNumber int, data io.Reader) error {
+func (t *testStorageService) StoreMultipart(uploadId string, partNumber int, data io.Reader) error {
 	return nil
 }
 
-func (t *testStorageService) StorePartReader(uploadId string, partNumber int, data io.Reader) error {
+func (t *testStorageService) CompleteMultipart(uploadId string) error {
 	return nil
 }
 
-func (t *testStorageService) CompleteMultipartStore(uploadId string) error {
-	return nil
-}
-
-func (t *testStorageService) AbortMultiPartStore(uploadId string) error {
+func (t *testStorageService) AbortMultipart(uploadId string) error {
 	return nil
 }
 

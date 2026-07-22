@@ -257,10 +257,10 @@ func TestS3StorageIntegration_MultipartLargeObject(t *testing.T) {
 	part3 := deterministicBytes(1024*1024+321, 37)
 
 	// Store parts out of order to verify completion sorts part numbers before submitting.
-	require.NoError(t, provider.StorePart(uploadID, 2, bytes.NewReader(part2)))
-	require.NoError(t, provider.StorePart(uploadID, 1, bytes.NewReader(part1)))
-	require.NoError(t, provider.StorePart(uploadID, 3, bytes.NewReader(part3)))
-	require.NoError(t, provider.CompleteMultipartStore(uploadID))
+	require.NoError(t, provider.StoreMultipart(uploadID, 2, bytes.NewReader(part2)))
+	require.NoError(t, provider.StoreMultipart(uploadID, 1, bytes.NewReader(part1)))
+	require.NoError(t, provider.StoreMultipart(uploadID, 3, bytes.NewReader(part3)))
+	require.NoError(t, provider.CompleteMultipart(uploadID))
 
 	provider.uploadsLock.RLock()
 	_, ok := provider.uploads[uploadID]
@@ -301,15 +301,15 @@ func TestS3StorageIntegration_MultipartAbortAndErrors(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, uploadID)
 
-	require.ErrorIs(t, provider.StorePart(uploadID, 0, bytes.NewReader([]byte("bad"))), storage.ErrStorePartFailed)
-	require.NoError(t, provider.StorePart(uploadID, 1, bytes.NewReader(deterministicBytes(5*1024*1024, 41))))
-	require.NoError(t, provider.AbortMultipartStore(uploadID))
-	require.NoError(t, provider.AbortMultipartStore(uploadID))
+	require.ErrorIs(t, provider.StoreMultipart(uploadID, 0, bytes.NewReader([]byte("bad"))), storage.ErrStorePartFailed)
+	require.NoError(t, provider.StoreMultipart(uploadID, 1, bytes.NewReader(deterministicBytes(5*1024*1024, 41))))
+	require.NoError(t, provider.AbortMultipart(uploadID))
+	require.NoError(t, provider.AbortMultipart(uploadID))
 
-	require.ErrorIs(t, provider.StorePart("missing-upload", 1, bytes.NewReader([]byte("x"))), storage.ErrUploadSessionNotFound)
-	err = provider.CompleteMultipartStore(uploadID)
+	require.ErrorIs(t, provider.StoreMultipart("missing-upload", 1, bytes.NewReader([]byte("x"))), storage.ErrUploadSessionNotFound)
+	err = provider.CompleteMultipart(uploadID)
 	require.ErrorIs(t, err, storage.ErrUploadSessionNotFound)
-	require.ErrorIs(t, provider.CompleteMultipartStore("missing-upload"), storage.ErrUploadSessionNotFound)
+	require.ErrorIs(t, provider.CompleteMultipart("missing-upload"), storage.ErrUploadSessionNotFound)
 
 	_, err = provider.LoadAll(key)
 	require.True(t, errors.Is(err, storage.ErrFileNotFound) || errors.Is(err, storage.ErrStorageFailed))
@@ -322,8 +322,8 @@ func TestS3StorageIntegration_MultipartEmptyAndDuplicatePart(t *testing.T) {
 	emptyKey := storage.NewStorageKey(provider.ProviderName(), env.prefix, "multipart-empty.bin")
 	emptyUploadID, err := provider.InitMultipartStore(emptyKey)
 	require.NoError(t, err)
-	require.ErrorIs(t, provider.CompleteMultipartStore(emptyUploadID), storage.ErrStorePartFailed)
-	require.NoError(t, provider.AbortMultipartStore(emptyUploadID))
+	require.ErrorIs(t, provider.CompleteMultipart(emptyUploadID), storage.ErrStorePartFailed)
+	require.NoError(t, provider.AbortMultipart(emptyUploadID))
 
 	key := storage.NewStorageKey(provider.ProviderName(), env.prefix, "multipart-duplicate.bin")
 	t.Cleanup(func() { _ = provider.Delete(key) })
@@ -334,10 +334,10 @@ func TestS3StorageIntegration_MultipartEmptyAndDuplicatePart(t *testing.T) {
 	replacedPart := deterministicBytes(5*1024*1024, 51)
 	finalPart1 := deterministicBytes(5*1024*1024, 67)
 	finalPart2 := deterministicBytes(1024*1024, 83)
-	require.NoError(t, provider.StorePart(uploadID, 1, bytes.NewReader(replacedPart)))
-	require.NoError(t, provider.StorePart(uploadID, 1, bytes.NewReader(finalPart1)))
-	require.NoError(t, provider.StorePart(uploadID, 2, bytes.NewReader(finalPart2)))
-	require.NoError(t, provider.CompleteMultipartStore(uploadID))
+	require.NoError(t, provider.StoreMultipart(uploadID, 1, bytes.NewReader(replacedPart)))
+	require.NoError(t, provider.StoreMultipart(uploadID, 1, bytes.NewReader(finalPart1)))
+	require.NoError(t, provider.StoreMultipart(uploadID, 2, bytes.NewReader(finalPart2)))
+	require.NoError(t, provider.CompleteMultipart(uploadID))
 
 	reader, err := provider.LoadAll(key)
 	require.NoError(t, err)

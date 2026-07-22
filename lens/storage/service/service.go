@@ -6,8 +6,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"io"
+	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -24,8 +24,7 @@ type StorageService struct {
 	metaRepo        storage.IFileMetaRepository   `aperture:""`
 	uploadSessions  storage.IUploadSessionTracker `aperture:""`
 	log             logger.ILogger                `aperture:""`
-	pvdrLock        sync.Mutex
-	pvdrNames       []string
+	providerNames   []string
 }
 
 func (s *StorageService) Setup() error {
@@ -49,9 +48,15 @@ func NewStorageService(
 	if _, exists := providersMap[defaultProvider]; !exists {
 		panic("default provider not found")
 	}
+	providerNames := make([]string, 0, len(providersMap))
+	for name := range providersMap {
+		providerNames = append(providerNames, name)
+	}
+	slices.Sort(providerNames)
 	return &StorageService{
 		defaultProvider: defaultProvider,
 		providers:       providersMap,
+		providerNames:   providerNames,
 		metaRepo:        metaRepo,
 		uploadSessions:  sessionRepo,
 	}
@@ -59,17 +64,7 @@ func NewStorageService(
 
 // ListProviders returns the names of the available providers.
 func (s *StorageService) ListProviders() []string {
-	if s.pvdrNames != nil {
-		return s.pvdrNames
-	}
-	s.pvdrLock.Lock()
-	var providerNames []string
-	for name := range s.providers {
-		providerNames = append(providerNames, name)
-	}
-	s.pvdrNames = providerNames
-	s.pvdrLock.Unlock()
-	return s.pvdrNames
+	return slices.Clone(s.providerNames)
 }
 
 // Store stores data using the default provider.
@@ -214,7 +209,7 @@ func (s *StorageService) InitMultipartStore(provider, identifier string, meta st
 		Created:    time.Now(),
 	})
 	if err != nil {
-		err2 := pvd.AbortMultipartStore(uploadId)
+		err2 := pvd.AbortMultipart(uploadId)
 		if err2 != nil {
 			s.log.ErrorW("failed to abort multipart upload", "storageKey", storageKey, "err", err2)
 		}
@@ -230,7 +225,7 @@ func (s *StorageService) InitMultipartStore(provider, identifier string, meta st
 	if err != nil {
 		s.log.ErrorW("failed to store multipart upload", "storageKey", storageKey, "err", err)
 		// cancel store
-		err2 := pvd.AbortMultipartStore(uploadId)
+		err2 := pvd.AbortMultipart(uploadId)
 		if err2 != nil {
 			s.log.ErrorW("failed to abort multipart upload", "storageKey", storageKey, "err", err2)
 		}
@@ -239,11 +234,7 @@ func (s *StorageService) InitMultipartStore(provider, identifier string, meta st
 	return storageKey, uploadId, nil
 }
 
-func (s *StorageService) StorePart(uploadId string, partNumber int, data io.Reader) error {
-	return s.StorePartReader(uploadId, partNumber, data)
-}
-
-func (s *StorageService) StorePartReader(uploadId string, partNumber int, data io.Reader) error {
+func (s *StorageService) StoreMultipart(uploadId string, partNumber int, data io.Reader) error {
 	get, err := s.uploadSessions.Get(uploadId)
 	if err != nil {
 		s.log.ErrorW("failed to get upload session", "uploadId", uploadId, "err", err)
@@ -253,7 +244,7 @@ func (s *StorageService) StorePartReader(uploadId string, partNumber int, data i
 	if !ok {
 		return storage.ErrStorageNotFound
 	}
-	err = pvd.StorePart(uploadId, partNumber, data)
+	err = pvd.StoreMultipart(uploadId, partNumber, data)
 	if err != nil {
 		s.log.ErrorW("failed to store part upload", "uploadId", uploadId, "err", err)
 		if errors.Is(err, storage.ErrUploadSessionNotFound) {
@@ -264,7 +255,7 @@ func (s *StorageService) StorePartReader(uploadId string, partNumber int, data i
 	return nil
 }
 
-func (s *StorageService) CompleteMultipartStore(uploadId string) error {
+func (s *StorageService) CompleteMultipart(uploadId string) error {
 	get, err := s.uploadSessions.Get(uploadId)
 	if err != nil {
 		s.log.ErrorW("failed to get upload session", "uploadId", uploadId, "err", err)
@@ -276,7 +267,7 @@ func (s *StorageService) CompleteMultipartStore(uploadId string) error {
 		return storage.ErrStorageNotFound
 	}
 
-	err = pvd.CompleteMultipartStore(uploadId)
+	err = pvd.CompleteMultipart(uploadId)
 	if err != nil {
 		s.log.ErrorW("failed to complete multipart upload", "uploadId", uploadId, "err", err)
 		if errors.Is(err, storage.ErrUploadSessionNotFound) {
@@ -304,7 +295,7 @@ func (s *StorageService) CompleteMultipartStore(uploadId string) error {
 	return nil
 }
 
-func (s *StorageService) AbortMultiPartStore(uploadId string) error {
+func (s *StorageService) AbortMultipart(uploadId string) error {
 	get, err := s.uploadSessions.Get(uploadId)
 	if err != nil {
 		s.log.ErrorW("failed to get upload session", "uploadId", uploadId, "err", err)
@@ -316,7 +307,7 @@ func (s *StorageService) AbortMultiPartStore(uploadId string) error {
 		return storage.ErrStorageNotFound
 	}
 
-	err = pvd.AbortMultipartStore(uploadId)
+	err = pvd.AbortMultipart(uploadId)
 	if err != nil {
 		s.log.ErrorW("failed to abort multipart upload", "uploadId", uploadId, "err", err)
 		return storage.ErrFailToAbortMultipartStore

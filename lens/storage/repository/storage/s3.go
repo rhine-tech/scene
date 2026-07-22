@@ -218,7 +218,7 @@ func (s *s3Storage) InitMultipartStore(storageKey storage.StorageKey) (string, e
 	return uploadId, nil
 }
 
-func (s *s3Storage) StorePart(uploadId string, partNumber int, data io.Reader) error {
+func (s *s3Storage) StoreMultipart(uploadId string, partNumber int, data io.Reader) error {
 	if partNumber <= 0 {
 		return storage.ErrStorePartFailed.WithDetailStr("invalid part number")
 	}
@@ -248,7 +248,7 @@ func (s *s3Storage) StorePart(uploadId string, partNumber int, data io.Reader) e
 	return nil
 }
 
-func (s *s3Storage) CompleteMultipartStore(uploadId string) error {
+func (s *s3Storage) CompleteMultipart(uploadId string) error {
 	s.uploadsLock.RLock()
 	session, ok := s.uploads[uploadId]
 	s.uploadsLock.RUnlock()
@@ -286,7 +286,7 @@ func (s *s3Storage) CompleteMultipartStore(uploadId string) error {
 	return nil
 }
 
-func (s *s3Storage) AbortMultipartStore(uploadId string) error {
+func (s *s3Storage) AbortMultipart(uploadId string) error {
 	s.uploadsLock.RLock()
 	session, ok := s.uploads[uploadId]
 	s.uploadsLock.RUnlock()
