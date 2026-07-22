@@ -24,4 +24,6 @@ var (
 	ErrMetaNotFound              = _eg.CreateError(17, "meta not found")
 	ErrFailToListMeta            = _eg.CreateError(18, "fail to list meta")
 	ErrStorageKeyExists          = _eg.CreateError(19, "storage key exists")
+	ErrDirectURLUnsupported      = _eg.CreateError(20, "direct URL unsupported")
+	ErrGetDirectURLFailed        = _eg.CreateError(21, "fail to get direct URL")
 )

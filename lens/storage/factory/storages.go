@@ -13,19 +13,17 @@ import (
 type StorageProvider scene.IModuleDependencyProvider[storageApi.IStorageProvider]
 
 type Local struct {
-	Root      string
-	UrlPrefix string
+	Root string
 }
 
 func (l Local) Default() Local {
 	return Local{
-		Root:      registry.Config.GetString("storage.local.root"),
-		UrlPrefix: registry.Config.GetString("storage.local.prefix"),
+		Root: registry.Config.GetString("storage.local.root"),
 	}
 }
 
 func (l Local) Provide() storageApi.IStorageProvider {
-	return registry.Load(storage.NewLocalStorage("default", l.Root, l.UrlPrefix))
+	return registry.Load(storage.NewLocalStorage("default", l.Root))
 }
 
 type S3 struct {
@@ -35,10 +33,8 @@ type S3 struct {
 	AccessKey       string
 	SecretKey       string
 	Bucket          string
-	UrlPrefix       string
 	UseSSL          bool
 	ForcePathStyle  bool
-	DirectPublicURL bool
 	PresignedURLTTL time.Duration
 }
 
@@ -55,10 +51,8 @@ func (s S3) Default() S3 {
 		AccessKey:       registry.Config.GetString("storage.s3.access_key"),
 		SecretKey:       registry.Config.GetString("storage.s3.secret_key"),
 		Bucket:          registry.Config.GetString("storage.s3.bucket"),
-		UrlPrefix:       registry.Config.GetString("storage.s3.prefix"),
 		UseSSL:          registry.Config.GetBool("storage.s3.use_ssl"),
 		ForcePathStyle:  registry.Config.GetBool("storage.s3.force_path_style"),
-		DirectPublicURL: registry.Config.GetBool("storage.s3.direct_public_url"),
 		PresignedURLTTL: presignedURLTTL,
 	}
 }
@@ -67,17 +61,15 @@ func (s S3) Provide() storageApi.IStorageProvider {
 	if s.Name == "" {
 		s.Name = "default"
 	}
-	return registry.Load(must.PMust(storage.NewS3StorageWithPublicURLMode(
+	return registry.Load(must.PMust(storage.NewS3StorageWithPresignedURLTTL(
 		s.Endpoint,
 		s.AccessKey,
 		s.SecretKey,
 		s.Bucket,
 		s.Name,
-		s.UrlPrefix,
 		s.UseSSL,
 		s.ForcePathStyle,
 		s.Region,
-		s.DirectPublicURL,
 		s.PresignedURLTTL,
 	)))
 }

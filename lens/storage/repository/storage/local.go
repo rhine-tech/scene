@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -31,7 +30,6 @@ type uploadSession struct {
 type localStorage struct {
 	name        string
 	localPath   string
-	urlPrefix   string
 	log         logger.ILogger `aperture:""`
 	uploads     map[string]*uploadSession
 	uploadsLock sync.RWMutex
@@ -106,12 +104,11 @@ func (l *localStorage) Setup() error {
 	return nil
 }
 
-func NewLocalStorage(name string, localPath string, urlprefix string) storage.IStorageProvider {
+func NewLocalStorage(name string, localPath string) storage.IStorageProvider {
 	return &localStorage{
 		name:      name,
 		localPath: localPath,
 		uploads:   make(map[string]*uploadSession),
-		urlPrefix: urlprefix,
 	}
 }
 
@@ -243,12 +240,8 @@ func (l *localStorage) LoadAll(storageKey storage.StorageKey) (reader io.ReadClo
 	return os.Open(path)
 }
 
-func (l *localStorage) GetPublicURL(storageKey storage.StorageKey) (uri string, err error) {
-	prefixs := strings.Split(storageKey.FileID(), "/")
-	if len(prefixs) == 0 {
-		return "", storage.ErrInvalidStorageKey
-	}
-	return url.JoinPath(l.urlPrefix, append([]string{storageKey.Provider()}, prefixs...)...)
+func (l *localStorage) GetDirectURL(storage.StorageKey) (string, error) {
+	return "", storage.ErrDirectURLUnsupported
 }
 
 func (l *localStorage) Delete(storageKey storage.StorageKey) error {

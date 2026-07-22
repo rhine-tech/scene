@@ -86,7 +86,7 @@ func (t *testSessionTracker) Delete(uploadId string) error {
 type testProvider struct {
 	storeErr       error
 	initErr        error
-	publicURLErr   error
+	directURLErr   error
 	abortCalled    bool
 	initializedKey storageapi.StorageKey
 }
@@ -137,8 +137,8 @@ func (p *testProvider) AbortMultipartStore(uploadId string) error {
 	return nil
 }
 
-func (p *testProvider) GetPublicURL(storageKey storageapi.StorageKey) (string, error) {
-	return "", p.publicURLErr
+func (p *testProvider) GetDirectURL(storageKey storageapi.StorageKey) (string, error) {
+	return "", p.directURLErr
 }
 
 func newTestService(repo *testMetaRepo, tracker *testSessionTracker, provider *testProvider) *StorageService {
@@ -196,21 +196,32 @@ func TestInitMultipartStoreWrapsSessionSaveError(t *testing.T) {
 	require.True(t, provider.abortCalled)
 }
 
-func TestGetPublicURLWrapsProviderError(t *testing.T) {
+func TestGetDirectURLWrapsProviderError(t *testing.T) {
 	srv := newTestService(
 		&testMetaRepo{},
 		&testSessionTracker{},
-		&testProvider{publicURLErr: errors.New("s3: hidden details")},
+		&testProvider{directURLErr: errors.New("s3: hidden details")},
 	)
 
-	_, err := srv.GetPublicURL("local.test://covers/work.jpg")
-	require.ErrorIs(t, err, storageapi.ErrStorageError)
+	_, err := srv.GetDirectURL("local.test://covers/work.jpg")
+	require.ErrorIs(t, err, storageapi.ErrGetDirectURLFailed)
 	require.NotContains(t, err.Error(), "s3:")
+}
+
+func TestGetDirectURLPreservesUnsupportedError(t *testing.T) {
+	srv := newTestService(
+		&testMetaRepo{},
+		&testSessionTracker{},
+		&testProvider{directURLErr: storageapi.ErrDirectURLUnsupported},
+	)
+
+	_, err := srv.GetDirectURL("local.test://covers/work.jpg")
+	require.ErrorIs(t, err, storageapi.ErrDirectURLUnsupported)
 }
 
 func TestServiceRejectsInvalidStorageKey(t *testing.T) {
 	srv := newTestService(&testMetaRepo{}, &testSessionTracker{}, &testProvider{})
 
-	_, err := srv.GetPublicURL("local.test:///../secret")
+	_, err := srv.GetDirectURL("local.test:///../secret")
 	require.ErrorIs(t, err, storageapi.ErrInvalidStorageKey)
 }

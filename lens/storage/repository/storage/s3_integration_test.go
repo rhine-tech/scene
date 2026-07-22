@@ -46,7 +46,6 @@ func requireS3Integration(t *testing.T) s3IntegrationEnv {
 		secretKey,
 		bucket,
 		"integration",
-		normalizeS3Endpoint(endpoint, false)+"/"+bucket,
 		false,
 		true,
 		region,
@@ -63,7 +62,7 @@ func requireS3Integration(t *testing.T) s3IntegrationEnv {
 	}
 }
 
-func requireS3IntegrationDirectPublicURL(t *testing.T) s3IntegrationEnv {
+func requireS3IntegrationDirectURL(t *testing.T) s3IntegrationEnv {
 	t.Helper()
 	if os.Getenv("SCENE_STORAGE_S3_INTEGRATION") != "1" {
 		t.Skip("set SCENE_STORAGE_S3_INTEGRATION=1 to run S3-compatible integration tests")
@@ -78,17 +77,15 @@ func requireS3IntegrationDirectPublicURL(t *testing.T) s3IntegrationEnv {
 		t.Fatal("SCENE_STORAGE_S3_ACCESS_KEY and SCENE_STORAGE_S3_SECRET_KEY are required")
 	}
 
-	providerAPI, err := NewS3StorageWithPublicURLMode(
+	providerAPI, err := NewS3StorageWithPresignedURLTTL(
 		endpoint,
 		accessKey,
 		secretKey,
 		bucket,
 		"integration",
-		normalizeS3Endpoint(endpoint, false)+"/"+bucket,
 		false,
 		true,
 		region,
-		true,
 		time.Minute,
 	)
 	require.NoError(t, err)
@@ -172,28 +169,28 @@ func TestS3StorageIntegration_StoreLoadRangeMetaDelete(t *testing.T) {
 	_, err = provider.Load(key, 0, 0)
 	require.ErrorIs(t, err, storage.ErrInvalidLength)
 
-	publicURL, err := provider.GetPublicURL(key)
+	directURL, err := provider.GetDirectURL(key)
 	require.NoError(t, err)
-	require.Contains(t, publicURL, key.FileID())
+	require.Contains(t, directURL, key.FileID())
 
 	require.NoError(t, provider.Delete(key))
 	_, err = provider.LoadAll(key)
 	require.ErrorIs(t, err, storage.ErrFileNotFound)
 }
 
-func TestS3StorageIntegration_PresignedPublicURL(t *testing.T) {
-	env := requireS3IntegrationDirectPublicURL(t)
+func TestS3StorageIntegration_PresignedDirectURL(t *testing.T) {
+	env := requireS3IntegrationDirectURL(t)
 	provider := env.provider
 	key := storage.NewStorageKey(provider.ProviderName(), env.prefix, "presigned.txt")
 	data := []byte("presigned rustfs download")
 	t.Cleanup(func() { _ = provider.Delete(key) })
 
 	require.NoError(t, provider.Store(key, bytes.NewReader(data)))
-	publicURL, err := provider.GetPublicURL(key)
+	directURL, err := provider.GetDirectURL(key)
 	require.NoError(t, err)
-	require.Contains(t, publicURL, "X-Amz-Signature=")
+	require.Contains(t, directURL, "X-Amz-Signature=")
 
-	resp, err := http.Get(publicURL)
+	resp, err := http.Get(directURL)
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	require.Equal(t, http.StatusOK, resp.StatusCode)

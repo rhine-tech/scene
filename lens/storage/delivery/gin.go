@@ -1,13 +1,23 @@
 package delivery
 
 import (
+	"fmt"
+	"net/http"
+	"net/url"
+	"strings"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	permMdw "github.com/rhine-tech/scene/lens/permission/middleware"
 	"github.com/rhine-tech/scene/lens/storage"
 	sgin "github.com/rhine-tech/scene/scenes/gin"
-	"net/http"
-	"strings"
-	"time"
+)
+
+const (
+	dataRoutePath = "/data/:provider/*fileid"
+	urlRoutePath  = "/url/:provider/*fileid"
+	urlModeProxy  = "proxy"
+	urlModeDirect = "direct"
 )
 
 type appContext struct {
@@ -22,7 +32,7 @@ func GinApp() sgin.GinApplication {
 			new(getDataRequest),
 			new(putDataRequest),
 			new(deleteDataRequest),
-			new(getPublicURLRequest),
+			new(getURLRequest),
 			new(listMetaRequest),
 			new(listProviderRequest),
 		},
@@ -43,7 +53,7 @@ func (l *getDataRequest) GetRoute() sgin.HttpRouteInfo {
 	return sgin.HttpRouteInfo{
 		Method:  http.MethodGet,
 		Methods: sgin.HttpMethodGet | sgin.HttpMethodHead | sgin.HttpMethodOptions,
-		Path:    "/data/:provider/*fileid",
+		Path:    dataRoutePath,
 	}
 }
 
@@ -66,7 +76,7 @@ type putDataRequest struct {
 func (p *putDataRequest) GetRoute() sgin.HttpRouteInfo {
 	return sgin.HttpRouteInfo{
 		Method:  http.MethodPut,
-		Path:    "/data/:provider/*fileid",
+		Path:    dataRoutePath,
 		Methods: sgin.HttpMethodPut | sgin.HttpMethodPost,
 	}
 }
@@ -144,7 +154,7 @@ type deleteDataRequest struct {
 func (d *deleteDataRequest) GetRoute() sgin.HttpRouteInfo {
 	return sgin.HttpRouteInfo{
 		Method: http.MethodDelete,
-		Path:   "/data/:provider/*fileid",
+		Path:   dataRoutePath,
 	}
 }
 
@@ -163,30 +173,50 @@ func (d *deleteDataRequest) Process(ctx *sgin.Context[*appContext]) (data any, e
 	return storage.FileMeta{StorageKey: storageKey}, nil
 }
 
-type getPublicURLRequest struct {
+type getURLRequest struct {
 	sgin.BaseAction
 	sgin.RequestURI
 	Provider   string `uri:"provider" binding:"required"`
 	StorageKey string `uri:"fileid" binding:"required"`
+	mode       string
 }
 
-func (g *getPublicURLRequest) GetRoute() sgin.HttpRouteInfo {
+func (g *getURLRequest) GetRoute() sgin.HttpRouteInfo {
 	return sgin.HttpRouteInfo{
 		Method: http.MethodGet,
-		Path:   "/url/:provider/*fileid",
+		Path:   urlRoutePath,
 	}
 }
 
-func (g *getPublicURLRequest) Middleware() gin.HandlersChain {
+func (g *getURLRequest) Middleware() gin.HandlersChain {
 	return gin.HandlersChain{
 		permMdw.GinRequirePermission(storage.PermFileDownload),
 	}
 }
 
-func (g *getPublicURLRequest) Process(ctx *sgin.Context[*appContext]) (data any, err error) {
+func (g *getURLRequest) Bind(ctx *sgin.Context[*appContext]) error {
+	g.mode = ctx.DefaultQuery("mode", urlModeProxy)
+	if g.mode != urlModeProxy && g.mode != urlModeDirect {
+		return fmt.Errorf("unsupported URL mode %q", g.mode)
+	}
+	return nil
+}
+
+func (g *getURLRequest) Process(ctx *sgin.Context[*appContext]) (data any, err error) {
 	g.StorageKey = strings.TrimPrefix(g.StorageKey, "/")
 	storageKey := storage.NewStorageKey(g.Provider, g.StorageKey)
-	return ctx.App.srv.GetPublicURL(storageKey)
+	if err := storage.ValidateStorageKey(storageKey); err != nil {
+		return nil, err
+	}
+	if g.mode == urlModeDirect {
+		return ctx.App.srv.GetDirectURL(storageKey)
+	}
+
+	routePrefix, ok := strings.CutSuffix(ctx.FullPath(), urlRoutePath)
+	if !ok {
+		return nil, fmt.Errorf("unexpected storage URL route %q", ctx.FullPath())
+	}
+	return url.JoinPath(routePrefix, "data", storageKey.Provider(), storageKey.FileID())
 }
 
 type listMetaRequest struct {

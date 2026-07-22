@@ -56,8 +56,9 @@ type IStorageProvider interface {
 	StorePart(uploadId string, partNumber int, data io.Reader) error
 	CompleteMultipartStore(uploadId string) error
 	AbortMultipartStore(uploadId string) error
-	// GetPublicURL get public url which can be access in public network
-	GetPublicURL(storageKey StorageKey) (url string, err error)
+	// GetDirectURL returns a URL that accesses the provider directly.
+	// Providers that cannot expose direct URLs return ErrDirectURLUnsupported.
+	GetDirectURL(storageKey StorageKey) (url string, err error)
 }
 
 type IFileMetaRepository interface {
@@ -102,8 +103,8 @@ type IStorageService interface {
 	StorePartReader(uploadId string, partNumber int, data io.Reader) error
 	CompleteMultipartStore(uploadId string) error
 	AbortMultiPartStore(uploadId string) error
-	// GetPublicURL get public url which can be access in public network
-	GetPublicURL(storageKey StorageKey) (url string, err error)
+	// GetDirectURL returns a URL that accesses the storage provider directly.
+	GetDirectURL(storageKey StorageKey) (url string, err error)
 	// todo ListMultipartParts(uploadId)
 }
 

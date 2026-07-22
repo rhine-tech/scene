@@ -12,15 +12,22 @@ import (
 )
 
 func TestLocalStorage_HealthCheck(t *testing.T) {
-	storageApi := NewLocalStorage("default", "./", "")
+	storageApi := NewLocalStorage("default", "./")
 	require.NoError(t, storageApi.HealthCheck())
-	storageApi = NewLocalStorage("default", "./definitely-does-not-exist", "")
+	storageApi = NewLocalStorage("default", "./definitely-does-not-exist")
 	require.Error(t, storageApi.HealthCheck())
+}
+
+func TestLocalStorage_GetDirectURLUnsupported(t *testing.T) {
+	storageApi := NewLocalStorage("default", t.TempDir())
+
+	_, err := storageApi.GetDirectURL(storage.NewStorageKey(storageApi.ProviderName(), "file.txt"))
+	require.ErrorIs(t, err, storage.ErrDirectURLUnsupported)
 }
 
 func TestLocalStorage_Simple(t *testing.T) {
 	require.NoError(t, os.MkdirAll("./data", 0755))
-	storageApi := NewLocalStorage("default", "./data", "")
+	storageApi := NewLocalStorage("default", "./data")
 	data := []byte("hello world")
 	err := storageApi.Store("local://test", bytes.NewBuffer(data))
 	require.NoError(t, err)
@@ -49,7 +56,7 @@ func TestLocalStorage_Simple(t *testing.T) {
 
 func TestLocalStorage_StoreDoesNotOverwriteExistingFile(t *testing.T) {
 	basePath := t.TempDir()
-	storageApi := NewLocalStorage("default", basePath, "")
+	storageApi := NewLocalStorage("default", basePath)
 	storageKey := storage.NewStorageKey("local.default", "safe", "object.txt")
 
 	require.NoError(t, storageApi.Store(storageKey, bytes.NewReader([]byte("first"))))
@@ -66,7 +73,7 @@ func TestLocalStorage_StoreDoesNotOverwriteExistingFile(t *testing.T) {
 
 func TestLocalStorage_Load(t *testing.T) {
 	require.NoError(t, os.MkdirAll("./data", 0755))
-	storageApi := NewLocalStorage("default", "./data", "")
+	storageApi := NewLocalStorage("default", "./data")
 
 	// Setup test data
 	content := []byte("the quick brown fox jumps over the lazy dog")
@@ -99,7 +106,7 @@ func TestLocalStorage_Load(t *testing.T) {
 func TestLocalStorage_MultipartUpload(t *testing.T) {
 	basePath := "./data"
 	require.NoError(t, os.MkdirAll(basePath, 0755))
-	storageApi := NewLocalStorage("default", basePath, "")
+	storageApi := NewLocalStorage("default", basePath)
 
 	// 1. Start multipart upload
 	storageKey := storage.NewStorageKey("local.default", "multi/testfile")

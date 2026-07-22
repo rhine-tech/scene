@@ -119,7 +119,7 @@ func (g *getInfoRequest) Process(ctx *sgin.Context[*authContext]) (data any, err
 		return nil, authentication.ErrNotLogin
 	}
 	u, err := ctx.App.authSrv.UserById(userId)
-	return UserNoPasswordFromUser(u, ctx.App.storage), err
+	return UserNoPasswordFromUser(u), err
 }
 
 // updateProfileRequest allows a logged-in user to update their own profile
@@ -166,7 +166,7 @@ func (u *updateProfileRequest) Process(ctx *sgin.Context[*authContext]) (data an
 	if err := ctx.App.authSrv.UpdateUser(user); err != nil {
 		return nil, err
 	}
-	return UserNoPasswordFromUser(user, ctx.App.storage), nil
+	return UserNoPasswordFromUser(user), nil
 }
 
 type uploadAvatarRequest struct {
@@ -234,7 +234,7 @@ func (u *uploadAvatarRequest) Process(ctx *sgin.Context[*authContext]) (data any
 	if err := ctx.App.authSrv.UpdateUser(user); err != nil {
 		return nil, err
 	}
-	return UserNoPasswordFromUser(user, ctx.App.storage), nil
+	return UserNoPasswordFromUser(user), nil
 }
 
 func isAllowedAvatarType(contentType string) bool {
@@ -271,7 +271,7 @@ func (l *listUsersRequest) Process(ctx *sgin.Context[*authContext]) (data any, e
 	}
 	users := make([]UserNoPassword, 0, len(result.Results))
 	for _, u := range result.Results {
-		users = append(users, UserNoPasswordFromUser(u, ctx.App.storage))
+		users = append(users, UserNoPasswordFromUser(u))
 	}
 	return model.PaginationResult[UserNoPassword]{
 		Offset:  result.Offset,
@@ -304,7 +304,7 @@ func (c *createUserRequest) Process(ctx *sgin.Context[*authContext]) (data any, 
 	if err != nil {
 		return nil, err
 	}
-	return UserNoPasswordFromUser(user, ctx.App.storage), nil
+	return UserNoPasswordFromUser(user), nil
 }
 
 // updateUserRequest allows admins to update another user's profile.
@@ -362,7 +362,7 @@ func (u *updateUserRequest) Process(ctx *sgin.Context[*authContext]) (data any, 
 	if err := ctx.App.authSrv.UpdateUser(user); err != nil {
 		return nil, err
 	}
-	return UserNoPasswordFromUser(user, ctx.App.storage), nil
+	return UserNoPasswordFromUser(user), nil
 }
 
 // deleteUserRequest handles deleting a user.

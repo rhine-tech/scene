@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/url"
 	"sort"
 	"strings"
 	"sync"
@@ -31,8 +30,6 @@ type s3Storage struct {
 	presignClient   *s3.PresignClient
 	bucket          string
 	name            string
-	urlPrefix       string
-	directPublicURL bool
 	presignedURLTTL time.Duration
 
 	uploads     map[string]*s3UploadSession
@@ -42,30 +39,27 @@ type s3Storage struct {
 const defaultS3PresignedURLTTL = 15 * time.Minute
 
 func NewS3Storage(
-	endpoint, accessKey, secretKey, bucket, name, urlPrefix string,
+	endpoint, accessKey, secretKey, bucket, name string,
 	useSSL, forcePathStyle bool,
 	region string,
 ) (storage.IStorageProvider, error) {
-	return NewS3StorageWithPublicURLMode(
+	return NewS3StorageWithPresignedURLTTL(
 		endpoint,
 		accessKey,
 		secretKey,
 		bucket,
 		name,
-		urlPrefix,
 		useSSL,
 		forcePathStyle,
 		region,
-		false,
 		defaultS3PresignedURLTTL,
 	)
 }
 
-func NewS3StorageWithPublicURLMode(
-	endpoint, accessKey, secretKey, bucket, name, urlPrefix string,
+func NewS3StorageWithPresignedURLTTL(
+	endpoint, accessKey, secretKey, bucket, name string,
 	useSSL, forcePathStyle bool,
 	region string,
-	directPublicURL bool,
 	presignedURLTTL time.Duration,
 ) (storage.IStorageProvider, error) {
 	if region == "" {
@@ -94,8 +88,6 @@ func NewS3StorageWithPublicURLMode(
 		presignClient:   s3.NewPresignClient(client),
 		bucket:          bucket,
 		name:            name,
-		urlPrefix:       strings.TrimRight(urlPrefix, "/"),
-		directPublicURL: directPublicURL,
 		presignedURLTTL: presignedURLTTL,
 		uploads:         make(map[string]*s3UploadSession),
 	}, nil
@@ -315,20 +307,17 @@ func (s *s3Storage) AbortMultipartStore(uploadId string) error {
 	return nil
 }
 
-func (s *s3Storage) GetPublicURL(storageKey storage.StorageKey) (string, error) {
-	if s.directPublicURL {
-		resp, err := s.presignClient.PresignGetObject(context.Background(), &s3.GetObjectInput{
-			Bucket: aws.String(s.bucket),
-			Key:    aws.String(storageKey.FileID()),
-		}, func(options *s3.PresignOptions) {
-			options.Expires = s.presignedURLTTL
-		})
-		if err != nil {
-			return "", storage.ErrStorageError.WithDetail(err)
-		}
-		return resp.URL, nil
+func (s *s3Storage) GetDirectURL(storageKey storage.StorageKey) (string, error) {
+	resp, err := s.presignClient.PresignGetObject(context.Background(), &s3.GetObjectInput{
+		Bucket: aws.String(s.bucket),
+		Key:    aws.String(storageKey.FileID()),
+	}, func(options *s3.PresignOptions) {
+		options.Expires = s.presignedURLTTL
+	})
+	if err != nil {
+		return "", storage.ErrGetDirectURLFailed.WithDetail(err)
 	}
-	return url.JoinPath(s.urlPrefix, storageKey.FileID())
+	return resp.URL, nil
 }
 
 func isS3NotFound(err error) bool {

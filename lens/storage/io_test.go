@@ -96,7 +96,7 @@ func (t *testStorageService) AbortMultiPartStore(uploadId string) error {
 	return nil
 }
 
-func (t *testStorageService) GetPublicURL(storageKey StorageKey) (string, error) {
+func (t *testStorageService) GetDirectURL(storageKey StorageKey) (string, error) {
 	return "", nil
 }
 

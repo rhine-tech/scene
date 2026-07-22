@@ -361,15 +361,18 @@ func (s *StorageService) ListMeta(provider string, offset, limit int64) (model.P
 	return reuslt, nil
 }
 
-func (s *StorageService) GetPublicURL(storageKey storage.StorageKey) (string, error) {
+func (s *StorageService) GetDirectURL(storageKey storage.StorageKey) (string, error) {
 	storager, err := s.providerFor(storageKey)
 	if err != nil {
 		return "", err
 	}
-	url, err := storager.GetPublicURL(storageKey)
+	url, err := storager.GetDirectURL(storageKey)
 	if err != nil {
-		s.log.ErrorW("failed to get public url", "storageKey", storageKey, "err", err)
-		return "", storage.ErrStorageError
+		s.log.ErrorW("failed to get direct URL", "storageKey", storageKey, "err", err)
+		if errors.Is(err, storage.ErrDirectURLUnsupported) {
+			return "", storage.ErrDirectURLUnsupported
+		}
+		return "", storage.ErrGetDirectURLFailed
 	}
 	return url, nil
 }
