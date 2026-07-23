@@ -1,9 +1,11 @@
 package sessiontracker
 
 import (
+	"context"
+	"sync"
+
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/lens/storage"
-	"sync"
 )
 
 type memoryUploadSessionTracker struct {
@@ -19,16 +21,22 @@ func (m *memoryUploadSessionTracker) ImplName() scene.ImplName {
 	return storage.Lens.ImplName("IUploadSessionTracker", "memory")
 }
 
-func (m *memoryUploadSessionTracker) Save(uploadId string, session storage.UploadSession) error {
+func (m *memoryUploadSessionTracker) Save(ctx context.Context, uploadId string, session storage.UploadSession) error {
 	m.Lock()
 	defer m.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	m.sessions[uploadId] = session
 	return nil
 }
 
-func (m *memoryUploadSessionTracker) Get(uploadId string) (storage.UploadSession, error) {
+func (m *memoryUploadSessionTracker) Get(ctx context.Context, uploadId string) (storage.UploadSession, error) {
 	m.RLock()
 	defer m.RUnlock()
+	if err := ctx.Err(); err != nil {
+		return storage.UploadSession{}, err
+	}
 	sess, ok := m.sessions[uploadId]
 	if !ok {
 		return storage.UploadSession{}, storage.ErrUploadSessionNotFound
@@ -36,9 +44,12 @@ func (m *memoryUploadSessionTracker) Get(uploadId string) (storage.UploadSession
 	return sess, nil
 }
 
-func (m *memoryUploadSessionTracker) Delete(uploadId string) error {
+func (m *memoryUploadSessionTracker) Delete(ctx context.Context, uploadId string) error {
 	m.Lock()
 	defer m.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	delete(m.sessions, uploadId)
 	return nil
 }

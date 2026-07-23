@@ -1,105 +1,129 @@
 package storage
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"io"
 )
 
-type IoInterface interface {
-	io.Reader
-	io.Seeker
-}
+var errContentReaderClosed = errors.New("storage content reader is closed")
 
-type ioImpl struct {
+type contentReader struct {
+	ctx        context.Context
 	srv        IStorageService
 	storageKey StorageKey
 	pos        int64
 	size       int64
-	buf        []byte
-	bufPos     int64
+	current    io.ReadCloser
+	closed     bool
 }
 
-const defaultReadAheadSize int64 = 1 << 20 // 1 MiB
-
-func NewIoInterface(srv IStorageService, storageKey StorageKey) (IoInterface, FileMeta, error) {
-	meta, err := srv.Meta(storageKey)
+// OpenContent opens storage content as a request-scoped seekable stream.
+// Sequential reads share one provider reader. Seeking closes that reader and
+// opens a new ranged reader lazily on the next Read call.
+func OpenContent(ctx context.Context, srv IStorageService, storageKey StorageKey) (io.ReadSeekCloser, FileMeta, error) {
+	meta, err := srv.Meta(ctx, storageKey)
 	if err != nil {
 		return nil, meta, err
 	}
-	return &ioImpl{
+	if meta.ContentLength < 0 {
+		return nil, meta, fmt.Errorf("invalid content length %d", meta.ContentLength)
+	}
+	return &contentReader{
+		ctx:        ctx,
 		srv:        srv,
 		storageKey: storageKey,
-		pos:        0,
 		size:       meta.ContentLength,
 	}, meta, nil
 }
 
-func (s *ioImpl) Read(p []byte) (int, error) {
-	if s.pos >= s.size {
+func (r *contentReader) Read(p []byte) (int, error) {
+	if r.closed {
+		return 0, errContentReaderClosed
+	}
+	if err := r.ctx.Err(); err != nil {
+		return 0, err
+	}
+	if len(p) == 0 {
+		return 0, nil
+	}
+	if r.pos >= r.size {
 		return 0, io.EOF
 	}
-	if !s.hasBufferedDataAt(s.pos) {
-		remaining := s.size - s.pos
-		toRead := int64(len(p))
-		if toRead < defaultReadAheadSize {
-			toRead = defaultReadAheadSize
-		}
-		if toRead > remaining {
-			toRead = remaining
-		}
-		reader, err := s.srv.Load(s.storageKey, s.pos, toRead)
+
+	remaining := r.size - r.pos
+	if int64(len(p)) > remaining {
+		p = p[:int(remaining)]
+	}
+	if r.current == nil {
+		reader, err := r.srv.Load(r.ctx, r.storageKey, r.pos, remaining)
 		if err != nil {
 			return 0, err
 		}
-		data, err := io.ReadAll(reader)
-		if closeErr := reader.Close(); closeErr != nil && err == nil {
-			err = closeErr
+		if reader == nil {
+			return 0, errors.New("storage service returned a nil content reader")
 		}
-		if err != nil {
-			return 0, err
-		}
-		if len(data) == 0 {
-			return 0, io.EOF
-		}
-		s.buf = data
-		s.bufPos = s.pos
+		r.current = reader
 	}
 
-	start := int(s.pos - s.bufPos)
-	n := copy(p, s.buf[start:])
-	s.pos += int64(n)
-	if s.pos >= s.size && n < len(p) {
-		return n, io.EOF
+	n, err := r.current.Read(p)
+	r.pos += int64(n)
+	if errors.Is(err, io.EOF) && r.pos < r.size {
+		return n, io.ErrUnexpectedEOF
 	}
-	return n, nil
+	return n, err
 }
 
-func (s *ioImpl) hasBufferedDataAt(pos int64) bool {
-	if len(s.buf) == 0 {
-		return false
+func (r *contentReader) Seek(offset int64, whence int) (int64, error) {
+	if r.closed {
+		return r.pos, errContentReaderClosed
 	}
-	return pos >= s.bufPos && pos < s.bufPos+int64(len(s.buf))
-}
 
-func (s *ioImpl) Seek(offset int64, whence int) (int64, error) {
 	var newPos int64
 	switch whence {
 	case io.SeekStart:
+		if offset < 0 || offset > r.size {
+			return r.pos, errors.New("invalid seek position")
+		}
 		newPos = offset
 	case io.SeekCurrent:
-		newPos = s.pos + offset
+		if offset < -r.pos || offset > r.size-r.pos {
+			return r.pos, errors.New("invalid seek position")
+		}
+		newPos = r.pos + offset
 	case io.SeekEnd:
-		newPos = s.size + offset
+		if offset < -r.size || offset > 0 {
+			return r.pos, errors.New("invalid seek position")
+		}
+		newPos = r.size + offset
 	default:
-		return 0, errors.New("invalid seek whence")
+		return r.pos, errors.New("invalid seek whence")
 	}
-	if newPos < 0 || newPos > s.size {
-		return 0, errors.New("invalid seek position")
+
+	if newPos == r.pos {
+		return r.pos, nil
 	}
-	s.pos = newPos
-	if !s.hasBufferedDataAt(newPos) {
-		s.buf = nil
-		s.bufPos = 0
+	if err := r.closeCurrent(); err != nil {
+		return r.pos, err
 	}
-	return s.pos, nil
+	r.pos = newPos
+	return r.pos, nil
+}
+
+func (r *contentReader) Close() error {
+	if r.closed {
+		return nil
+	}
+	r.closed = true
+	return r.closeCurrent()
+}
+
+func (r *contentReader) closeCurrent() error {
+	if r.current == nil {
+		return nil
+	}
+	reader := r.current
+	r.current = nil
+	return reader.Close()
 }

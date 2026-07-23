@@ -133,16 +133,17 @@ func ensureS3Bucket(t *testing.T, provider *s3Storage) {
 }
 
 func TestS3StorageIntegration_StoreLoadRangeMetaDelete(t *testing.T) {
+	ctx := context.Background()
 	env := requireS3Integration(t)
 	provider := env.provider
 	key := storage.NewStorageKey(provider.ProviderName(), env.prefix, "small.txt")
 	data := []byte("hello rustfs compatible s3 storage")
-	t.Cleanup(func() { _ = provider.Delete(key) })
+	t.Cleanup(func() { _ = provider.Delete(ctx, key) })
 
-	require.NoError(t, provider.HealthCheck())
-	require.NoError(t, provider.Store(key, bytes.NewReader(data)))
+	require.NoError(t, provider.HealthCheck(ctx))
+	require.NoError(t, provider.Store(ctx, key, bytes.NewReader(data)))
 
-	meta, err := provider.Meta(key)
+	meta, err := provider.Meta(ctx, key)
 	require.NoError(t, err)
 	require.Equal(t, key, meta.StorageKey)
 	require.Equal(t, provider.ProviderName(), meta.Provider)
@@ -150,43 +151,44 @@ func TestS3StorageIntegration_StoreLoadRangeMetaDelete(t *testing.T) {
 	require.Equal(t, int64(len(data)), meta.ContentLength)
 	require.True(t, meta.Finished)
 
-	reader, err := provider.LoadAll(key)
+	reader, err := provider.LoadAll(ctx, key)
 	require.NoError(t, err)
 	loaded, err := io.ReadAll(reader)
 	require.NoError(t, err)
 	require.NoError(t, reader.Close())
 	require.Equal(t, data, loaded)
 
-	rangeReader, err := provider.Load(key, 6, 6)
+	rangeReader, err := provider.Load(ctx, key, 6, 6)
 	require.NoError(t, err)
 	ranged, err := io.ReadAll(rangeReader)
 	require.NoError(t, err)
 	require.NoError(t, rangeReader.Close())
 	require.Equal(t, []byte("rustfs"), ranged)
 
-	_, err = provider.Load(key, -1, 1)
+	_, err = provider.Load(ctx, key, -1, 1)
 	require.ErrorIs(t, err, storage.ErrInvalidOffset)
-	_, err = provider.Load(key, 0, 0)
+	_, err = provider.Load(ctx, key, 0, 0)
 	require.ErrorIs(t, err, storage.ErrInvalidLength)
 
-	directURL, err := provider.GetDirectURL(key)
+	directURL, err := provider.GetDirectURL(ctx, key)
 	require.NoError(t, err)
 	require.Contains(t, directURL, key.FileID())
 
-	require.NoError(t, provider.Delete(key))
-	_, err = provider.LoadAll(key)
+	require.NoError(t, provider.Delete(ctx, key))
+	_, err = provider.LoadAll(ctx, key)
 	require.ErrorIs(t, err, storage.ErrFileNotFound)
 }
 
 func TestS3StorageIntegration_PresignedDirectURL(t *testing.T) {
+	ctx := context.Background()
 	env := requireS3IntegrationDirectURL(t)
 	provider := env.provider
 	key := storage.NewStorageKey(provider.ProviderName(), env.prefix, "presigned.txt")
 	data := []byte("presigned rustfs download")
-	t.Cleanup(func() { _ = provider.Delete(key) })
+	t.Cleanup(func() { _ = provider.Delete(ctx, key) })
 
-	require.NoError(t, provider.Store(key, bytes.NewReader(data)))
-	directURL, err := provider.GetDirectURL(key)
+	require.NoError(t, provider.Store(ctx, key, bytes.NewReader(data)))
+	directURL, err := provider.GetDirectURL(ctx, key)
 	require.NoError(t, err)
 	require.Contains(t, directURL, "X-Amz-Signature=")
 
@@ -200,18 +202,19 @@ func TestS3StorageIntegration_PresignedDirectURL(t *testing.T) {
 }
 
 func TestS3StorageIntegration_EmptyOverwriteNestedAndMissingObjects(t *testing.T) {
+	ctx := context.Background()
 	env := requireS3Integration(t)
 	provider := env.provider
 	key := storage.NewStorageKey(provider.ProviderName(), env.prefix, "nested", "dir", "object.bin")
 	missingKey := storage.NewStorageKey(provider.ProviderName(), env.prefix, "missing.bin")
-	t.Cleanup(func() { _ = provider.Delete(key) })
+	t.Cleanup(func() { _ = provider.Delete(ctx, key) })
 
-	require.NoError(t, provider.Store(key, bytes.NewReader(nil)))
-	meta, err := provider.Meta(key)
+	require.NoError(t, provider.Store(ctx, key, bytes.NewReader(nil)))
+	meta, err := provider.Meta(ctx, key)
 	require.NoError(t, err)
 	require.Equal(t, int64(0), meta.ContentLength)
 
-	reader, err := provider.LoadAll(key)
+	reader, err := provider.LoadAll(ctx, key)
 	require.NoError(t, err)
 	loaded, err := io.ReadAll(reader)
 	require.NoError(t, err)
@@ -220,35 +223,36 @@ func TestS3StorageIntegration_EmptyOverwriteNestedAndMissingObjects(t *testing.T
 
 	first := []byte("first version")
 	second := []byte("second version replaces the first")
-	require.NoError(t, provider.Store(key, bytes.NewReader(first)))
-	require.NoError(t, provider.Store(key, bytes.NewReader(second)))
+	require.NoError(t, provider.Store(ctx, key, bytes.NewReader(first)))
+	require.NoError(t, provider.Store(ctx, key, bytes.NewReader(second)))
 
-	reader, err = provider.LoadAll(key)
+	reader, err = provider.LoadAll(ctx, key)
 	require.NoError(t, err)
 	loaded, err = io.ReadAll(reader)
 	require.NoError(t, err)
 	require.NoError(t, reader.Close())
 	require.Equal(t, second, loaded)
 
-	_, err = provider.Meta(missingKey)
+	_, err = provider.Meta(ctx, missingKey)
 	require.ErrorIs(t, err, storage.ErrFileNotFound)
-	_, err = provider.LoadAll(missingKey)
+	_, err = provider.LoadAll(ctx, missingKey)
 	require.ErrorIs(t, err, storage.ErrFileNotFound)
-	_, err = provider.Load(missingKey, 0, 1)
+	_, err = provider.Load(ctx, missingKey, 0, 1)
 	require.ErrorIs(t, err, storage.ErrFileNotFound)
 
-	_, err = provider.Load(key, int64(len(second)+1), 1)
+	_, err = provider.Load(ctx, key, int64(len(second)+1), 1)
 	require.ErrorIs(t, err, storage.ErrInvalidOffset)
-	require.NoError(t, provider.Delete(missingKey))
+	require.NoError(t, provider.Delete(ctx, missingKey))
 }
 
 func TestS3StorageIntegration_MultipartLargeObject(t *testing.T) {
+	ctx := context.Background()
 	env := requireS3Integration(t)
 	provider := env.provider
 	key := storage.NewStorageKey(provider.ProviderName(), env.prefix, "large.bin")
-	t.Cleanup(func() { _ = provider.Delete(key) })
+	t.Cleanup(func() { _ = provider.Delete(ctx, key) })
 
-	uploadID, err := provider.InitMultipartStore(key)
+	uploadID, err := provider.InitMultipartStore(ctx, key)
 	require.NoError(t, err)
 	require.NotEmpty(t, uploadID)
 
@@ -257,21 +261,21 @@ func TestS3StorageIntegration_MultipartLargeObject(t *testing.T) {
 	part3 := deterministicBytes(1024*1024+321, 37)
 
 	// Store parts out of order to verify completion sorts part numbers before submitting.
-	require.NoError(t, provider.StoreMultipart(uploadID, 2, bytes.NewReader(part2)))
-	require.NoError(t, provider.StoreMultipart(uploadID, 1, bytes.NewReader(part1)))
-	require.NoError(t, provider.StoreMultipart(uploadID, 3, bytes.NewReader(part3)))
-	require.NoError(t, provider.CompleteMultipart(uploadID))
+	require.NoError(t, provider.StoreMultipart(ctx, uploadID, 2, bytes.NewReader(part2)))
+	require.NoError(t, provider.StoreMultipart(ctx, uploadID, 1, bytes.NewReader(part1)))
+	require.NoError(t, provider.StoreMultipart(ctx, uploadID, 3, bytes.NewReader(part3)))
+	require.NoError(t, provider.CompleteMultipart(ctx, uploadID))
 
 	provider.uploadsLock.RLock()
 	_, ok := provider.uploads[uploadID]
 	provider.uploadsLock.RUnlock()
 	require.False(t, ok)
 
-	meta, err := provider.Meta(key)
+	meta, err := provider.Meta(ctx, key)
 	require.NoError(t, err)
 	require.Equal(t, int64(len(part1)+len(part2)+len(part3)), meta.ContentLength)
 
-	reader, err := provider.LoadAll(key)
+	reader, err := provider.LoadAll(ctx, key)
 	require.NoError(t, err)
 	loaded, err := io.ReadAll(reader)
 	require.NoError(t, err)
@@ -282,7 +286,7 @@ func TestS3StorageIntegration_MultipartLargeObject(t *testing.T) {
 	expected = append(expected, part3...)
 	require.Equal(t, expected, loaded)
 
-	rangeReader, err := provider.Load(key, int64(len(part1)-16), 64)
+	rangeReader, err := provider.Load(ctx, key, int64(len(part1)-16), 64)
 	require.NoError(t, err)
 	ranged, err := io.ReadAll(rangeReader)
 	require.NoError(t, err)
@@ -292,54 +296,56 @@ func TestS3StorageIntegration_MultipartLargeObject(t *testing.T) {
 }
 
 func TestS3StorageIntegration_MultipartAbortAndErrors(t *testing.T) {
+	ctx := context.Background()
 	env := requireS3Integration(t)
 	provider := env.provider
 	key := storage.NewStorageKey(provider.ProviderName(), env.prefix, "aborted.bin")
-	t.Cleanup(func() { _ = provider.Delete(key) })
+	t.Cleanup(func() { _ = provider.Delete(ctx, key) })
 
-	uploadID, err := provider.InitMultipartStore(key)
+	uploadID, err := provider.InitMultipartStore(ctx, key)
 	require.NoError(t, err)
 	require.NotEmpty(t, uploadID)
 
-	require.ErrorIs(t, provider.StoreMultipart(uploadID, 0, bytes.NewReader([]byte("bad"))), storage.ErrStorePartFailed)
-	require.NoError(t, provider.StoreMultipart(uploadID, 1, bytes.NewReader(deterministicBytes(5*1024*1024, 41))))
-	require.NoError(t, provider.AbortMultipart(uploadID))
-	require.NoError(t, provider.AbortMultipart(uploadID))
+	require.ErrorIs(t, provider.StoreMultipart(ctx, uploadID, 0, bytes.NewReader([]byte("bad"))), storage.ErrStorePartFailed)
+	require.NoError(t, provider.StoreMultipart(ctx, uploadID, 1, bytes.NewReader(deterministicBytes(5*1024*1024, 41))))
+	require.NoError(t, provider.AbortMultipart(ctx, uploadID))
+	require.NoError(t, provider.AbortMultipart(ctx, uploadID))
 
-	require.ErrorIs(t, provider.StoreMultipart("missing-upload", 1, bytes.NewReader([]byte("x"))), storage.ErrUploadSessionNotFound)
-	err = provider.CompleteMultipart(uploadID)
+	require.ErrorIs(t, provider.StoreMultipart(ctx, "missing-upload", 1, bytes.NewReader([]byte("x"))), storage.ErrUploadSessionNotFound)
+	err = provider.CompleteMultipart(ctx, uploadID)
 	require.ErrorIs(t, err, storage.ErrUploadSessionNotFound)
-	require.ErrorIs(t, provider.CompleteMultipart("missing-upload"), storage.ErrUploadSessionNotFound)
+	require.ErrorIs(t, provider.CompleteMultipart(ctx, "missing-upload"), storage.ErrUploadSessionNotFound)
 
-	_, err = provider.LoadAll(key)
+	_, err = provider.LoadAll(ctx, key)
 	require.True(t, errors.Is(err, storage.ErrFileNotFound) || errors.Is(err, storage.ErrStorageFailed))
 }
 
 func TestS3StorageIntegration_MultipartEmptyAndDuplicatePart(t *testing.T) {
+	ctx := context.Background()
 	env := requireS3Integration(t)
 	provider := env.provider
 
 	emptyKey := storage.NewStorageKey(provider.ProviderName(), env.prefix, "multipart-empty.bin")
-	emptyUploadID, err := provider.InitMultipartStore(emptyKey)
+	emptyUploadID, err := provider.InitMultipartStore(ctx, emptyKey)
 	require.NoError(t, err)
-	require.ErrorIs(t, provider.CompleteMultipart(emptyUploadID), storage.ErrStorePartFailed)
-	require.NoError(t, provider.AbortMultipart(emptyUploadID))
+	require.ErrorIs(t, provider.CompleteMultipart(ctx, emptyUploadID), storage.ErrStorePartFailed)
+	require.NoError(t, provider.AbortMultipart(ctx, emptyUploadID))
 
 	key := storage.NewStorageKey(provider.ProviderName(), env.prefix, "multipart-duplicate.bin")
-	t.Cleanup(func() { _ = provider.Delete(key) })
-	uploadID, err := provider.InitMultipartStore(key)
+	t.Cleanup(func() { _ = provider.Delete(ctx, key) })
+	uploadID, err := provider.InitMultipartStore(ctx, key)
 	require.NoError(t, err)
 	require.NotEmpty(t, uploadID)
 
 	replacedPart := deterministicBytes(5*1024*1024, 51)
 	finalPart1 := deterministicBytes(5*1024*1024, 67)
 	finalPart2 := deterministicBytes(1024*1024, 83)
-	require.NoError(t, provider.StoreMultipart(uploadID, 1, bytes.NewReader(replacedPart)))
-	require.NoError(t, provider.StoreMultipart(uploadID, 1, bytes.NewReader(finalPart1)))
-	require.NoError(t, provider.StoreMultipart(uploadID, 2, bytes.NewReader(finalPart2)))
-	require.NoError(t, provider.CompleteMultipart(uploadID))
+	require.NoError(t, provider.StoreMultipart(ctx, uploadID, 1, bytes.NewReader(replacedPart)))
+	require.NoError(t, provider.StoreMultipart(ctx, uploadID, 1, bytes.NewReader(finalPart1)))
+	require.NoError(t, provider.StoreMultipart(ctx, uploadID, 2, bytes.NewReader(finalPart2)))
+	require.NoError(t, provider.CompleteMultipart(ctx, uploadID))
 
-	reader, err := provider.LoadAll(key)
+	reader, err := provider.LoadAll(ctx, key)
 	require.NoError(t, err)
 	loaded, err := io.ReadAll(reader)
 	require.NoError(t, err)
@@ -351,6 +357,7 @@ func TestS3StorageIntegration_MultipartEmptyAndDuplicatePart(t *testing.T) {
 }
 
 func TestS3StorageIntegration_ConcurrentSmallObjects(t *testing.T) {
+	ctx := context.Background()
 	env := requireS3Integration(t)
 	provider := env.provider
 
@@ -364,13 +371,13 @@ func TestS3StorageIntegration_ConcurrentSmallObjects(t *testing.T) {
 			defer wg.Done()
 			key := storage.NewStorageKey(provider.ProviderName(), env.prefix, fmt.Sprintf("concurrent-%02d.bin", i))
 			data := deterministicBytes(64*1024+i*17, byte(i+1))
-			defer func() { _ = provider.Delete(key) }()
+			defer func() { _ = provider.Delete(ctx, key) }()
 
-			if err := provider.Store(key, bytes.NewReader(data)); err != nil {
+			if err := provider.Store(ctx, key, bytes.NewReader(data)); err != nil {
 				errCh <- err
 				return
 			}
-			reader, err := provider.LoadAll(key)
+			reader, err := provider.LoadAll(ctx, key)
 			if err != nil {
 				errCh <- err
 				return

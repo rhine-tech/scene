@@ -1,14 +1,13 @@
 package storage
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -36,11 +35,15 @@ type localStorage struct {
 }
 
 type sectionReadCloser struct {
+	ctx    context.Context
 	reader io.Reader
 	closer io.Closer
 }
 
 func (s *sectionReadCloser) Read(p []byte) (int, error) {
+	if err := s.ctx.Err(); err != nil {
+		return 0, err
+	}
 	return s.reader.Read(p)
 }
 
@@ -52,7 +55,10 @@ func (l *localStorage) ProviderName() string {
 	return "local." + l.name
 }
 
-func (l *localStorage) HealthCheck() error {
+func (l *localStorage) HealthCheck(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	stat, err := os.Stat(l.localPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -63,7 +69,7 @@ func (l *localStorage) HealthCheck() error {
 	if !stat.IsDir() {
 		return storage.ErrStorageError.WithDetailStr("path is not a directory")
 	}
-	// Check read permission
+	// Check read permission.
 	file, err := os.Open(l.localPath)
 	if err == nil {
 		_ = file.Close()
@@ -73,25 +79,21 @@ func (l *localStorage) HealthCheck() error {
 		return storage.ErrStorageError.WithDetail(err)
 	}
 
-	// Check write permission using a unique temp filename
-	tempFilename := filepath.Join(l.localPath, fmt.Sprintf(".healthcheck_%s.tmp", strconv.FormatInt(time.Now().UnixMilli()/1000, 10)))
-
-	for i := 0; i < 10; i++ {
-		// First check if the file exists (extremely unlikely with our random name)
-		if _, err := os.Stat(tempFilename); err == nil {
-			// If by some miracle the file exists, generate a new name
-			tempFilename = filepath.Join(l.localPath, fmt.Sprintf(".healthcheck_%s.tmp", strconv.FormatInt(time.Now().UnixMilli()/1000, 10)))
-			fmt.Println(tempFilename)
-		} else {
-			break
-		}
-	}
-
-	err = os.WriteFile(tempFilename, []byte("test"), 0644)
+	// Check write and delete permission using a unique temporary file.
+	tempFile, err := os.CreateTemp(l.localPath, ".healthcheck-*.tmp")
 	if err != nil {
 		return storage.ErrStorageError.WithDetailStr("no write permission")
 	}
-	_ = file.Close()
+	tempFilename := tempFile.Name()
+	if _, err := tempFile.Write([]byte("test")); err != nil {
+		_ = tempFile.Close()
+		_ = os.Remove(tempFilename)
+		return storage.ErrStorageError.WithDetailStr("no write permission")
+	}
+	if err := tempFile.Close(); err != nil {
+		_ = os.Remove(tempFilename)
+		return storage.ErrStorageError.WithDetailStr("no write permission")
+	}
 	if err := os.Remove(tempFilename); err != nil {
 		return storage.ErrStorageError.WithDetailStr("no delete permission")
 	}
@@ -100,7 +102,9 @@ func (l *localStorage) HealthCheck() error {
 }
 
 func (l *localStorage) Setup() error {
-	l.log.Infof("local storage init with path: %s error: %v", l.localPath, l.HealthCheck())
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	l.log.Infof("local storage init with path: %s error: %v", l.localPath, l.HealthCheck(ctx))
 	return nil
 }
 
@@ -116,7 +120,10 @@ func (l *localStorage) ImplName() scene.ImplName {
 	return storage.Lens.ImplName("IStorageProvider", "local")
 }
 
-func (l *localStorage) Meta(storageKey storage.StorageKey) (storage.FileMeta, error) {
+func (l *localStorage) Meta(ctx context.Context, storageKey storage.StorageKey) (storage.FileMeta, error) {
+	if err := ctx.Err(); err != nil {
+		return storage.FileMeta{}, err
+	}
 	pathParts := l.cleanupPath(storageKey)
 	if len(pathParts) == 0 {
 		return storage.FileMeta{}, storage.ErrInvalidStorageKey
@@ -130,7 +137,6 @@ func (l *localStorage) Meta(storageKey storage.StorageKey) (storage.FileMeta, er
 		}
 		return storage.FileMeta{}, storage.ErrStorageError.WithDetail(err)
 	}
-
 	// Try to detect MIME type using first N bytes
 	f, err := os.Open(path)
 	if err != nil {
@@ -155,7 +161,10 @@ func (l *localStorage) Meta(storageKey storage.StorageKey) (storage.FileMeta, er
 	return meta, nil
 }
 
-func (l *localStorage) Store(storageKey storage.StorageKey, data io.Reader) (err error) {
+func (l *localStorage) Store(ctx context.Context, storageKey storage.StorageKey, data io.Reader) (err error) {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	prefixs := l.cleanupPath(storageKey)
 	if len(prefixs) == 0 {
 		return storage.ErrStorageFailed.WithDetailStr("invalid_prefix")
@@ -173,10 +182,13 @@ func (l *localStorage) Store(storageKey storage.StorageKey, data io.Reader) (err
 		}
 		return storage.ErrStorageFailed.WithDetail(err)
 	}
-	_, err = io.Copy(file, data)
+	_, err = copyWithContext(ctx, file, data)
 	if err != nil {
 		_ = file.Close()
 		_ = os.Remove(path)
+		if err := operationContextError(err); err != nil {
+			return err
+		}
 		return storage.ErrStorageFailed.WithDetail(err)
 	}
 	if err := file.Close(); err != nil {
@@ -186,7 +198,10 @@ func (l *localStorage) Store(storageKey storage.StorageKey, data io.Reader) (err
 	return nil
 }
 
-func (l *localStorage) Load(storageKey storage.StorageKey, offset, length int64) (reader io.ReadCloser, err error) {
+func (l *localStorage) Load(ctx context.Context, storageKey storage.StorageKey, offset, length int64) (reader io.ReadCloser, err error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	prefixs := l.cleanupPath(storageKey)
 	if len(prefixs) == 0 {
 		return nil, storage.ErrStorageFailed
@@ -226,25 +241,42 @@ func (l *localStorage) Load(storageKey storage.StorageKey, offset, length int64)
 
 	section := io.NewSectionReader(file, offset, length)
 	return &sectionReadCloser{
+		ctx:    ctx,
 		reader: section,
 		closer: file,
 	}, nil
 }
 
-func (l *localStorage) LoadAll(storageKey storage.StorageKey) (reader io.ReadCloser, err error) {
+func (l *localStorage) LoadAll(ctx context.Context, storageKey storage.StorageKey) (reader io.ReadCloser, err error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	prefixs := l.cleanupPath(storageKey)
 	if len(prefixs) == 0 {
 		return nil, storage.ErrInvalidStorageKey
 	}
 	path := filepath.Join(append([]string{l.localPath}, prefixs...)...)
-	return os.Open(path)
+	file, err := os.Open(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, storage.ErrFileNotFound
+		}
+		return nil, storage.ErrStorageError.WithDetail(err)
+	}
+	return &sectionReadCloser{ctx: ctx, reader: file, closer: file}, nil
 }
 
-func (l *localStorage) GetDirectURL(storage.StorageKey) (string, error) {
+func (l *localStorage) GetDirectURL(ctx context.Context, _ storage.StorageKey) (string, error) {
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
 	return "", storage.ErrDirectURLUnsupported
 }
 
-func (l *localStorage) Delete(storageKey storage.StorageKey) error {
+func (l *localStorage) Delete(ctx context.Context, storageKey storage.StorageKey) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	prefixs := l.cleanupPath(storageKey)
 	if len(prefixs) == 0 {
 		return storage.ErrStorageFailed
@@ -283,7 +315,7 @@ func validFilename(name string) bool {
 	return true
 }
 
-func (l *localStorage) InitMultipartStore(storageKey storage.StorageKey) (string, error) {
+func (l *localStorage) InitMultipartStore(ctx context.Context, storageKey storage.StorageKey) (string, error) {
 	prefixs := l.cleanupPath(storageKey)
 	if len(prefixs) == 0 {
 		return "", storage.ErrInvalidStorageKey
@@ -291,6 +323,9 @@ func (l *localStorage) InitMultipartStore(storageKey storage.StorageKey) (string
 	uploadId := fmt.Sprintf("upload-%d", time.Now().UnixNano())
 	l.uploadsLock.Lock()
 	defer l.uploadsLock.Unlock()
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
 	l.uploads[uploadId] = &uploadSession{
 		storageKey: storageKey,
 		uploadId:   uploadId,
@@ -300,41 +335,68 @@ func (l *localStorage) InitMultipartStore(storageKey storage.StorageKey) (string
 	return uploadId, nil
 }
 
-func (l *localStorage) StoreMultipart(uploadId string, partNumber int, data io.Reader) error {
+func (l *localStorage) StoreMultipart(ctx context.Context, uploadId string, partNumber int, data io.Reader) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	l.uploadsLock.RLock()
 	sess, ok := l.uploads[uploadId]
 	l.uploadsLock.RUnlock()
 	if !ok {
-		return errors.New("upload session not found")
+		return storage.ErrUploadSessionNotFound
 	}
 
-	tempFile := filepath.Join(l.localPath, fmt.Sprintf(".%s.part-%d", uploadId, partNumber))
-	f, err := os.Create(tempFile)
+	partPath := filepath.Join(l.localPath, fmt.Sprintf(".%s.part-%d", uploadId, partNumber))
+	f, err := os.CreateTemp(l.localPath, fmt.Sprintf(".%s.part-%d-*.tmp", uploadId, partNumber))
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	_, err = io.Copy(f, data)
+	tempPath := f.Name()
+	committed := false
+	defer func() {
+		_ = f.Close()
+		if !committed {
+			_ = os.Remove(tempPath)
+		}
+	}()
+	_, err = copyWithContext(ctx, f, data)
 	if err != nil {
+		if err := operationContextError(err); err != nil {
+			return err
+		}
+		return storage.ErrStorageFailed.WithDetail(err)
+	}
+	if err := f.Close(); err != nil {
 		return err
 	}
 
 	sess.partsMutex.Lock()
-	sess.parts[partNumber] = tempFile
-	sess.partsMutex.Unlock()
+	defer sess.partsMutex.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if err := os.Rename(tempPath, partPath); err != nil {
+		return err
+	}
+	committed = true
+	sess.parts[partNumber] = partPath
 	return nil
 }
 
-func (l *localStorage) CompleteMultipart(uploadId string) error {
+func (l *localStorage) CompleteMultipart(ctx context.Context, uploadId string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	l.uploadsLock.RLock()
 	sess, ok := l.uploads[uploadId]
 	l.uploadsLock.RUnlock()
 	if !ok {
-		return errors.New("upload session not found")
+		return storage.ErrUploadSessionNotFound
 	}
 
 	// Collect parts in order
 	sess.partsMutex.Lock()
+	defer sess.partsMutex.Unlock()
 	partNumbers := make([]int, 0, len(sess.parts))
 	for num := range sess.parts {
 		partNumbers = append(partNumbers, num)
@@ -349,35 +411,53 @@ func (l *localStorage) CompleteMultipart(uploadId string) error {
 
 	dir := filepath.Dir(targetPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
-		sess.partsMutex.Unlock()
 		return err
 	}
 
-	f, err := os.Create(targetPath)
+	f, err := os.CreateTemp(dir, ".multipart-*.tmp")
 	if err != nil {
-		sess.partsMutex.Unlock()
 		return err
 	}
-	defer f.Close()
+	tempPath := f.Name()
+	committed := false
+	defer func() {
+		_ = f.Close()
+		if !committed {
+			_ = os.Remove(tempPath)
+		}
+	}()
+	if err := f.Chmod(0644); err != nil {
+		return err
+	}
 
 	for _, partNum := range partNumbers {
 		path := sess.parts[partNum]
 		pf, err := os.Open(path)
 		if err != nil {
-			f.Close()
-			sess.partsMutex.Unlock()
 			return err
 		}
-		_, err = io.Copy(f, pf)
-		pf.Close()
+		_, err = copyWithContext(ctx, f, pf)
+		_ = pf.Close()
 		if err != nil {
-			f.Close()
-			sess.partsMutex.Unlock()
+			if err := operationContextError(err); err != nil {
+				return err
+			}
 			return err
 		}
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if err := os.Rename(tempPath, targetPath); err != nil {
+		return err
+	}
+	committed = true
+	for _, path := range sess.parts {
 		_ = os.Remove(path)
 	}
-	sess.partsMutex.Unlock()
 
 	l.uploadsLock.Lock()
 	delete(l.uploads, uploadId)
@@ -386,7 +466,10 @@ func (l *localStorage) CompleteMultipart(uploadId string) error {
 	return nil
 }
 
-func (l *localStorage) AbortMultipart(uploadId string) error {
+func (l *localStorage) AbortMultipart(ctx context.Context, uploadId string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	l.uploadsLock.Lock()
 	sess, ok := l.uploads[uploadId]
 	if !ok {
@@ -402,4 +485,32 @@ func (l *localStorage) AbortMultipart(uploadId string) error {
 	}
 	sess.partsMutex.Unlock()
 	return nil
+}
+
+type contextReader struct {
+	ctx    context.Context
+	reader io.Reader
+}
+
+func (r *contextReader) Read(p []byte) (int, error) {
+	if err := r.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return r.reader.Read(p)
+}
+
+type contextWriter struct {
+	ctx    context.Context
+	writer io.Writer
+}
+
+func (w *contextWriter) Write(p []byte) (int, error) {
+	if err := w.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return w.writer.Write(p)
+}
+
+func copyWithContext(ctx context.Context, dst io.Writer, src io.Reader) (int64, error) {
+	return io.Copy(&contextWriter{ctx: ctx, writer: dst}, &contextReader{ctx: ctx, reader: src})
 }

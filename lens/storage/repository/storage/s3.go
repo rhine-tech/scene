@@ -101,22 +101,28 @@ func (s *s3Storage) ImplName() scene.ImplName {
 	return storage.Lens.ImplName("IStorageProvider", "s3")
 }
 
-func (s *s3Storage) HealthCheck() error {
-	_, err := s.client.HeadBucket(context.Background(), &s3.HeadBucketInput{
+func (s *s3Storage) HealthCheck(ctx context.Context) error {
+	_, err := s.client.HeadBucket(ctx, &s3.HeadBucketInput{
 		Bucket: aws.String(s.bucket),
 	})
 	if err != nil {
+		if err := operationContextError(err); err != nil {
+			return err
+		}
 		return storage.ErrStorageError.WithDetail(err)
 	}
 	return nil
 }
 
-func (s *s3Storage) Meta(storageKey storage.StorageKey) (storage.FileMeta, error) {
-	out, err := s.client.HeadObject(context.Background(), &s3.HeadObjectInput{
+func (s *s3Storage) Meta(ctx context.Context, storageKey storage.StorageKey) (storage.FileMeta, error) {
+	out, err := s.client.HeadObject(ctx, &s3.HeadObjectInput{
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(storageKey.FileID()),
 	})
 	if err != nil {
+		if err := operationContextError(err); err != nil {
+			return storage.FileMeta{}, err
+		}
 		if isS3NotFound(err) {
 			return storage.FileMeta{}, storage.ErrFileNotFound
 		}
@@ -136,31 +142,37 @@ func (s *s3Storage) Meta(storageKey storage.StorageKey) (storage.FileMeta, error
 	}, nil
 }
 
-func (s *s3Storage) Store(storageKey storage.StorageKey, data io.Reader) error {
-	_, err := s.client.PutObject(context.Background(), &s3.PutObjectInput{
+func (s *s3Storage) Store(ctx context.Context, storageKey storage.StorageKey, data io.Reader) error {
+	_, err := s.client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(storageKey.FileID()),
 		Body:   data,
 	})
 	if err != nil {
+		if err := operationContextError(err); err != nil {
+			return err
+		}
 		return storage.ErrStorageFailed.WithDetail(err)
 	}
 	return nil
 }
 
-func (s *s3Storage) Load(storageKey storage.StorageKey, offset, length int64) (io.ReadCloser, error) {
+func (s *s3Storage) Load(ctx context.Context, storageKey storage.StorageKey, offset, length int64) (io.ReadCloser, error) {
 	if offset < 0 {
 		return nil, storage.ErrInvalidOffset
 	}
 	if length <= 0 {
 		return nil, storage.ErrInvalidLength
 	}
-	resp, err := s.client.GetObject(context.Background(), &s3.GetObjectInput{
+	resp, err := s.client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(storageKey.FileID()),
 		Range:  aws.String(fmt.Sprintf("bytes=%d-%d", offset, offset+length-1)),
 	})
 	if err != nil {
+		if err := operationContextError(err); err != nil {
+			return nil, err
+		}
 		if isS3NotFound(err) {
 			return nil, storage.ErrFileNotFound
 		}
@@ -172,12 +184,15 @@ func (s *s3Storage) Load(storageKey storage.StorageKey, offset, length int64) (i
 	return resp.Body, nil
 }
 
-func (s *s3Storage) LoadAll(storageKey storage.StorageKey) (io.ReadCloser, error) {
-	resp, err := s.client.GetObject(context.Background(), &s3.GetObjectInput{
+func (s *s3Storage) LoadAll(ctx context.Context, storageKey storage.StorageKey) (io.ReadCloser, error) {
+	resp, err := s.client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(storageKey.FileID()),
 	})
 	if err != nil {
+		if err := operationContextError(err); err != nil {
+			return nil, err
+		}
 		if isS3NotFound(err) {
 			return nil, storage.ErrFileNotFound
 		}
@@ -186,12 +201,15 @@ func (s *s3Storage) LoadAll(storageKey storage.StorageKey) (io.ReadCloser, error
 	return resp.Body, nil
 }
 
-func (s *s3Storage) Delete(storageKey storage.StorageKey) error {
-	_, err := s.client.DeleteObject(context.Background(), &s3.DeleteObjectInput{
+func (s *s3Storage) Delete(ctx context.Context, storageKey storage.StorageKey) error {
+	_, err := s.client.DeleteObject(ctx, &s3.DeleteObjectInput{
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(storageKey.FileID()),
 	})
 	if err != nil {
+		if err := operationContextError(err); err != nil {
+			return err
+		}
 		if isS3NotFound(err) {
 			return storage.ErrFileNotFound
 		}
@@ -200,12 +218,15 @@ func (s *s3Storage) Delete(storageKey storage.StorageKey) error {
 	return nil
 }
 
-func (s *s3Storage) InitMultipartStore(storageKey storage.StorageKey) (string, error) {
-	resp, err := s.client.CreateMultipartUpload(context.Background(), &s3.CreateMultipartUploadInput{
+func (s *s3Storage) InitMultipartStore(ctx context.Context, storageKey storage.StorageKey) (string, error) {
+	resp, err := s.client.CreateMultipartUpload(ctx, &s3.CreateMultipartUploadInput{
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(storageKey.FileID()),
 	})
 	if err != nil {
+		if err := operationContextError(err); err != nil {
+			return "", err
+		}
 		return "", storage.ErrInitPartUploadFailed.WithDetail(err)
 	}
 	uploadId := aws.ToString(resp.UploadId)
@@ -218,7 +239,7 @@ func (s *s3Storage) InitMultipartStore(storageKey storage.StorageKey) (string, e
 	return uploadId, nil
 }
 
-func (s *s3Storage) StoreMultipart(uploadId string, partNumber int, data io.Reader) error {
+func (s *s3Storage) StoreMultipart(ctx context.Context, uploadId string, partNumber int, data io.Reader) error {
 	if partNumber <= 0 {
 		return storage.ErrStorePartFailed.WithDetailStr("invalid part number")
 	}
@@ -229,7 +250,7 @@ func (s *s3Storage) StoreMultipart(uploadId string, partNumber int, data io.Read
 		return storage.ErrUploadSessionNotFound
 	}
 	pn := int32(partNumber)
-	resp, err := s.client.UploadPart(context.Background(), &s3.UploadPartInput{
+	resp, err := s.client.UploadPart(ctx, &s3.UploadPartInput{
 		Bucket:     aws.String(s.bucket),
 		Key:        aws.String(session.objectKey),
 		UploadId:   aws.String(uploadId),
@@ -237,6 +258,9 @@ func (s *s3Storage) StoreMultipart(uploadId string, partNumber int, data io.Read
 		Body:       data,
 	})
 	if err != nil {
+		if err := operationContextError(err); err != nil {
+			return err
+		}
 		return storage.ErrStorePartFailed.WithDetail(err)
 	}
 	session.partsLock.Lock()
@@ -248,7 +272,7 @@ func (s *s3Storage) StoreMultipart(uploadId string, partNumber int, data io.Read
 	return nil
 }
 
-func (s *s3Storage) CompleteMultipart(uploadId string) error {
+func (s *s3Storage) CompleteMultipart(ctx context.Context, uploadId string) error {
 	s.uploadsLock.RLock()
 	session, ok := s.uploads[uploadId]
 	s.uploadsLock.RUnlock()
@@ -269,7 +293,7 @@ func (s *s3Storage) CompleteMultipart(uploadId string) error {
 	if len(parts) == 0 {
 		return storage.ErrStorePartFailed.WithDetailStr("no uploaded parts")
 	}
-	_, err := s.client.CompleteMultipartUpload(context.Background(), &s3.CompleteMultipartUploadInput{
+	_, err := s.client.CompleteMultipartUpload(ctx, &s3.CompleteMultipartUploadInput{
 		Bucket:   aws.String(s.bucket),
 		Key:      aws.String(session.objectKey),
 		UploadId: aws.String(uploadId),
@@ -278,6 +302,9 @@ func (s *s3Storage) CompleteMultipart(uploadId string) error {
 		},
 	})
 	if err != nil {
+		if err := operationContextError(err); err != nil {
+			return err
+		}
 		return storage.ErrStorePartFailed.WithDetail(err)
 	}
 	s.uploadsLock.Lock()
@@ -286,19 +313,22 @@ func (s *s3Storage) CompleteMultipart(uploadId string) error {
 	return nil
 }
 
-func (s *s3Storage) AbortMultipart(uploadId string) error {
+func (s *s3Storage) AbortMultipart(ctx context.Context, uploadId string) error {
 	s.uploadsLock.RLock()
 	session, ok := s.uploads[uploadId]
 	s.uploadsLock.RUnlock()
 	if !ok {
 		return nil
 	}
-	_, err := s.client.AbortMultipartUpload(context.Background(), &s3.AbortMultipartUploadInput{
+	_, err := s.client.AbortMultipartUpload(ctx, &s3.AbortMultipartUploadInput{
 		Bucket:   aws.String(s.bucket),
 		Key:      aws.String(session.objectKey),
 		UploadId: aws.String(uploadId),
 	})
 	if err != nil && !isS3NotFound(err) {
+		if err := operationContextError(err); err != nil {
+			return err
+		}
 		return storage.ErrFailToAbortMultipartStore.WithDetail(err)
 	}
 	s.uploadsLock.Lock()
@@ -307,17 +337,27 @@ func (s *s3Storage) AbortMultipart(uploadId string) error {
 	return nil
 }
 
-func (s *s3Storage) GetDirectURL(storageKey storage.StorageKey) (string, error) {
-	resp, err := s.presignClient.PresignGetObject(context.Background(), &s3.GetObjectInput{
+func (s *s3Storage) GetDirectURL(ctx context.Context, storageKey storage.StorageKey) (string, error) {
+	resp, err := s.presignClient.PresignGetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(storageKey.FileID()),
 	}, func(options *s3.PresignOptions) {
 		options.Expires = s.presignedURLTTL
 	})
 	if err != nil {
+		if err := operationContextError(err); err != nil {
+			return "", err
+		}
 		return "", storage.ErrGetDirectURLFailed.WithDetail(err)
 	}
 	return resp.URL, nil
+}
+
+func operationContextError(err error) error {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return err
+	}
+	return nil
 }
 
 func isS3NotFound(err error) bool {

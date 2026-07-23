@@ -1,6 +1,7 @@
 package delivery
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -14,10 +15,11 @@ import (
 )
 
 const (
-	dataRoutePath = "/data/:provider/*fileid"
-	urlRoutePath  = "/url/:provider/*fileid"
-	urlModeProxy  = "proxy"
-	urlModeDirect = "direct"
+	dataRoutePath        = "/data/:provider/*fileid"
+	urlRoutePath         = "/url/:provider/*fileid"
+	urlModeProxy         = "proxy"
+	urlModeDirect        = "direct"
+	uploadCleanupTimeout = 5 * time.Second
 )
 
 type appContext struct {
@@ -57,11 +59,23 @@ func (l *getDataRequest) GetRoute() sgin.HttpRouteInfo {
 	}
 }
 
+func (l *getDataRequest) Middleware() gin.HandlersChain {
+	return gin.HandlersChain{
+		permMdw.GinRequirePermission(storage.PermFileDownload),
+	}
+}
+
 func (l *getDataRequest) Process(ctx *sgin.Context[*appContext]) (data any, err error) {
-	reader, meta, err := storage.NewIoInterface(ctx.App.srv, storage.NewStorageKey(l.Provider, l.StorageKey))
+	reader, meta, err := storage.OpenContent(ctx.Request.Context(), ctx.App.srv, storage.NewStorageKey(l.Provider, l.StorageKey))
 	if err != nil {
 		return nil, err
 	}
+	defer reader.Close()
+	contentType := meta.ContentType
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+	ctx.Header("Content-Type", contentType)
 	http.ServeContent(ctx.Writer, ctx.Request, meta.OriginalFilename, meta.UpdatedAt, reader)
 	return nil, sgin.ErrAlreadyDone
 }
@@ -88,6 +102,7 @@ func (p *putDataRequest) Middleware() gin.HandlersChain {
 }
 
 func (p *putDataRequest) Process(ctx *sgin.Context[*appContext]) (data any, err error) {
+	requestCtx := ctx.Request.Context()
 	identifier := storage.NormalizeIdentifier(p.StorageKey)
 	fileName := ctx.Query("filename")
 	if fileName == "" {
@@ -118,30 +133,22 @@ func (p *putDataRequest) Process(ctx *sgin.Context[*appContext]) (data any, err 
 	}
 
 	// Init multipart session
-	storageKey, uploadId, err := ctx.App.srv.InitMultipartStore(p.Provider, identifier, meta)
+	_, uploadId, err := ctx.App.srv.InitMultipartStore(requestCtx, p.Provider, identifier, meta)
 	if err != nil {
 		return nil, err
 	}
 
 	// Store single part from body
-	err = ctx.App.srv.StoreMultipart(uploadId, 1, ctx.Request.Body)
+	err = ctx.App.srv.StoreMultipart(requestCtx, uploadId, 1, ctx.Request.Body)
 	if err != nil {
-		_ = ctx.App.srv.AbortMultipart(uploadId) // cleanup on failure
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(requestCtx), uploadCleanupTimeout)
+		defer cancel()
+		_ = ctx.App.srv.AbortMultipart(cleanupCtx, uploadId)
 		return nil, err
 	}
 
 	// Complete the multipart upload
-	err = ctx.App.srv.CompleteMultipart(uploadId)
-	if err != nil {
-		return nil, err
-	}
-
-	meta, err = ctx.App.srv.Meta(storageKey)
-	if err != nil {
-		return nil, err
-	}
-
-	return meta, nil
+	return ctx.App.srv.CompleteMultipart(requestCtx, uploadId)
 }
 
 type deleteDataRequest struct {
@@ -167,7 +174,7 @@ func (d *deleteDataRequest) Middleware() gin.HandlersChain {
 func (d *deleteDataRequest) Process(ctx *sgin.Context[*appContext]) (data any, err error) {
 	d.StorageKey = strings.TrimPrefix(d.StorageKey, "/")
 	storageKey := storage.NewStorageKey(d.Provider, d.StorageKey)
-	if err := ctx.App.srv.Delete(storageKey); err != nil {
+	if err := ctx.App.srv.Delete(ctx.Request.Context(), storageKey); err != nil {
 		return nil, err
 	}
 	return storage.FileMeta{StorageKey: storageKey}, nil
@@ -209,7 +216,7 @@ func (g *getURLRequest) Process(ctx *sgin.Context[*appContext]) (data any, err e
 		return nil, err
 	}
 	if g.mode == urlModeDirect {
-		return ctx.App.srv.GetDirectURL(storageKey)
+		return ctx.App.srv.GetDirectURL(ctx.Request.Context(), storageKey)
 	}
 
 	routePrefix, ok := strings.CutSuffix(ctx.FullPath(), urlRoutePath)
@@ -241,7 +248,7 @@ func (l *listMetaRequest) Middleware() gin.HandlersChain {
 
 func (l *listMetaRequest) Process(ctx *sgin.Context[*appContext]) (data any, err error) {
 	provider := ctx.Param("provider")
-	return ctx.App.srv.ListMeta(provider, l.Offset, l.Limit)
+	return ctx.App.srv.ListMeta(ctx.Request.Context(), provider, l.Offset, l.Limit)
 }
 
 type listProviderRequest struct {

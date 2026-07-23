@@ -2,6 +2,7 @@ package storage
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"testing"
@@ -19,6 +20,25 @@ type testLoadCall struct {
 type testStorageService struct {
 	data      []byte
 	loadCalls []testLoadCall
+	closes    int
+}
+
+type testReadCloser struct {
+	reader  io.Reader
+	onClose func()
+	closed  bool
+}
+
+func (r *testReadCloser) Read(p []byte) (int, error) {
+	return r.reader.Read(p)
+}
+
+func (r *testReadCloser) Close() error {
+	if !r.closed {
+		r.closed = true
+		r.onClose()
+	}
+	return nil
 }
 
 func (t *testStorageService) SrvImplName() scene.ImplName {
@@ -29,11 +49,11 @@ func (t *testStorageService) ListProviders() []string {
 	return nil
 }
 
-func (t *testStorageService) ListMeta(provider string, offset, limit int64) (model.PaginationResult[FileMeta], error) {
+func (t *testStorageService) ListMeta(context.Context, string, int64, int64) (model.PaginationResult[FileMeta], error) {
 	return model.PaginationResult[FileMeta]{}, nil
 }
 
-func (t *testStorageService) Meta(storageKey StorageKey) (FileMeta, error) {
+func (t *testStorageService) Meta(_ context.Context, storageKey StorageKey) (FileMeta, error) {
 	return FileMeta{
 		StorageKey:       storageKey,
 		ContentLength:    int64(len(t.data)),
@@ -41,7 +61,7 @@ func (t *testStorageService) Meta(storageKey StorageKey) (FileMeta, error) {
 	}, nil
 }
 
-func (t *testStorageService) Load(storageKey StorageKey, offset, length int64) (io.ReadCloser, error) {
+func (t *testStorageService) Load(_ context.Context, _ StorageKey, offset, length int64) (io.ReadCloser, error) {
 	t.loadCalls = append(t.loadCalls, testLoadCall{offset: offset, length: length})
 	if offset < 0 || length < 0 {
 		return nil, fmt.Errorf("invalid range")
@@ -55,50 +75,53 @@ func (t *testStorageService) Load(storageKey StorageKey, offset, length int64) (
 	}
 	out := make([]byte, end-offset)
 	copy(out, t.data[offset:end])
-	return io.NopCloser(bytes.NewReader(out)), nil
+	return &testReadCloser{
+		reader:  bytes.NewReader(out),
+		onClose: func() { t.closes++ },
+	}, nil
 }
 
-func (t *testStorageService) LoadAll(storageKey StorageKey) (io.ReadCloser, error) {
+func (t *testStorageService) LoadAll(context.Context, StorageKey) (io.ReadCloser, error) {
 	out := make([]byte, len(t.data))
 	copy(out, t.data)
 	return io.NopCloser(bytes.NewReader(out)), nil
 }
 
-func (t *testStorageService) Delete(storageKey StorageKey) error {
+func (t *testStorageService) Delete(context.Context, StorageKey) error {
 	return nil
 }
 
-func (t *testStorageService) Store(data io.Reader, meta FileMeta) (StorageKey, error) {
+func (t *testStorageService) Store(context.Context, io.Reader, FileMeta) (StorageKey, error) {
 	return "", nil
 }
 
-func (t *testStorageService) StoreAt(provider, identifier string, data io.Reader, meta FileMeta) (StorageKey, error) {
+func (t *testStorageService) StoreAt(context.Context, string, string, io.Reader, FileMeta) (StorageKey, error) {
 	return "", nil
 }
 
-func (t *testStorageService) InitMultipartStore(provider, identifier string, meta FileMeta) (StorageKey, string, error) {
+func (t *testStorageService) InitMultipartStore(context.Context, string, string, FileMeta) (StorageKey, string, error) {
 	return "", "", nil
 }
 
-func (t *testStorageService) StoreMultipart(uploadId string, partNumber int, data io.Reader) error {
+func (t *testStorageService) StoreMultipart(context.Context, string, int, io.Reader) error {
 	return nil
 }
 
-func (t *testStorageService) CompleteMultipart(uploadId string) error {
+func (t *testStorageService) CompleteMultipart(context.Context, string) (FileMeta, error) {
+	return FileMeta{}, nil
+}
+
+func (t *testStorageService) AbortMultipart(context.Context, string) error {
 	return nil
 }
 
-func (t *testStorageService) AbortMultipart(uploadId string) error {
-	return nil
-}
-
-func (t *testStorageService) GetDirectURL(storageKey StorageKey) (string, error) {
+func (t *testStorageService) GetDirectURL(context.Context, StorageKey) (string, error) {
 	return "", nil
 }
 
-func TestIoImpl_ReadAndSeekSemantics(t *testing.T) {
+func TestContentReaderReadAndSeekSemantics(t *testing.T) {
 	svc := &testStorageService{data: []byte("abcdefghijklmnopqrstuvwxyz")}
-	reader, meta, err := NewIoInterface(svc, NewStorageKey("local.test", "alphabet"))
+	reader, meta, err := OpenContent(context.Background(), svc, NewStorageKey("local.test", "alphabet"))
 	require.NoError(t, err)
 	require.Equal(t, int64(26), meta.ContentLength)
 
@@ -135,52 +158,32 @@ func TestIoImpl_ReadAndSeekSemantics(t *testing.T) {
 
 	_, err = reader.Seek(-1, io.SeekStart)
 	require.Error(t, err)
+	require.NoError(t, reader.Close())
+	require.NoError(t, reader.Close())
+	require.Equal(t, 3, svc.closes)
+	require.Equal(t, []testLoadCall{
+		{offset: 0, length: 26},
+		{offset: 10, length: 16},
+		{offset: 23, length: 3},
+	}, svc.loadCalls)
 }
 
-func TestIoImpl_ReadAheadCacheBehavior(t *testing.T) {
-	data := make([]byte, defaultReadAheadSize+32)
+func TestContentReaderSequentialReadsReuseProviderReader(t *testing.T) {
+	data := make([]byte, 2<<20+32)
 	for i := range data {
 		data[i] = byte(i % 251)
 	}
 	svc := &testStorageService{data: data}
 
-	iFace, _, err := NewIoInterface(svc, NewStorageKey("local.test", "big"))
+	reader, _, err := OpenContent(context.Background(), svc, NewStorageKey("local.test", "big"))
 	require.NoError(t, err)
 
-	r, ok := iFace.(*ioImpl)
-	require.True(t, ok)
-	_ = r
-
-	one := make([]byte, 1)
-
-	n, err := iFace.Read(one)
+	loaded, err := io.ReadAll(reader)
 	require.NoError(t, err)
-	require.Equal(t, 1, n)
-	require.Equal(t, data[0], one[0])
+	require.Equal(t, data, loaded)
 	require.Len(t, svc.loadCalls, 1)
-	require.Equal(t, int64(0), svc.loadCalls[0].offset)
-	require.Equal(t, defaultReadAheadSize, svc.loadCalls[0].length)
-
-	n, err = iFace.Read(one)
-	require.NoError(t, err)
-	require.Equal(t, 1, n)
-	require.Equal(t, data[1], one[0])
-	require.Len(t, svc.loadCalls, 1)
-
-	_, err = iFace.Seek(128, io.SeekStart)
-	require.NoError(t, err)
-	n, err = iFace.Read(one)
-	require.NoError(t, err)
-	require.Equal(t, 1, n)
-	require.Equal(t, data[128], one[0])
-	require.Len(t, svc.loadCalls, 1)
-
-	_, err = iFace.Seek(defaultReadAheadSize, io.SeekStart)
-	require.NoError(t, err)
-	n, err = iFace.Read(one)
-	require.NoError(t, err)
-	require.Equal(t, 1, n)
-	require.Equal(t, data[defaultReadAheadSize], one[0])
-	require.Len(t, svc.loadCalls, 2)
-	require.Equal(t, defaultReadAheadSize, svc.loadCalls[1].offset)
+	require.Equal(t, testLoadCall{offset: 0, length: int64(len(data))}, svc.loadCalls[0])
+	require.Zero(t, svc.closes)
+	require.NoError(t, reader.Close())
+	require.Equal(t, 1, svc.closes)
 }
