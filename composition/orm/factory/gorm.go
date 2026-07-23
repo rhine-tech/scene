@@ -31,3 +31,17 @@ func (g GormSqlite) Init() scene.LensInit {
 func (g GormSqlite) Apps() []any {
 	return nil
 }
+
+type GormPostgreSQL struct{}
+
+func (g GormPostgreSQL) Init() scene.LensInit {
+	return func() {
+		registry.Register[*orm.Gorm](
+			orm.NewGormWithPostgreSQL(registry.Use(datasource.PostgresDataSource(nil))),
+		)
+	}
+}
+
+func (g GormPostgreSQL) Apps() []any {
+	return nil
+}

@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/rhine-tech/scene/infrastructure/config"
-	"github.com/rhine-tech/scene/infrastructure/datasource"
 	"github.com/stretchr/testify/require"
 )
 
@@ -238,23 +237,6 @@ host = localhost
 	_, ok = cfg.GetBoolE("server.missing")
 	require.False(t, ok)
 	require.Equal(t, "fallback", config.GetStringOrDefault(cfg, "server.missing", "fallback"))
-}
-
-func TestIniConfigUnmarshalWithPrefixReadsDatabaseConfig(t *testing.T) {
-	filename := filepath.Join(t.TempDir(), "config.ini")
-	require.NoError(t, os.WriteFile(filename, []byte(`[sqlite]
-host = data.db
-options = cache=shared
-`), 0644))
-
-	cfg := NewIniConfig(filename)
-	require.NoError(t, cfg.Init())
-
-	var dbConfig datasource.DatabaseConfig
-	require.NoError(t, cfg.UnmarshalWithPrefix("sqlite", &dbConfig))
-	require.Equal(t, "data.db", dbConfig.Host)
-	require.Equal(t, "scene", dbConfig.Database)
-	require.Equal(t, "cache=shared", dbConfig.Options)
 }
 
 func TestEnvMarshallerUnmarshal(t *testing.T) {

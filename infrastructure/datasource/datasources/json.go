@@ -9,17 +9,17 @@ import (
 )
 
 type JsonRepo struct {
-	cfg  datasource.FileConfig
+	cfg  datasource.JsonConfig
 	data []byte
 	log  logger.ILogger `aperture:""`
 }
 
-func NewJsonDataSource(cfg datasource.FileConfig) datasource.JsonDataSource {
+func NewJsonDataSource(cfg datasource.JsonConfig) datasource.JsonDataSource {
 	return &JsonRepo{cfg: cfg}
 }
 
 func NewJsonDataSourceFromPath(path string) datasource.JsonDataSource {
-	return NewJsonDataSource(datasource.FileConfig{Path: path})
+	return NewJsonDataSource(datasource.JsonConfig{Path: path})
 }
 
 func (j *JsonRepo) Dispose() error {

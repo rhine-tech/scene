@@ -13,35 +13,45 @@ import (
 type sqliteImpl struct {
 	db  *sql.DB
 	err error
-	cfg datasource.DatabaseConfig
+	cfg datasource.SqliteConfig
 	log logger.ILogger `aperture:""`
 }
 
-func SqliteDatasource(cfg datasource.DatabaseConfig) datasource.SqliteDataSource {
+func SqliteDatasource(cfg datasource.SqliteConfig) datasource.SqliteDataSource {
 	return &sqliteImpl{
 		cfg: cfg,
 	}
 }
 
 func (s *sqliteImpl) Dispose() error {
+	if s.db == nil {
+		return nil
+	}
 	return s.db.Close()
 }
 
 func (s *sqliteImpl) Setup() error {
 	s.log = s.log.WithPrefix(s.DataSourceName().String())
-	if s.cfg.SqliteDSN() == "" {
+	if s.cfg.DSN() == "" {
 		s.log.Errorf("invalid sqlite dsn: sqlite dsn is empty")
-		return errors.New("invalid sqlite dsn")
+		s.err = errors.New("invalid sqlite dsn")
+		return s.err
 	}
-	db, err := sql.Open("sqlite", s.cfg.SqliteDSN())
+	db, err := sql.Open("sqlite", s.cfg.DSN())
 	if err != nil {
-		s.log.Errorf("\"%s\" failed to open: %s", s.cfg.SqliteDSN(), err)
+		s.log.Errorf("\"%s\" failed to open: %s", s.cfg.DSN(), err)
 		s.err = err
 		return err
 	}
 	s.db = db
 	s.err = nil
-	s.log.Infof("establish connection to \"%s\" succeed", s.cfg.SqliteDSN())
+	if s.err = s.Status(); s.err != nil {
+		_ = s.db.Close()
+		s.db = nil
+		s.log.Errorf("\"%s\" failed to connect: %s", s.cfg.DSN(), s.err)
+		return s.err
+	}
+	s.log.Infof("establish connection to \"%s\" succeed", s.cfg.DSN())
 	return nil
 }
 
@@ -50,7 +60,7 @@ func (s *sqliteImpl) DataSourceName() scene.ImplName {
 }
 
 func (s *sqliteImpl) Status() error {
-	return s.err
+	return sqlDataSourceStatus(s.db, s.err)
 }
 
 func (s *sqliteImpl) Connection() *sql.DB {

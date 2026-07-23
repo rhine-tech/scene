@@ -9,7 +9,7 @@ import (
 
 type Mysql struct {
 	scene.ModuleFactory
-	Config datasource.DatabaseConfig
+	Config datasource.MysqlConfig
 }
 
 func (m Mysql) Init() scene.LensInit {
@@ -21,7 +21,7 @@ func (m Mysql) Init() scene.LensInit {
 
 func (m Mysql) Default() Mysql {
 	return Mysql{
-		Config: datasource.DatabaseConfig{
+		Config: datasource.MysqlConfig{
 			Host:     registry.Config.GetString("mysql.host"),
 			Port:     int(registry.Config.GetInt("mysql.port")),
 			Username: registry.Config.GetString("mysql.username"),

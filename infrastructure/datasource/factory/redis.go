@@ -9,7 +9,7 @@ import (
 
 type Redis struct {
 	scene.ModuleFactory
-	Config datasource.DatabaseConfig
+	Config datasource.RedisConfig
 }
 
 func (r Redis) Init() scene.LensInit {
@@ -21,10 +21,10 @@ func (r Redis) Init() scene.LensInit {
 
 func (r Redis) Default() Redis {
 	return Redis{
-		Config: datasource.DatabaseConfig{
+		Config: datasource.RedisConfig{
 			Host:     registry.Config.GetString("redis.host"),
 			Port:     int(registry.Config.GetInt("redis.port")),
-			Database: "0",
+			Database: 0,
 		},
 	}
 }

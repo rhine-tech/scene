@@ -27,8 +27,8 @@ func newRepositoryTestGorm(t *testing.T) *sceneorm.Gorm {
 	})
 
 	dsnName := strings.NewReplacer("/", "_", " ", "_").Replace(t.Name())
-	ds := datasources.SqliteDatasource(datasource.DatabaseConfig{
-		Host:    "file:" + dsnName,
+	ds := datasources.SqliteDatasource(datasource.SqliteConfig{
+		Path:    "file:" + dsnName,
 		Options: "mode=memory&cache=shared",
 	})
 	registry.Inject(ds)

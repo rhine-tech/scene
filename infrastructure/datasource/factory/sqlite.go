@@ -9,7 +9,7 @@ import (
 
 type Sqlite struct {
 	scene.ModuleFactory
-	Config datasource.DatabaseConfig
+	Config datasource.SqliteConfig
 }
 
 func (m Sqlite) Init() scene.LensInit {
@@ -21,10 +21,9 @@ func (m Sqlite) Init() scene.LensInit {
 
 func (m Sqlite) Default() Sqlite {
 	return Sqlite{
-		Config: datasource.DatabaseConfig{
-			Host:     registry.Config.GetString("sqlite.path"),
-			Options:  registry.Config.GetString("sqlite.options"),
-			Database: "scene",
+		Config: datasource.SqliteConfig{
+			Path:    registry.Config.GetString("sqlite.path"),
+			Options: registry.Config.GetString("sqlite.options"),
 		},
 	}
 }

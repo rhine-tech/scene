@@ -15,17 +15,17 @@ import (
 )
 
 type RedisDataRepo struct {
-	cfg datasource.DatabaseConfig
+	cfg datasource.RedisConfig
 	rdb *redis.Client
 	log logger.ILogger `aperture:""`
 }
 
-func NewRedisDataRepo(cfg datasource.DatabaseConfig) datasource.RedisDataSource {
+func NewRedisDataRepo(cfg datasource.RedisConfig) datasource.RedisDataSource {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
 		Password: cfg.Password,
 		Username: cfg.Username,
-		DB:       cast.ToInt(cfg.Database),
+		DB:       cfg.Database,
 	})
 	return &RedisDataRepo{rdb: rdb, cfg: cfg}
 }
@@ -37,19 +37,19 @@ func (r *RedisDataRepo) DataSourceName() scene.ImplName {
 func (r *RedisDataRepo) Setup() error {
 	r.log = r.log.WithPrefix(r.DataSourceName().String())
 	if err := r.Status(); err != nil {
-		r.log.Errorf("establish connection '%s' failed", r.cfg.RedisDSN())
+		r.log.Errorf("establish connection '%s' failed", r.cfg.MaskedDSN())
 		return err
 	}
-	r.log.Infof("establish connection '%s' succeed", r.cfg.RedisDSN())
+	r.log.Infof("establish connection '%s' succeed", r.cfg.MaskedDSN())
 	return nil
 }
 
 func (r *RedisDataRepo) Dispose() error {
 	err := r.rdb.Close()
 	if err != nil {
-		r.log.Warnf("close '%s' failed", r.cfg.RedisDSN())
+		r.log.Warnf("close '%s' failed", r.cfg.MaskedDSN())
 	}
-	r.log.Infof("close connection '%s' succeed", r.cfg.RedisDSN())
+	r.log.Infof("close connection '%s' succeed", r.cfg.MaskedDSN())
 	return err
 }
 

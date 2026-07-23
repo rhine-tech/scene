@@ -13,10 +13,10 @@ import (
 func newTestQueue(t *testing.T) *Queue {
 	t.Helper()
 	queue := New(Config{
-		Redis: datasource.DatabaseConfig{
+		Redis: datasource.RedisConfig{
 			Host:     "127.0.0.1",
 			Port:     6379,
-			Database: "15",
+			Database: 15,
 		},
 		StreamPrefix: "scene.test.asynctask.stream.",
 		GroupPrefix:  "scene.test.asynctask.group.",

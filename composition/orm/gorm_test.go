@@ -2,17 +2,20 @@ package orm
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"strings"
 	"sync"
 	"testing"
 
+	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/datasource"
 	"github.com/rhine-tech/scene/infrastructure/datasource/datasources"
 	"github.com/rhine-tech/scene/infrastructure/logger"
 	loggerrepo "github.com/rhine-tech/scene/infrastructure/logger/repository"
 	"github.com/rhine-tech/scene/registry"
 	"github.com/stretchr/testify/require"
+	gormPostgres "gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
@@ -26,8 +29,8 @@ func newTestGorm(t *testing.T) *Gorm {
 	})
 
 	dsnName := strings.NewReplacer("/", "_", " ", "_").Replace(t.Name())
-	ds := datasources.SqliteDatasource(datasource.DatabaseConfig{
-		Host:    "file:" + dsnName,
+	ds := datasources.SqliteDatasource(datasource.SqliteConfig{
+		Path:    "file:" + dsnName,
 		Options: "mode=memory&cache=shared",
 	})
 	registry.Inject(ds)
@@ -49,6 +52,51 @@ type transactionAccountRow struct {
 
 type transactionAuditRow struct {
 	ID string `gorm:"primaryKey"`
+}
+
+type postgresDataSourceStub struct {
+	db *sql.DB
+}
+
+func (p *postgresDataSourceStub) Setup() error {
+	return nil
+}
+
+func (p *postgresDataSourceStub) Dispose() error {
+	return p.db.Close()
+}
+
+func (p *postgresDataSourceStub) DataSourceName() scene.ImplName {
+	return datasource.Lens.ImplNameNoVer("PostgresDataSource")
+}
+
+func (p *postgresDataSourceStub) Status() error {
+	return nil
+}
+
+func (p *postgresDataSourceStub) Connection() *sql.DB {
+	return p.db
+}
+
+func TestNewGormWithPostgreSQL(t *testing.T) {
+	sqlDB, err := sql.Open("pgx", datasource.PostgresConfig{
+		Host:     "localhost",
+		Port:     5432,
+		Database: "scene",
+		Options:  "sslmode=disable",
+	}.DSN())
+	require.NoError(t, err)
+
+	ds := &postgresDataSourceStub{db: sqlDB}
+	t.Cleanup(func() {
+		require.NoError(t, ds.Dispose())
+	})
+
+	db := NewGormWithPostgreSQL(ds)
+	dialector, ok := db.dialector().(*gormPostgres.Dialector)
+	require.True(t, ok)
+	require.Same(t, ds.Connection(), dialector.Conn)
+	require.Same(t, ds, db.ds)
 }
 
 func TestGormSessionAndTransaction(t *testing.T) {

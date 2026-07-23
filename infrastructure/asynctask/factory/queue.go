@@ -90,12 +90,12 @@ func (b Asynq) Init() scene.LensInit {
 func (b Asynq) Default() Asynq {
 	return Asynq{
 		Config: asynq.Config{
-			Redis: datasource.DatabaseConfig{
+			Redis: datasource.RedisConfig{
 				Host:     registry.Config.GetString("redis.host"),
 				Port:     int(registry.Config.GetInt("redis.port")),
 				Username: registry.Config.GetString("redis.username"),
 				Password: registry.Config.GetString("redis.password"),
-				Database: registry.Config.GetString("redis.database"),
+				Database: int(registry.Config.GetInt("redis.database")),
 			},
 		},
 	}
@@ -117,12 +117,12 @@ func (b RedisStream) Init() scene.LensInit {
 func (b RedisStream) Default() RedisStream {
 	return RedisStream{
 		Config: redisstream.Config{
-			Redis: datasource.DatabaseConfig{
+			Redis: datasource.RedisConfig{
 				Host:     registry.Config.GetString("redis.host"),
 				Port:     int(registry.Config.GetInt("redis.port")),
 				Username: registry.Config.GetString("redis.username"),
 				Password: registry.Config.GetString("redis.password"),
-				Database: registry.Config.GetString("redis.database"),
+				Database: int(registry.Config.GetInt("redis.database")),
 			},
 			StreamPrefix: registry.Config.GetString("asynctask.redisstream.stream_prefix"),
 			GroupPrefix:  registry.Config.GetString("asynctask.redisstream.group_prefix"),

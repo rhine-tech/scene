@@ -9,31 +9,31 @@ import (
 
 type MongoDB struct {
 	scene.ModuleFactory
-	Config    datasource.DatabaseConfig
-	UseApiVer bool
+	Config datasource.MongoConfig
 }
 
 func (m MongoDB) Init() scene.LensInit {
 	return func() {
 		registry.Register[datasource.MongoDataSource](
-			datasources.NewMongoDataSource(m.Config, m.UseApiVer))
+			datasources.NewMongoDataSource(m.Config))
 	}
 }
 
 func (m MongoDB) Default() MongoDB {
 	return MongoDB{
-		Config: datasource.DatabaseConfig{
-			Host:     registry.Config.GetString("mongodb.host"),
-			Port:     int(registry.Config.GetInt("mongodb.port")),
-			Username: registry.Config.GetString("mongodb.username"),
-			Password: registry.Config.GetString("mongodb.password"),
-			Database: "scene",
+		Config: datasource.MongoConfig{
+			Host:          registry.Config.GetString("mongodb.host"),
+			Port:          int(registry.Config.GetInt("mongodb.port")),
+			Username:      registry.Config.GetString("mongodb.username"),
+			Password:      registry.Config.GetString("mongodb.password"),
+			Database:      "scene",
+			AuthSource:    registry.Config.GetString("mongodb.auth_source"),
+			UseAPIVersion: true,
 		},
-		UseApiVer: true,
 	}
 }
 
 func (m MongoDB) UseApiVersion(value bool) MongoDB {
-	m.UseApiVer = value
+	m.Config.UseAPIVersion = value
 	return m
 }

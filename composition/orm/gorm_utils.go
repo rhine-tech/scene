@@ -4,6 +4,7 @@ import (
 	gormSQLite "github.com/glebarez/sqlite"
 	"github.com/rhine-tech/scene/infrastructure/datasource"
 	gormMySQL "gorm.io/driver/mysql"
+	gormPostgres "gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
@@ -22,5 +23,14 @@ func NewGormWithSQLite(ds datasource.SqliteDataSource) *Gorm {
 		return &gormSQLite.Dialector{
 			Conn: ds.Connection(),
 		}
+	}, ds)
+}
+
+// NewGormWithPostgreSQL creates a GORM component backed by a PostgreSQL data source.
+func NewGormWithPostgreSQL(ds datasource.PostgresDataSource) *Gorm {
+	return NewGorm(func() gorm.Dialector {
+		return gormPostgres.New(gormPostgres.Config{
+			Conn: ds.Connection(),
+		})
 	}, ds)
 }

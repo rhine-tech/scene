@@ -3,6 +3,7 @@ package asynq
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -11,7 +12,6 @@ import (
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/asynctask"
 	"github.com/rhine-tech/scene/infrastructure/datasource"
-	"github.com/spf13/cast"
 )
 
 const (
@@ -19,7 +19,7 @@ const (
 )
 
 type Config struct {
-	Redis           datasource.DatabaseConfig
+	Redis           datasource.RedisConfig
 	ShutdownTimeout time.Duration
 }
 
@@ -49,10 +49,10 @@ func New(config Config) *Queue {
 		config.ShutdownTimeout = defaultShutdownTimeout
 	}
 	opts := libasynq.RedisClientOpt{
-		Addr:     config.Redis.Host + ":" + cast.ToString(config.Redis.Port),
+		Addr:     fmt.Sprintf("%s:%d", config.Redis.Host, config.Redis.Port),
 		Username: config.Redis.Username,
 		Password: config.Redis.Password,
-		DB:       cast.ToInt(config.Redis.Database),
+		DB:       config.Redis.Database,
 	}
 	return &Queue{
 		config:    config,

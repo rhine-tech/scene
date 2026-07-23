@@ -15,7 +15,6 @@ import (
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/asynctask"
 	"github.com/rhine-tech/scene/infrastructure/datasource"
-	"github.com/spf13/cast"
 )
 
 const (
@@ -27,7 +26,7 @@ const (
 )
 
 type Config struct {
-	Redis        datasource.DatabaseConfig
+	Redis        datasource.RedisConfig
 	StreamPrefix string
 	GroupPrefix  string
 	Block        time.Duration
@@ -223,7 +222,7 @@ func (q *Queue) ensureClientLocked() error {
 		Addr:     fmt.Sprintf("%s:%d", q.config.Redis.Host, q.config.Redis.Port),
 		Username: q.config.Redis.Username,
 		Password: q.config.Redis.Password,
-		DB:       cast.ToInt(q.config.Redis.Database),
+		DB:       q.config.Redis.Database,
 	})
 	if err := rdb.Ping(context.Background()).Err(); err != nil {
 		_ = rdb.Close()

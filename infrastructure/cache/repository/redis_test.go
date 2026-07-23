@@ -12,10 +12,10 @@ import (
 
 func TestRedisCacheTaggedInvalidation(t *testing.T) {
 	ctx := context.Background()
-	ds := datasources.NewRedisDataRepo(datasource.DatabaseConfig{
+	ds := datasources.NewRedisDataRepo(datasource.RedisConfig{
 		Host:     "127.0.0.1",
 		Port:     6379,
-		Database: "0",
+		Database: 0,
 	})
 	if err := ds.Status(); err != nil {
 		t.Skipf("redis not available: %v", err)
@@ -62,10 +62,10 @@ func TestRedisCacheTaggedInvalidation(t *testing.T) {
 
 func TestRedisCachePlainValueCompatibility(t *testing.T) {
 	ctx := context.Background()
-	ds := datasources.NewRedisDataRepo(datasource.DatabaseConfig{
+	ds := datasources.NewRedisDataRepo(datasource.RedisConfig{
 		Host:     "127.0.0.1",
 		Port:     6379,
-		Database: "0",
+		Database: 0,
 	})
 	if err := ds.Status(); err != nil {
 		t.Skipf("redis not available: %v", err)
