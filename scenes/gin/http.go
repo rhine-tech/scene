@@ -1,5 +1,8 @@
 package gin
 
+import "net/http"
+
+// HTTP method bitmap flags used by HttpRouteInfo.
 const (
 	HttpMethodGet     uint16 = 0b1
 	HttpMethodHead    uint16 = 0b10
@@ -10,40 +13,31 @@ const (
 	HttpMethodConnect uint16 = 0b1000000
 	HttpMethodOptions uint16 = 0b10000000
 	HttpMethodTrace   uint16 = 0b100000000
+	httpMethodAll     uint16 = HttpMethodTrace<<1 - 1
 )
 
-// HttpMethod convert http.Method to uint16 version
-func HttpMethod(method string) uint16 {
-	switch method {
-	case "GET":
-		return HttpMethodGet
-	case "HEAD":
-		return HttpMethodHead
-	case "POST":
-		return HttpMethodPost
-	case "PUT":
-		return HttpMethodPut
-	case "PATCH":
-		return HttpMethodPatch
-	case "DELETE":
-		return HttpMethodDelete
-	case "CONNECT":
-		return HttpMethodConnect
-	case "OPTIONS":
-		return HttpMethodOptions
-	case "TRACE":
-		return HttpMethodTrace
-	default:
-		return 0
-	}
+var httpMethods = [...]struct {
+	bitmap uint16
+	name   string
+}{
+	{HttpMethodGet, http.MethodGet},
+	{HttpMethodHead, http.MethodHead},
+	{HttpMethodPost, http.MethodPost},
+	{HttpMethodPut, http.MethodPut},
+	{HttpMethodPatch, http.MethodPatch},
+	{HttpMethodDelete, http.MethodDelete},
+	{HttpMethodConnect, http.MethodConnect},
+	{HttpMethodOptions, http.MethodOptions},
+	{HttpMethodTrace, http.MethodTrace},
 }
 
+// HttpRouteInfo declares the methods and relative path of an action.
 type HttpRouteInfo struct {
-	Method  string // Method specify a single method, might be deprecated in the future
-	Methods uint16 // Methods aim to handle same route with multiple method
-	Path    string // Path is gin router path
+	Methods uint16
+	Path    string
 }
 
+// HttpRoute provides route metadata for an Action.
 type HttpRoute interface {
 	GetRoute() HttpRouteInfo
 }

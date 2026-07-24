@@ -5,12 +5,14 @@ import (
 	"time"
 
 	ginCors "github.com/gin-contrib/cors"
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/rhine-tech/scene/registry"
 )
 
+// GinOption configures the Gin engine before applications are mounted.
 type GinOption func(engine *gin.Engine) error
 
 func _ginLogger(log logger.ILogger) gin.HandlerFunc {
@@ -32,6 +34,7 @@ func _ginLogger(log logger.ILogger) gin.HandlerFunc {
 	}
 }
 
+// WithLogger installs Scene's request logger.
 func WithLogger(log logger.ILogger) GinOption {
 	return func(engine *gin.Engine) error {
 		engine.Use(_ginLogger(log))
@@ -39,6 +42,7 @@ func WithLogger(log logger.ILogger) GinOption {
 	}
 }
 
+// WithCors allows all origins and request headers.
 func WithCors() GinOption {
 	return func(engine *gin.Engine) error {
 		corsCfg := ginCors.DefaultConfig()
@@ -49,9 +53,19 @@ func WithCors() GinOption {
 	}
 }
 
+// WithRecovery installs Gin's recovery middleware.
 func WithRecovery() GinOption {
 	return func(engine *gin.Engine) error {
 		engine.Use(gin.Recovery())
+		return nil
+	}
+}
+
+// WithGzip add gzip support for gin engine,
+// default level is -1
+func WithGzip(level int) GinOption {
+	return func(engine *gin.Engine) error {
+		engine.Use(gzip.Gzip(level))
 		return nil
 	}
 }
@@ -89,7 +103,6 @@ func WithRecovery() GinOption {
 //				LogMessage: logger.LogMessage{
 //					Timestamp: start.Unix(),
 //					Level:     logger.LogLevelInfo,
-//					Prefix:    SceneName,
 //					Message:   msg,
 //				},
 //				Method:         c.Request.Method,

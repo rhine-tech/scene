@@ -6,8 +6,10 @@ import (
 	"github.com/rhine-tech/scene/registry"
 )
 
-const SceneName = "scene.app-container.http.gin"
-
+// GinApplication mounts one module's HTTP routes into a Gin scene.
+//
+// Create receives the root Gin engine and a router scoped by the container
+// prefix and Prefix. Most implementations should register routes on router.
 type GinApplication interface {
 	scene.Application
 	Prefix() string
@@ -15,6 +17,10 @@ type GinApplication interface {
 	Destroy() error
 }
 
+// AppRoutes is the declarative GinApplication used by most modules.
+//
+// Context is injected when Create is called. Middlewares apply to every
+// action, before middleware supplied by an individual MiddlewareProvider.
 type AppRoutes[T any] struct {
 	AppName     scene.ImplName
 	BasePath    string

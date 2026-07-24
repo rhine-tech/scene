@@ -7,6 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Context combines Gin's request context with an injected application context.
+// It also implements context.Context.
 type Context[T any] struct {
 	*gin.Context
 	App T // App is the container of current app

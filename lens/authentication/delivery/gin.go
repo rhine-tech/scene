@@ -63,18 +63,13 @@ func AuthGinApp(lgStVrf authentication.HTTPLoginStatusVerifier) sgin.GinApplicat
 
 // loginRequest handles user login with username and password.
 type loginRequest struct {
-	sgin.BaseAction
-	sgin.RequestNoParam
+	sgin.RequestAuto
 	Username string `json:"username" form:"username" binding:"required"`
 	Password string `json:"password" form:"password" binding:"required"`
 }
 
 func (l *loginRequest) GetRoute() sgin.HttpRouteInfo {
-	return sgin.HttpRouteInfo{Method: http.MethodPost, Path: "/login"}
-}
-
-func (l *loginRequest) Bind(ctx *sgin.Context[*authContext]) error {
-	return ctx.ShouldBind(l)
+	return sgin.HttpRouteInfo{Methods: sgin.HttpMethodPost, Path: "/login"}
 }
 
 func (l *loginRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
@@ -90,13 +85,13 @@ func (l *loginRequest) Process(ctx *sgin.Context[*authContext]) (data any, err e
 }
 
 // logoutRequest handles user logout.
-type logoutRequest struct {
-	sgin.BaseAction
-	sgin.RequestNoParam
-}
+type logoutRequest struct{}
 
 func (l *logoutRequest) GetRoute() sgin.HttpRouteInfo {
-	return sgin.HttpRouteInfo{Method: http.MethodGet, Path: "/logout", Methods: sgin.HttpMethodGet | sgin.HttpMethodPost}
+	return sgin.HttpRouteInfo{
+		Methods: sgin.HttpMethodGet | sgin.HttpMethodPost,
+		Path:    "/logout",
+	}
 }
 
 func (l *logoutRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
@@ -104,13 +99,10 @@ func (l *logoutRequest) Process(ctx *sgin.Context[*authContext]) (data any, err 
 }
 
 // getInfoRequest get current user's info
-type getInfoRequest struct {
-	sgin.BaseAction
-	sgin.RequestNoParam
-}
+type getInfoRequest struct{}
 
 func (g *getInfoRequest) GetRoute() sgin.HttpRouteInfo {
-	return sgin.HttpRouteInfo{Method: http.MethodGet, Path: "/user/info"}
+	return sgin.HttpRouteInfo{Methods: sgin.HttpMethodGet, Path: "/user/info"}
 }
 
 func (g *getInfoRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
@@ -124,7 +116,6 @@ func (g *getInfoRequest) Process(ctx *sgin.Context[*authContext]) (data any, err
 
 // updateProfileRequest allows a logged-in user to update their own profile
 type updateProfileRequest struct {
-	sgin.BaseAction
 	sgin.RequestJson
 	DisplayName string `json:"display_name"`
 	Email       string `json:"email"`
@@ -134,7 +125,7 @@ type updateProfileRequest struct {
 }
 
 func (u *updateProfileRequest) GetRoute() sgin.HttpRouteInfo {
-	return sgin.HttpRouteInfo{Method: http.MethodPut, Path: "/user/profile"}
+	return sgin.HttpRouteInfo{Methods: sgin.HttpMethodPut, Path: "/user/profile"}
 }
 
 func (u *updateProfileRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
@@ -170,18 +161,20 @@ func (u *updateProfileRequest) Process(ctx *sgin.Context[*authContext]) (data an
 }
 
 type uploadAvatarRequest struct {
-	sgin.BaseAction
-	sgin.RequestNoParam
 	fileName    string
 	contentType string
 	content     []byte
 }
 
 func (u *uploadAvatarRequest) GetRoute() sgin.HttpRouteInfo {
-	return sgin.HttpRouteInfo{Method: http.MethodPost, Path: "/user/avatar"}
+	return sgin.HttpRouteInfo{Methods: sgin.HttpMethodPost, Path: "/user/avatar"}
 }
 
-func (u *uploadAvatarRequest) Bind(ctx *sgin.Context[*authContext]) error {
+func (u *uploadAvatarRequest) Bindings() []sgin.Binding {
+	return []sgin.Binding{u.bind}
+}
+
+func (u *uploadAvatarRequest) bind(ctx *gin.Context, _ any) error {
 	if err := ctx.Request.ParseMultipartForm(6 << 20); err != nil {
 		return err
 	}
@@ -248,14 +241,13 @@ func isAllowedAvatarType(contentType string) bool {
 
 // listUsersRequest lists users (admin only)
 type listUsersRequest struct {
-	sgin.BaseAction
 	sgin.RequestQuery
 	Offset int64 `form:"offset,default=0"`
 	Limit  int64 `form:"limit,default=20"`
 }
 
 func (l *listUsersRequest) GetRoute() sgin.HttpRouteInfo {
-	return sgin.HttpRouteInfo{Method: http.MethodGet, Path: "/users"}
+	return sgin.HttpRouteInfo{Methods: sgin.HttpMethodGet, Path: "/users"}
 }
 
 func (l *listUsersRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
@@ -283,14 +275,13 @@ func (l *listUsersRequest) Process(ctx *sgin.Context[*authContext]) (data any, e
 
 // createUserRequest handles the creation of a new user.
 type createUserRequest struct {
-	sgin.BaseAction
 	sgin.RequestQuery
 	Username string `json:"username" form:"username" binding:"required"`
 	Password string `json:"password" form:"password" binding:"required"`
 }
 
 func (c *createUserRequest) GetRoute() sgin.HttpRouteInfo {
-	return sgin.HttpRouteInfo{Method: http.MethodPost, Path: "/users"}
+	return sgin.HttpRouteInfo{Methods: sgin.HttpMethodPost, Path: "/users"}
 }
 
 func (c *createUserRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
@@ -309,8 +300,6 @@ func (c *createUserRequest) Process(ctx *sgin.Context[*authContext]) (data any, 
 
 // updateUserRequest allows admins to update another user's profile.
 type updateUserRequest struct {
-	sgin.BaseAction
-	sgin.RequestJson
 	UserID      string  `uri:"userId" binding:"required"`
 	Username    *string `json:"username"`
 	DisplayName *string `json:"display_name"`
@@ -321,7 +310,11 @@ type updateUserRequest struct {
 }
 
 func (u *updateUserRequest) GetRoute() sgin.HttpRouteInfo {
-	return sgin.HttpRouteInfo{Method: http.MethodPut, Path: "/users/:userId"}
+	return sgin.HttpRouteInfo{Methods: sgin.HttpMethodPut, Path: "/users/:userId"}
+}
+
+func (u *updateUserRequest) Bindings() []sgin.Binding {
+	return []sgin.Binding{sgin.BindURI, sgin.BindJSON}
 }
 
 func (u *updateUserRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
@@ -332,7 +325,7 @@ func (u *updateUserRequest) Process(ctx *sgin.Context[*authContext]) (data any, 
 		return nil, permission.ErrPermissionDenied
 	}
 
-	user, err := ctx.App.authSrv.UserById(ctx.Param("userId"))
+	user, err := ctx.App.authSrv.UserById(u.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -367,13 +360,12 @@ func (u *updateUserRequest) Process(ctx *sgin.Context[*authContext]) (data any, 
 
 // deleteUserRequest handles deleting a user.
 type deleteUserRequest struct {
-	sgin.BaseAction
 	sgin.RequestURI
 	UserID string `uri:"userId" binding:"required"`
 }
 
 func (d *deleteUserRequest) GetRoute() sgin.HttpRouteInfo {
-	return sgin.HttpRouteInfo{Method: http.MethodDelete, Path: "/users/:userId"}
+	return sgin.HttpRouteInfo{Methods: sgin.HttpMethodDelete, Path: "/users/:userId"}
 }
 
 func (d *deleteUserRequest) Process(ctx *sgin.Context[*authContext]) (data any, err error) {
@@ -395,7 +387,6 @@ func (d *deleteUserRequest) Process(ctx *sgin.Context[*authContext]) (data any, 
 // createTokenRequest creates a new persistent access token (API key).
 // This route MUST be protected by authentication middleware.
 type createTokenRequest struct {
-	sgin.BaseAction
 	sgin.RequestJson
 	Name     string `json:"name" form:"name" binding:"required"`
 	UserID   string `json:"user_id" form:"user_id" binding:"required"`
@@ -403,7 +394,7 @@ type createTokenRequest struct {
 }
 
 func (c *createTokenRequest) GetRoute() sgin.HttpRouteInfo {
-	return sgin.HttpRouteInfo{Method: http.MethodPost, Path: "/token"}
+	return sgin.HttpRouteInfo{Methods: sgin.HttpMethodPost, Path: "/token"}
 }
 
 func (c *createTokenRequest) Middleware() gin.HandlersChain {
@@ -422,7 +413,6 @@ func (c *createTokenRequest) Process(ctx *sgin.Context[*authContext]) (data any,
 // listTokensRequest lists all tokens for the currently authenticated user.
 // This route MUST be protected by authentication middleware.
 type listTokensRequest struct {
-	sgin.BaseAction
 	sgin.RequestQuery
 	UserID string `json:"user_id" form:"user_id" binding:"required"`
 	Offset int64  `form:"offset,default=0"`
@@ -430,7 +420,7 @@ type listTokensRequest struct {
 }
 
 func (l *listTokensRequest) GetRoute() sgin.HttpRouteInfo {
-	return sgin.HttpRouteInfo{Method: http.MethodGet, Path: "/tokens"}
+	return sgin.HttpRouteInfo{Methods: sgin.HttpMethodGet, Path: "/tokens"}
 }
 
 func (l *listTokensRequest) Middleware() gin.HandlersChain {
@@ -446,13 +436,12 @@ func (l *listTokensRequest) Process(ctx *sgin.Context[*authContext]) (data any, 
 // deleteTokenRequest deletes a specific token owned by the user.
 // This route MUST be protected by authentication middleware.
 type deleteTokenRequest struct {
-	sgin.BaseAction
 	sgin.RequestQuery
 	Token string `form:"token" binding:"required"`
 }
 
 func (d *deleteTokenRequest) GetRoute() sgin.HttpRouteInfo {
-	return sgin.HttpRouteInfo{Method: http.MethodDelete, Path: "/token"}
+	return sgin.HttpRouteInfo{Methods: sgin.HttpMethodDelete, Path: "/token"}
 }
 
 func (d *deleteTokenRequest) Middleware() gin.HandlersChain {

@@ -125,6 +125,7 @@ func (g *ginContainer) ListAppNames() []string {
 	return names
 }
 
+// NewAppContainerWithPrefix creates a Gin scene mounted below prefix.
 func NewAppContainerWithPrefix(
 	addr string,
 	prefix string,
@@ -148,6 +149,7 @@ func NewAppContainerWithPrefix(
 	return container
 }
 
+// NewAppContainer creates a Gin scene mounted at the root path.
 func NewAppContainer(
 	addr string,
 	apps []GinApplication,

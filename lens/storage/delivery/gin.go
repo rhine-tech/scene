@@ -45,7 +45,6 @@ func GinApp() sgin.GinApplication {
 }
 
 type getDataRequest struct {
-	sgin.BaseAction
 	sgin.RequestURI
 	Provider   string `uri:"provider" binding:"required"`
 	StorageKey string `uri:"fileid" binding:"required"`
@@ -53,7 +52,6 @@ type getDataRequest struct {
 
 func (l *getDataRequest) GetRoute() sgin.HttpRouteInfo {
 	return sgin.HttpRouteInfo{
-		Method:  http.MethodGet,
 		Methods: sgin.HttpMethodGet | sgin.HttpMethodHead | sgin.HttpMethodOptions,
 		Path:    dataRoutePath,
 	}
@@ -81,7 +79,6 @@ func (l *getDataRequest) Process(ctx *sgin.Context[*appContext]) (data any, err 
 }
 
 type putDataRequest struct {
-	sgin.BaseAction
 	sgin.RequestURI
 	Provider   string `uri:"provider" binding:"required"`
 	StorageKey string `uri:"fileid"`
@@ -89,9 +86,8 @@ type putDataRequest struct {
 
 func (p *putDataRequest) GetRoute() sgin.HttpRouteInfo {
 	return sgin.HttpRouteInfo{
-		Method:  http.MethodPut,
-		Path:    dataRoutePath,
 		Methods: sgin.HttpMethodPut | sgin.HttpMethodPost,
+		Path:    dataRoutePath,
 	}
 }
 
@@ -152,7 +148,6 @@ func (p *putDataRequest) Process(ctx *sgin.Context[*appContext]) (data any, err 
 }
 
 type deleteDataRequest struct {
-	sgin.BaseAction
 	sgin.RequestURI
 	Provider   string `uri:"provider" binding:"required"`
 	StorageKey string `uri:"fileid" binding:"required"`
@@ -160,8 +155,8 @@ type deleteDataRequest struct {
 
 func (d *deleteDataRequest) GetRoute() sgin.HttpRouteInfo {
 	return sgin.HttpRouteInfo{
-		Method: http.MethodDelete,
-		Path:   dataRoutePath,
+		Methods: sgin.HttpMethodDelete,
+		Path:    dataRoutePath,
 	}
 }
 
@@ -181,8 +176,6 @@ func (d *deleteDataRequest) Process(ctx *sgin.Context[*appContext]) (data any, e
 }
 
 type getURLRequest struct {
-	sgin.BaseAction
-	sgin.RequestURI
 	Provider   string `uri:"provider" binding:"required"`
 	StorageKey string `uri:"fileid" binding:"required"`
 	mode       string
@@ -190,8 +183,8 @@ type getURLRequest struct {
 
 func (g *getURLRequest) GetRoute() sgin.HttpRouteInfo {
 	return sgin.HttpRouteInfo{
-		Method: http.MethodGet,
-		Path:   urlRoutePath,
+		Methods: sgin.HttpMethodGet,
+		Path:    urlRoutePath,
 	}
 }
 
@@ -201,7 +194,11 @@ func (g *getURLRequest) Middleware() gin.HandlersChain {
 	}
 }
 
-func (g *getURLRequest) Bind(ctx *sgin.Context[*appContext]) error {
+func (g *getURLRequest) Bindings() []sgin.Binding {
+	return []sgin.Binding{sgin.BindURI, g.bindMode}
+}
+
+func (g *getURLRequest) bindMode(ctx *gin.Context, _ any) error {
 	g.mode = ctx.DefaultQuery("mode", urlModeProxy)
 	if g.mode != urlModeProxy && g.mode != urlModeDirect {
 		return fmt.Errorf("unsupported URL mode %q", g.mode)
@@ -227,17 +224,20 @@ func (g *getURLRequest) Process(ctx *sgin.Context[*appContext]) (data any, err e
 }
 
 type listMetaRequest struct {
-	sgin.BaseAction
-	sgin.RequestQuery
-	Offset int64 `form:"offset,default=0"`
-	Limit  int64 `form:"limit,default=20" binding:"required"`
+	Provider string `uri:"provider" binding:"required"`
+	Offset   int64  `form:"offset,default=0"`
+	Limit    int64  `form:"limit,default=20" binding:"required"`
 }
 
 func (l *listMetaRequest) GetRoute() sgin.HttpRouteInfo {
 	return sgin.HttpRouteInfo{
-		Method: http.MethodGet,
-		Path:   "/list/:provider",
+		Methods: sgin.HttpMethodGet,
+		Path:    "/list/:provider",
 	}
+}
+
+func (l *listMetaRequest) Bindings() []sgin.Binding {
+	return []sgin.Binding{sgin.BindURI, sgin.BindQuery}
 }
 
 func (l *listMetaRequest) Middleware() gin.HandlersChain {
@@ -247,19 +247,15 @@ func (l *listMetaRequest) Middleware() gin.HandlersChain {
 }
 
 func (l *listMetaRequest) Process(ctx *sgin.Context[*appContext]) (data any, err error) {
-	provider := ctx.Param("provider")
-	return ctx.App.srv.ListMeta(ctx.Request.Context(), provider, l.Offset, l.Limit)
+	return ctx.App.srv.ListMeta(ctx.Request.Context(), l.Provider, l.Offset, l.Limit)
 }
 
-type listProviderRequest struct {
-	sgin.BaseAction
-	sgin.RequestNoParam
-}
+type listProviderRequest struct{}
 
 func (l *listProviderRequest) GetRoute() sgin.HttpRouteInfo {
 	return sgin.HttpRouteInfo{
-		Method: http.MethodGet,
-		Path:   "/providers",
+		Methods: sgin.HttpMethodGet,
+		Path:    "/providers",
 	}
 }
 
