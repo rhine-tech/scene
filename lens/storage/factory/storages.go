@@ -33,6 +33,7 @@ type S3 struct {
 	AccessKey       string
 	SecretKey       string
 	Bucket          string
+	TempDir         string
 	UseSSL          bool
 	ForcePathStyle  bool
 	PresignedURLTTL time.Duration
@@ -51,6 +52,7 @@ func (s S3) Default() S3 {
 		AccessKey:       registry.Config.GetString("storage.s3.access_key"),
 		SecretKey:       registry.Config.GetString("storage.s3.secret_key"),
 		Bucket:          registry.Config.GetString("storage.s3.bucket"),
+		TempDir:         registry.Config.GetString("storage.s3.temp_dir"),
 		UseSSL:          registry.Config.GetBool("storage.s3.use_ssl"),
 		ForcePathStyle:  registry.Config.GetBool("storage.s3.force_path_style"),
 		PresignedURLTTL: presignedURLTTL,
@@ -70,6 +72,7 @@ func (s S3) Provide() storageApi.IStorageProvider {
 		s.UseSSL,
 		s.ForcePathStyle,
 		s.Region,
+		s.TempDir,
 		s.PresignedURLTTL,
 	)))
 }

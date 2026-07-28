@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -30,6 +31,7 @@ type s3Storage struct {
 	presignClient   *s3.PresignClient
 	bucket          string
 	name            string
+	tempDir         string
 	presignedURLTTL time.Duration
 
 	uploads     map[string]*s3UploadSession
@@ -41,7 +43,7 @@ const defaultS3PresignedURLTTL = 15 * time.Minute
 func NewS3Storage(
 	endpoint, accessKey, secretKey, bucket, name string,
 	useSSL, forcePathStyle bool,
-	region string,
+	region, tempDir string,
 ) (storage.IStorageProvider, error) {
 	return NewS3StorageWithPresignedURLTTL(
 		endpoint,
@@ -52,6 +54,7 @@ func NewS3Storage(
 		useSSL,
 		forcePathStyle,
 		region,
+		tempDir,
 		defaultS3PresignedURLTTL,
 	)
 }
@@ -59,7 +62,7 @@ func NewS3Storage(
 func NewS3StorageWithPresignedURLTTL(
 	endpoint, accessKey, secretKey, bucket, name string,
 	useSSL, forcePathStyle bool,
-	region string,
+	region, tempDir string,
 	presignedURLTTL time.Duration,
 ) (storage.IStorageProvider, error) {
 	if region == "" {
@@ -88,6 +91,7 @@ func NewS3StorageWithPresignedURLTTL(
 		presignClient:   s3.NewPresignClient(client),
 		bucket:          bucket,
 		name:            name,
+		tempDir:         tempDir,
 		presignedURLTTL: presignedURLTTL,
 		uploads:         make(map[string]*s3UploadSession),
 	}, nil
@@ -143,10 +147,19 @@ func (s *s3Storage) Meta(ctx context.Context, storageKey storage.StorageKey) (st
 }
 
 func (s *s3Storage) Store(ctx context.Context, storageKey storage.StorageKey, data io.Reader) error {
-	_, err := s.client.PutObject(ctx, &s3.PutObjectInput{
+	body, cleanup, err := s.seekableUploadBody(ctx, data)
+	if err != nil {
+		if err := operationContextError(err); err != nil {
+			return err
+		}
+		return storage.ErrStorageFailed.WithDetail(err)
+	}
+	defer cleanup()
+
+	_, err = s.client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(storageKey.FileID()),
-		Body:   data,
+		Body:   body,
 	})
 	if err != nil {
 		if err := operationContextError(err); err != nil {
@@ -249,13 +262,22 @@ func (s *s3Storage) StoreMultipart(ctx context.Context, uploadId string, partNum
 	if !ok {
 		return storage.ErrUploadSessionNotFound
 	}
+	body, cleanup, err := s.seekableUploadBody(ctx, data)
+	if err != nil {
+		if err := operationContextError(err); err != nil {
+			return err
+		}
+		return storage.ErrStorePartFailed.WithDetail(err)
+	}
+	defer cleanup()
+
 	pn := int32(partNumber)
 	resp, err := s.client.UploadPart(ctx, &s3.UploadPartInput{
 		Bucket:     aws.String(s.bucket),
 		Key:        aws.String(session.objectKey),
 		UploadId:   aws.String(uploadId),
 		PartNumber: aws.Int32(pn),
-		Body:       data,
+		Body:       body,
 	})
 	if err != nil {
 		if err := operationContextError(err); err != nil {
@@ -351,6 +373,31 @@ func (s *s3Storage) GetDirectURL(ctx context.Context, storageKey storage.Storage
 		return "", storage.ErrGetDirectURLFailed.WithDetail(err)
 	}
 	return resp.URL, nil
+}
+
+func (s *s3Storage) seekableUploadBody(ctx context.Context, data io.Reader) (io.ReadSeeker, func(), error) {
+	if body, ok := data.(io.ReadSeeker); ok {
+		return body, func() {}, nil
+	}
+
+	file, err := os.CreateTemp(s.tempDir, "scene-s3-upload-*")
+	if err != nil {
+		return nil, nil, err
+	}
+	cleanup := func() {
+		name := file.Name()
+		_ = file.Close()
+		_ = os.Remove(name)
+	}
+	if _, err := copyWithContext(ctx, file, data); err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	return file, cleanup, nil
 }
 
 func operationContextError(err error) error {

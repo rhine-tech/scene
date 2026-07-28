@@ -49,6 +49,7 @@ func requireS3Integration(t *testing.T) s3IntegrationEnv {
 		false,
 		true,
 		region,
+		"",
 	)
 	require.NoError(t, err)
 
@@ -86,6 +87,7 @@ func requireS3IntegrationDirectURL(t *testing.T) s3IntegrationEnv {
 		false,
 		true,
 		region,
+		"",
 		time.Minute,
 	)
 	require.NoError(t, err)
@@ -141,7 +143,7 @@ func TestS3StorageIntegration_StoreLoadRangeMetaDelete(t *testing.T) {
 	t.Cleanup(func() { _ = provider.Delete(ctx, key) })
 
 	require.NoError(t, provider.HealthCheck(ctx))
-	require.NoError(t, provider.Store(ctx, key, bytes.NewReader(data)))
+	require.NoError(t, provider.Store(ctx, key, io.TeeReader(bytes.NewReader(data), io.Discard)))
 
 	meta, err := provider.Meta(ctx, key)
 	require.NoError(t, err)
@@ -262,7 +264,7 @@ func TestS3StorageIntegration_MultipartLargeObject(t *testing.T) {
 
 	// Store parts out of order to verify completion sorts part numbers before submitting.
 	require.NoError(t, provider.StoreMultipart(ctx, uploadID, 2, bytes.NewReader(part2)))
-	require.NoError(t, provider.StoreMultipart(ctx, uploadID, 1, bytes.NewReader(part1)))
+	require.NoError(t, provider.StoreMultipart(ctx, uploadID, 1, bytes.NewBuffer(part1)))
 	require.NoError(t, provider.StoreMultipart(ctx, uploadID, 3, bytes.NewReader(part3)))
 	require.NoError(t, provider.CompleteMultipart(ctx, uploadID))
 

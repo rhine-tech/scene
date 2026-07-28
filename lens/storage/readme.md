@@ -19,6 +19,10 @@ Storage 用 `StorageKey`（`{provider}://{identifier}`）定位文件。Provider
 Local provider 不支持 direct URL。S3 provider 的 direct URL 是有时效的预签名 URL，
 有效期由 `storage.s3.presigned_url_ttl_seconds` 配置。
 
+S3 上传遇到不可 Seek 的 `io.Reader` 时，会先写入临时文件，以便 AWS SDK 计算签名和
+重试。`storage.s3.temp_dir` 可指定临时文件目录；为空时使用操作系统临时目录。指定的
+目录必须已存在且可写，Scene 不会自动创建。
+
 Provider 不需要配置 URL prefix；HTTP 路径只由 delivery 层生成。
 
 ### 访问权限
