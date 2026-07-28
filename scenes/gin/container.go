@@ -87,9 +87,13 @@ func (c *ginContainer) Start() error {
 			return c.baseCtx
 		},
 	}
+	listener, err := net.Listen("tcp", c.addr)
+	if err != nil {
+		return err
+	}
+	c.logger.Infof("gin http server started, listen on 'http://%s'", utils.PrettyAddress(c.addr))
 	go func() {
-		c.logger.Infof("gin http server started, listen on 'http://%s'", utils.PrettyAddress(c.addr))
-		if err := c.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := c.server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			c.logger.Errorf("listen: %s\n", err)
 		}
 	}()
