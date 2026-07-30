@@ -5,15 +5,11 @@ import (
 	"unsafe"
 )
 
-var lazyLoads []any
-
-var UseLazyInject = false
-
 const InjectTag = "aperture"
 const EmbedValue = "embed"
 const OptionalValue = "optional"
 
-func inject[T any](indirectVal reflect.Value) {
+func inject[T any](container *Container, indirectVal reflect.Value) {
 	if indirectVal.Kind() != reflect.Struct {
 		panic("scene registry: inject on not injectable " + indirectVal.Type().String())
 		return
@@ -33,7 +29,7 @@ func inject[T any](indirectVal reflect.Value) {
 				} else {
 					lookupName = tagValue
 				}
-				instance, exists := singletonRegistry[lookupName]
+				instance, exists := container.lookup(lookupName)
 				// if not exists, we have to check if this field is optional or not
 				if !exists {
 					// if this inject is optional, continue without panic
@@ -45,7 +41,7 @@ func inject[T any](indirectVal reflect.Value) {
 				}
 
 				// run hooks
-				runHooks(lookupName, indirectVal.Addr(), fieldVal, &instance)
+				runHooks(container, lookupName, indirectVal.Addr(), fieldVal, &instance)
 				setUnexportedField(fieldVal, instance)
 				continue
 			}
@@ -76,34 +72,16 @@ func inject[T any](indirectVal reflect.Value) {
 					}
 					targetForRecursion = targetForRecursion.Elem()
 				}
-				inject[T](targetForRecursion)
+				inject[T](container, targetForRecursion)
 			}
 		}
 	}
 	return
 }
 
-func TryInject[T any](injectable T) T {
-	val := reflect.ValueOf(injectable)
-	indirectVal := reflect.Indirect(val) // In case injectable is a pointer
-	inject[T](indirectVal)
-	return injectable
-}
-
-func LazyInject() {
-	for _, val := range lazyLoads {
-		TryInject(val)
-	}
-}
-
 // WithLazyInjection will do delay inject until all interface registered
 // proc is the function register all interface
+// proc must perform registration synchronously, and nested calls panic.
 func WithLazyInjection(proc func()) {
-	UseLazyInject = true
-	proc()
-	for _, val := range lazyLoads {
-		TryInject(val)
-	}
-	UseLazyInject = false
-	lazyLoads = make([]any, 0)
+	defaultContainer.WithLazyInjection(proc)
 }

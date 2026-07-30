@@ -42,7 +42,7 @@ func (p registryConfigProvider) GetBoolE(key string) (bool, bool) {
 }
 
 func TestRegisterConfigRegistersIConfigAndLegacyConfigUnmarshaler(t *testing.T) {
-	resetSingletonRegistryForTest()
+	resetDependenciesForTest()
 
 	cfg := config.NewConfigUnmarshaler(registryConfigProvider{
 		values: map[string]string{"scene.name": "Scene"},
@@ -53,13 +53,13 @@ func TestRegisterConfigRegistersIConfigAndLegacyConfigUnmarshaler(t *testing.T) 
 	require.Equal(t, "Scene", Config.GetString("scene.name"))
 	require.Equal(t, "fallback", Config.GetStringOrDefault("missing", "fallback"))
 
-	iConfig := AcquireSingleton(config.IConfig(nil))
+	iConfig := Provide[config.IConfig]()
 	require.Same(t, cfg, iConfig)
 
-	legacy := AcquireSingleton(config.ConfigUnmarshaler(nil))
+	legacy := Provide[config.ConfigUnmarshaler]()
 	require.Same(t, cfg, legacy)
 
-	withDefault := AcquireSingleton(config.ConfigProviderWithDefault(nil))
+	withDefault := Provide[config.ConfigProviderWithDefault]()
 	require.Same(t, cfg, withDefault)
 	require.Equal(t, "fallback", withDefault.GetStringOrDefault("missing", "fallback"))
 }

@@ -13,7 +13,7 @@ import (
 )
 
 func InitApp() sgin.GinApplication {
-	return delivery.NewGinApp(registry.AcquireSingleton(permission.PermissionService(nil)))
+	return delivery.NewGinApp(registry.Use[permission.PermissionService](nil))
 }
 
 type AppGin struct {

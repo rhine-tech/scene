@@ -13,15 +13,15 @@ var Config config.IConfig
 var Logger logger.ILogger
 
 func AcquireInfrastructure() {
-	TaskDispatcher = AcquireSingleton(asynctask.TaskDispatcher(nil))
-	Config = AcquireSingleton(config.IConfig(nil))
-	Logger = AcquireSingleton(logger.ILogger(nil))
+	TaskDispatcher = Provide[asynctask.TaskDispatcher]()
+	Config = Provide[config.IConfig]()
+	Logger = Provide[logger.ILogger]()
 }
 
 func RegisterConfig(cfg config.IConfig) {
 	Config = Register(cfg)
-	RegisterSingleton[config.ConfigUnmarshaler](cfg)
-	RegisterSingleton[config.ConfigProviderWithDefault](cfg)
+	Register[config.ConfigUnmarshaler](cfg)
+	Register[config.ConfigProviderWithDefault](cfg)
 }
 
 func RegisterLogger(logger logger.ILogger) {

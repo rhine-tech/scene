@@ -20,4 +20,7 @@ func init() {
 		//registrantWrapper(Repository), registrantWrapper(Service),
 		registrantWrapper(Disposable), registrantWrapper(Setupable),
 	}
+	defaultContainer.disposable = Disposable
+	defaultContainer.setupable = Setupable
+	defaultContainer.registrants = registrants
 }

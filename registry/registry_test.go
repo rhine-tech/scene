@@ -39,7 +39,7 @@ func TestUse(t *testing.T) {
 	//// If val is a nil interface or a nil pointer, map, slice, etc.
 	//if rv.Kind() == reflect.Ptr || rv.Kind() == reflect.Slice || rv.Kind() == reflect.Map || rv.Kind() == reflect.Chan || rv.Kind() == reflect.Func {
 	//	if rv.IsNil() {
-	//		return AcquireSingleton(val)
+	//		return Provide[testIface]()
 	//	}
 	//} else if rv.IsValid() && !rv.IsZero() {
 	//	return val

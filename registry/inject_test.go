@@ -20,7 +20,7 @@ type StructB struct {
 	aNil IFaceA
 }
 
-func TestTryInject_Flat(t *testing.T) {
+func TestInject_Flat(t *testing.T) {
 	a := &StructA{}
 	Register[IFaceA](a)
 	b := StructB{}
@@ -36,11 +36,11 @@ type StructC struct {
 	aNil    IFaceA
 }
 
-func TestTryInject_Anonymous_Embed(t *testing.T) {
+func TestInject_Anonymous_Embed(t *testing.T) {
 	a := &StructA{}
 	Register[IFaceA](a)
 	c := StructC{}
-	TryInject(&c)
+	Inject(&c)
 	require.Nil(t, c.aNil)
 	require.NotNil(t, c.a)
 	require.Equal(t, a.A(), c.a.A())
@@ -55,15 +55,15 @@ type StructAnonymousPointerEmbed struct {
 	aNil     IFaceA
 }
 
-func TestTryInject_Anonymous_Point_Embed(t *testing.T) {
+func TestInject_Anonymous_Point_Embed(t *testing.T) {
 	a := &StructA{}
 	Register[IFaceA](a)
 	c := StructAnonymousPointerEmbed{}
 	require.Panics(t, func() {
-		TryInject(&c)
+		Inject(&c)
 	})
 	c = StructAnonymousPointerEmbed{StructB: &StructB{}}
-	TryInject(&c)
+	Inject(&c)
 	require.Nil(t, c.aNil)
 	require.NotNil(t, c.a)
 	require.Equal(t, a.A(), c.a.A())
@@ -79,15 +79,15 @@ type StructEmbed struct {
 	aNil IFaceA
 }
 
-func TestTryInject_Pointer_Embed(t *testing.T) {
+func TestInject_Pointer_Embed(t *testing.T) {
 	a := &StructA{}
 	Register[IFaceA](a)
 	c := StructEmbed{}
 	require.Panics(t, func() {
-		TryInject(&c)
+		Inject(&c)
 	})
 	c = StructEmbed{bp: &StructB{}}
-	TryInject(&c)
+	Inject(&c)
 	require.Nil(t, c.aNil)
 	require.NotNil(t, c.a)
 	require.Equal(t, a.A(), c.a.A())
@@ -116,15 +116,15 @@ type StructEmbedIFace struct {
 	iface IFaceB `aperture:"embed"`
 }
 
-func TestTryInject_Interface_Embed(t *testing.T) {
+func TestInject_Interface_Embed(t *testing.T) {
 	a := &StructA{}
 	Register[IFaceA](a)
 	c := StructEmbedIFace{}
 	require.Panics(t, func() {
-		TryInject(&c)
+		Inject(&c)
 	})
 	c = StructEmbedIFace{iface: IFaceB(&StructImplB{Val: "BBB"})}
-	TryInject(&c)
+	Inject(&c)
 	require.Equal(t, a.A(), c.iface.B())
 	require.Equal(t, "BBB", c.iface.(*StructImplB).Val)
 }

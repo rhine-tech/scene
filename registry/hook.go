@@ -2,23 +2,34 @@ package registry
 
 import "reflect"
 
-var hooks = make(map[string][]InjectHookFunc)
-
 func RegisterInjectHooks(hooks ...InjectHook) {
+	defaultContainer.RegisterInjectHooks(hooks...)
+}
+
+func (container *Container) RegisterInjectHooks(hooks ...InjectHook) {
 	for _, hook := range hooks {
-		RegisterInjectHookFunc(hook.Interface, hook.Hook)
+		container.RegisterInjectHookFunc(hook.Interface, hook.Hook)
 	}
 }
 
 func RegisterInjectHookFunc(ifaceName string, hook InjectHookFunc) {
-	if _, ok := hooks[ifaceName]; !ok {
-		hooks[ifaceName] = make([]InjectHookFunc, 0)
-	}
-	hooks[ifaceName] = append(hooks[ifaceName], hook)
+	defaultContainer.RegisterInjectHookFunc(ifaceName, hook)
 }
 
-func runHooks(ifaceName string, obj reflect.Value, field reflect.Value, instance *interface{}) {
-	ifaceHooks, ok := hooks[ifaceName]
+func (container *Container) RegisterInjectHookFunc(ifaceName string, hook InjectHookFunc) {
+	container.lock.Lock()
+	if _, ok := container.hooks[ifaceName]; !ok {
+		container.hooks[ifaceName] = make([]InjectHookFunc, 0)
+	}
+	container.hooks[ifaceName] = append(container.hooks[ifaceName], hook)
+	container.lock.Unlock()
+}
+
+func runHooks(container *Container, ifaceName string, obj reflect.Value, field reflect.Value, instance *interface{}) {
+	container.lock.RLock()
+	ifaceHooks, ok := container.hooks[ifaceName]
+	ifaceHooks = append([]InjectHookFunc(nil), ifaceHooks...)
+	container.lock.RUnlock()
 	if !ok {
 		return
 	}

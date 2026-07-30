@@ -24,7 +24,7 @@ type hookOptionalHolder struct {
 }
 
 type hookExplicitHolder struct {
-	dep hookTestIface `aperture:"registry.hookTestIface"`
+	dep hookTestIface `aperture:"hook-explicit"`
 }
 
 type hookNoRegistrationHolder struct {
@@ -32,51 +32,55 @@ type hookNoRegistrationHolder struct {
 }
 
 func resetInjectHooksForTest() {
-	hooks = make(map[string][]InjectHookFunc)
+	defaultContainer.lock.Lock()
+	defaultContainer.hooks = make(map[string][]InjectHookFunc)
+	defaultContainer.lock.Unlock()
 }
 
-func TestTryInject_Hook_OptionalTag_WithRegisteredInstance_ShouldRunHook(t *testing.T) {
-	resetSingletonRegistryForTest()
+func TestInject_Hook_OptionalTag_WithRegisteredInstance_ShouldRunHook(t *testing.T) {
+	resetDependenciesForTest()
 	resetInjectHooksForTest()
 
-	RegisterSingleton[hookTestIface](&hookTestImpl{v: "origin"})
-	RegisterInjectHookFunc(reflect.TypeOf((*hookTestIface)(nil)).Elem().String(), func(obj reflect.Value, field reflect.Value, iface string, instance *interface{}) {
-		*instance = hookTestIface(&hookTestImpl{v: "hooked"})
+	Register[hookTestIface](&hookTestImpl{v: "origin"})
+	RegisterInjectHooks(InjectHook{
+		Interface: reflect.TypeOf((*hookTestIface)(nil)).Elem().String(),
+		Hook: func(obj reflect.Value, field reflect.Value, iface string, instance *interface{}) {
+			*instance = hookTestIface(&hookTestImpl{v: "hooked"})
+		},
 	})
 
 	holder := hookOptionalHolder{}
-	TryInject(&holder)
+	Inject(&holder)
 
 	require.NotNil(t, holder.dep)
-	// This assertion reproduces the bug: current inject.go calls runHooks with tag value "optional",
-	// so hook key "registry.hookTestIface" is not hit and value remains "origin".
+	// Optional injection hooks use the interface type as their lookup key.
 	require.Equal(t, "hooked", holder.dep.Value())
 }
 
-func TestTryInject_Hook_ExplicitTag_WithRegisteredInstance_ShouldRunHook(t *testing.T) {
-	resetSingletonRegistryForTest()
+func TestInject_Hook_ExplicitTag_WithRegisteredInstance_ShouldRunHook(t *testing.T) {
+	resetDependenciesForTest()
 	resetInjectHooksForTest()
 
-	RegisterSingleton[hookTestIface](&hookTestImpl{v: "origin"})
-	RegisterInjectHookFunc("registry.hookTestIface", func(obj reflect.Value, field reflect.Value, iface string, instance *interface{}) {
+	Register[hookTestIface](&hookTestImpl{v: "origin"}, "hook-explicit")
+	RegisterInjectHookFunc("hook-explicit", func(obj reflect.Value, field reflect.Value, iface string, instance *interface{}) {
 		*instance = hookTestIface(&hookTestImpl{v: "hooked"})
 	})
 
 	holder := hookExplicitHolder{}
-	TryInject(&holder)
+	Inject(&holder)
 
 	require.NotNil(t, holder.dep)
 	require.Equal(t, "hooked", holder.dep.Value())
 }
 
-func TestTryInject_Hook_NoHookRegistered_ShouldKeepInjectedInstance(t *testing.T) {
-	resetSingletonRegistryForTest()
+func TestInject_Hook_NoHookRegistered_ShouldKeepInjectedInstance(t *testing.T) {
+	resetDependenciesForTest()
 	resetInjectHooksForTest()
 
-	RegisterSingleton[hookTestIface](&hookTestImpl{v: "origin"})
+	Register[hookTestIface](&hookTestImpl{v: "origin"})
 
 	holder := hookNoRegistrationHolder{}
-	TryInject(&holder)
+	Inject(&holder)
 
 	require.NotNil(t, holder.dep)
 	require.Equal(t, "origin", holder.dep.Value())

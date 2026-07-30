@@ -5,35 +5,30 @@ import (
 	"database/sql"
 	"errors"
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/datasource"
 	"github.com/rhine-tech/scene/infrastructure/datasource/datasources"
 	"github.com/rhine-tech/scene/infrastructure/logger"
-	loggerrepo "github.com/rhine-tech/scene/infrastructure/logger/repository"
 	"github.com/rhine-tech/scene/registry"
 	"github.com/stretchr/testify/require"
 	gormPostgres "gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-var registerTestLogger sync.Once
-
 func newTestGorm(t *testing.T) *Gorm {
 	t.Helper()
 
-	registerTestLogger.Do(func() {
-		registry.Register[logger.ILogger](loggerrepo.NewZapColoredLogger())
-	})
+	container := registry.NewContainer()
+	registry.ContainerRegister[logger.ILogger](container, logger.NoopLogger{})
 
 	dsnName := strings.NewReplacer("/", "_", " ", "_").Replace(t.Name())
 	ds := datasources.SqliteDatasource(datasource.SqliteConfig{
 		Path:    "file:" + dsnName,
 		Options: "mode=memory&cache=shared",
 	})
-	registry.Inject(ds)
+	registry.ContainerInject(container, ds)
 	require.NoError(t, ds.Setup())
 	ds.Connection().SetMaxOpenConns(1)
 	t.Cleanup(func() {
@@ -41,7 +36,7 @@ func newTestGorm(t *testing.T) *Gorm {
 	})
 
 	db := NewGormWithSQLite(ds)
-	registry.Inject(db)
+	registry.ContainerInject(container, db)
 	require.NoError(t, db.Setup())
 	return db
 }

@@ -10,7 +10,7 @@ import (
 
 // Init is instance of scene.LensInit
 //func Init() {
-//	cfg := registry.AcquireSingleton(config.IConfig(nil))
+//	cfg := registry.Use[config.IConfig](nil)
 //	l := repository.NewLogrusLogger(
 //		cfg.GetString("scene.log.file"), cfg.GetInt("scene.log.max_size"),
 //		cfg.GetBool("scene.log.panic"),
@@ -36,7 +36,7 @@ type ZapFactory struct {
 }
 
 func (b ZapFactory) Default() ZapFactory {
-	cfg := registry.AcquireSingleton(config.IConfig(nil))
+	cfg := registry.Use[config.IConfig](nil)
 	return ZapFactory{
 		LogLevel: logger.LogLevel(cfg.GetInt("scene.log.level")),
 		Prefix:   cfg.GetString("scene.name"),

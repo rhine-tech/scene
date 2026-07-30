@@ -32,28 +32,28 @@ type optionalPresetHolder struct {
 	dep optionalIface `aperture:"optional"`
 }
 
-func TestTryInject_Optional_WithRegisteredDependency(t *testing.T) {
+func TestInject_Optional_WithRegisteredDependency(t *testing.T) {
 	Register[optionalIface](&optionalImpl{})
 	holder := optionalHolder{}
 	require.NotPanics(t, func() {
-		TryInject(&holder)
+		Inject(&holder)
 	})
 	require.NotNil(t, holder.dep)
 	require.Equal(t, "optional", holder.dep.Val())
 }
 
-func TestTryInject_Optional_MissingDependencyNoPanic(t *testing.T) {
+func TestInject_Optional_MissingDependencyNoPanic(t *testing.T) {
 	holder := optionalMissingHolder{}
 	require.NotPanics(t, func() {
-		TryInject(&holder)
+		Inject(&holder)
 	})
 	require.Nil(t, holder.dep)
 }
 
-func TestTryInject_Optional_DoesNotOverridePreset(t *testing.T) {
+func TestInject_Optional_DoesNotOverridePreset(t *testing.T) {
 	preset := &optionalImpl{}
 	holder := optionalPresetHolder{dep: preset}
 	Register[optionalIface](&optionalImpl{})
-	TryInject(&holder)
+	Inject(&holder)
 	require.Same(t, preset, holder.dep)
 }

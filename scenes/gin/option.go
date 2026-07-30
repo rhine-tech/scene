@@ -82,8 +82,8 @@ func WithGzip(level int) GinOption {
 //
 //func newGinLogger(log logger.ILogger) gin.HandlerFunc {
 //	log = log.WithPrefix(scene.NewSceneImplNameNoVer("gin").Identifier())
-//	ingestor := registry.AcquireSingleton(ingestion.CommonIngestor(nil)).UsePipe("scene.app-container.http.gin")
-//	taskDispatcher := registry.AcquireSingleton(asynctask.TaskDispatcher(nil))
+//	ingestor := registry.Use[ingestion.CommonIngestor](nil).UsePipe("scene.app-container.http.gin")
+//	taskDispatcher := registry.Use[asynctask.TaskDispatcher](nil)
 //
 //	return func(c *gin.Context) {
 //		// Start timer
