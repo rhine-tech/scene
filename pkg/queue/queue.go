@@ -27,6 +27,8 @@ func (q *Queue[T]) Size() int {
 
 // Count return the current element count in the queue
 func (q *Queue[T]) Count() int {
+	q.lock.RLock()
+	defer q.lock.RUnlock()
 	return q.count
 }
 
