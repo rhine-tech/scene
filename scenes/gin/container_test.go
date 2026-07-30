@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	loggerRepository "github.com/rhine-tech/scene/infrastructure/logger/repository"
+	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,7 +18,7 @@ func TestGinContainerStartReturnsListenError(t *testing.T) {
 	container := &ginContainer{
 		addr:    listener.Addr().String(),
 		engine:  gin.New(),
-		logger:  new(loggerRepository.DummyLogger),
+		logger:  logger.NoopLogger{},
 		baseCtx: context.Background(),
 	}
 
