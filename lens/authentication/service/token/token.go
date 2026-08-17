@@ -40,12 +40,16 @@ func NewAccessTokenService(
 	}
 }
 
-func (s *accessTokenService) SrvImplName() scene.ImplName {
+func (s *accessTokenService) ImplName() scene.ImplName {
 	return authentication.Lens.ImplName("IAccessTokenService", "default")
 }
 
 func (s *accessTokenService) Setup() error {
-	s.logger = s.logger.WithPrefix(s.SrvImplName().Identifier())
+	s.logger = s.logger.WithPrefix(s.ImplName().Identifier())
+	return nil
+}
+
+func (s *accessTokenService) TearDown() error {
 	return nil
 }
 

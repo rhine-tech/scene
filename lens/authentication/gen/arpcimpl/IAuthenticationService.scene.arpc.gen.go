@@ -133,10 +133,6 @@ func NewARpcIAuthenticationServiceWithTimeout(client sarpc.Client, timeout time.
 	}
 }
 
-func (r *arpcClientIAuthenticationService) SrvImplName() scene.ImplName {
-	return authentication.Lens.ImplName("IAuthenticationService", "arpc")
-}
-
 func (r *arpcClientIAuthenticationService) ImplName() scene.ImplName {
 	return authentication.Lens.ImplName("IAuthenticationService", "arpc")
 }

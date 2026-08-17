@@ -41,7 +41,7 @@ func (r *testReadCloser) Close() error {
 	return nil
 }
 
-func (t *testStorageService) SrvImplName() scene.ImplName {
+func (t *testStorageService) ImplName() scene.ImplName {
 	return scene.ImplName{}
 }
 

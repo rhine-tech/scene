@@ -4,14 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
+	"net/http"
+	"strings"
+	"time"
+
 	"github.com/gorilla/mux"
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/rhine-tech/scene/registry"
 	"github.com/rhine-tech/scene/utils"
-	"net/http"
-	"strings"
-	"time"
 )
 
 type websocketContainer struct {
@@ -21,6 +23,42 @@ type websocketContainer struct {
 	apps   []WebsocketApplication
 	logger logger.ILogger
 	server *http.Server
+}
+
+// Factory builds a WebSocket scene from WebSocket applications.
+type Factory struct {
+	Addr    string
+	Options []WsOption
+}
+
+var _ scene.SceneFactory[WebsocketApplication] = Factory{}
+
+// NewFactory declares a WebSocket scene.
+func NewFactory(addr string, options ...WsOption) scene.SceneDefinition {
+	return scene.WithScene[WebsocketApplication](Factory{
+		Addr:    addr,
+		Options: options,
+	})
+}
+
+func (f Factory) Build(scope *registry.Scope, apps []WebsocketApplication) (scene.Scene, error) {
+	wsMux := NewWebSocketMux()
+	for _, option := range f.Options {
+		if err := option(scope, wsMux); err != nil {
+			return nil, err
+		}
+	}
+	container := &websocketContainer{
+		addr: f.Addr,
+		apps: apps,
+		mux:  wsMux,
+	}
+	log, exists := registry.LookupIn[logger.ILogger](scope)
+	if !exists {
+		log = logger.NoopLogger{}
+	}
+	container.logger = log.WithPrefix(container.ImplName().Identifier())
+	return container, nil
 }
 
 func (g *websocketContainer) ImplName() scene.ImplName {
@@ -70,7 +108,7 @@ func (c *websocketContainer) stopApps() error {
 
 func (c *websocketContainer) Start() error {
 	if !utils.IsValidAddress(c.addr) {
-		registry.Logger.Errorf("invalid address: %s", c.addr)
+		c.logger.Errorf("invalid address: %s", c.addr)
 		return errors.New("invalid address " + c.addr)
 	}
 	if err := c.startApps(); err != nil {
@@ -80,9 +118,13 @@ func (c *websocketContainer) Start() error {
 		Addr:    c.addr,
 		Handler: c.mux,
 	}
+	listener, err := net.Listen("tcp", c.addr)
+	if err != nil {
+		return err
+	}
+	c.logger.Infof("websocket server started, listen on 'ws://%s'", utils.PrettyAddress(c.addr))
 	go func() {
-		c.logger.Infof("websocket server started, listen on 'ws://%s'", utils.PrettyAddress(c.addr))
-		if err := c.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := c.server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			c.logger.Errorf("listen: %s\n", err)
 		}
 	}()
@@ -111,18 +153,4 @@ func (g *websocketContainer) ListAppNames() []string {
 		names = append(names, app.Name().Identifier())
 	}
 	return names
-}
-
-func NewContainer(addr string, apps []WebsocketApplication, opts ...WsOption) scene.Scene {
-	wsMux := NewWebSocketMux()
-	for _, opt := range opts {
-		_ = opt(wsMux)
-	}
-	container := &websocketContainer{
-		addr: addr,
-		apps: apps,
-		mux:  wsMux,
-	}
-	container.logger = registry.Logger.WithPrefix(container.ImplName().Identifier())
-	return container
 }

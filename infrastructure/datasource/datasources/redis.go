@@ -44,7 +44,7 @@ func (r *RedisDataRepo) Setup() error {
 	return nil
 }
 
-func (r *RedisDataRepo) Dispose() error {
+func (r *RedisDataRepo) TearDown() error {
 	err := r.rdb.Close()
 	if err != nil {
 		r.log.Warnf("close '%s' failed", r.cfg.MaskedDSN())

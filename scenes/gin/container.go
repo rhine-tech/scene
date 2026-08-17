@@ -4,18 +4,21 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/rhine-tech/scene"
-	"github.com/rhine-tech/scene/infrastructure/logger"
-	"github.com/rhine-tech/scene/registry"
-	"github.com/rhine-tech/scene/utils"
 	"net"
 	"net/http"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/rhine-tech/scene"
+	"github.com/rhine-tech/scene/infrastructure/config"
+	"github.com/rhine-tech/scene/infrastructure/logger"
+	"github.com/rhine-tech/scene/registry"
+	"github.com/rhine-tech/scene/utils"
 )
 
-func createGinEngine() *gin.Engine {
-	if registry.Config.GetBool("scene.debug") {
+func createGinEngine(scope *registry.Scope) *gin.Engine {
+	cfg, exists := registry.LookupIn[config.IConfig](scope)
+	if exists && cfg.GetBool("scene.debug") {
 		gin.SetMode(gin.DebugMode)
 	} else {
 		gin.SetMode(gin.ReleaseMode)
@@ -33,6 +36,50 @@ type ginContainer struct {
 	server  *http.Server
 	baseCtx context.Context
 	cancel  context.CancelFunc
+}
+
+// Factory builds a Gin scene from Gin applications.
+type Factory struct {
+	Addr    string
+	Prefix  string
+	Options []GinOption
+}
+
+var _ scene.SceneFactory[GinApplication] = Factory{}
+
+// NewFactory declares a Gin scene.
+func NewFactory(addr, prefix string, options ...GinOption) scene.SceneDefinition {
+	return scene.WithScene[GinApplication](Factory{
+		Addr:    addr,
+		Prefix:  prefix,
+		Options: options,
+	})
+}
+
+func (f Factory) Build(scope *registry.Scope, apps []GinApplication) (scene.Scene, error) {
+	prefix := f.Prefix
+	if prefix == "" {
+		prefix = "/"
+	}
+	ginEngine := createGinEngine(scope)
+	for _, option := range f.Options {
+		if err := option(scope, ginEngine); err != nil {
+			return nil, err
+		}
+	}
+	container := &ginContainer{
+		addr:   f.Addr,
+		prefix: prefix,
+		engine: ginEngine,
+		apps:   apps,
+	}
+	container.baseCtx, container.cancel = context.WithCancel(context.Background())
+	log, exists := registry.LookupIn[logger.ILogger](scope)
+	if !exists {
+		log = logger.NoopLogger{}
+	}
+	container.logger = log.WithPrefix(container.ImplName().Identifier())
+	return container, nil
 }
 
 func (c *ginContainer) ImplName() scene.ImplName {
@@ -74,7 +121,7 @@ func (c *ginContainer) stopApps() error {
 
 func (c *ginContainer) Start() error {
 	if !utils.IsValidAddress(c.addr) {
-		registry.Logger.Errorf("invalid address: %s", c.addr)
+		c.logger.Errorf("invalid address: %s", c.addr)
 		return errors.New("invalid address " + c.addr)
 	}
 	if err := c.startApps(); err != nil {
@@ -127,37 +174,4 @@ func (g *ginContainer) ListAppNames() []string {
 		names = append(names, app.Name().Identifier())
 	}
 	return names
-}
-
-// NewAppContainerWithPrefix creates a Gin scene mounted below prefix.
-func NewAppContainerWithPrefix(
-	addr string,
-	prefix string,
-	apps []GinApplication,
-	options ...GinOption,
-) scene.Scene {
-	ginEngine := createGinEngine()
-	for _, opt := range options {
-		if err := opt(ginEngine); err != nil {
-			panic(err)
-		}
-	}
-	container := &ginContainer{
-		addr:   addr,
-		prefix: prefix,
-		engine: ginEngine,
-		apps:   apps,
-	}
-	container.baseCtx, container.cancel = context.WithCancel(context.Background())
-	container.logger = registry.Logger.WithPrefix(container.ImplName().Identifier())
-	return container
-}
-
-// NewAppContainer creates a Gin scene mounted at the root path.
-func NewAppContainer(
-	addr string,
-	apps []GinApplication,
-	options ...GinOption,
-) scene.Scene {
-	return NewAppContainerWithPrefix(addr, "/", apps, options...)
 }

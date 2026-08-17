@@ -5,15 +5,50 @@ import (
 	"unsafe"
 )
 
+// core logic
+
 const InjectTag = "aperture"
 const EmbedValue = "embed"
 const OptionalValue = "optional"
 
-func inject[T any](container *Container, indirectVal reflect.Value) {
+type injectionField struct {
+	name      string
+	optional  bool
+	object    reflect.Value
+	field     reflect.Value
+	fieldName string
+}
+
+func inject(container *Container, fields []injectionField, hooks []InjectHookFunc) {
+	for _, entry := range fields {
+		// if field is nil, and it's an Interface or Ptr, inject it.
+		if !entry.field.IsNil() {
+			continue
+		}
+		instance, exists := container.lookup(entry.name)
+		// if not exists, we have to check if this field is optional or not
+		if !exists {
+			// if this inject is optional, continue without panic
+			if entry.optional {
+				continue
+			}
+			// default should panic if optional tag is not specified.
+			panic("scene registry: no instance found for " + entry.name + " when injecting " + entry.fieldName)
+		}
+
+		// run hooks
+		for _, hook := range hooks {
+			hook(entry.name, entry.object, entry.field, &instance)
+		}
+		setUnexportedField(entry.field, instance)
+	}
+}
+
+func walkInjectionFields(indirectVal reflect.Value) []injectionField {
 	if indirectVal.Kind() != reflect.Struct {
 		panic("scene registry: inject on not injectable " + indirectVal.Type().String())
-		return
 	}
+	fields := make([]injectionField, 0)
 	typ := indirectVal.Type()
 	for i := 0; i < typ.NumField(); i++ {
 		field := typ.Field(i)
@@ -29,20 +64,13 @@ func inject[T any](container *Container, indirectVal reflect.Value) {
 				} else {
 					lookupName = tagValue
 				}
-				instance, exists := container.lookup(lookupName)
-				// if not exists, we have to check if this field is optional or not
-				if !exists {
-					// if this inject is optional, continue without panic
-					if tagValue == OptionalValue {
-						continue
-					}
-					// default should panic if optional tag is not specified.
-					panic("scene registry: no instance found for " + lookupName + " when injecting " + field.Name)
-				}
-
-				// run hooks
-				runHooks(container, lookupName, indirectVal.Addr(), fieldVal, &instance)
-				setUnexportedField(fieldVal, instance)
+				fields = append(fields, injectionField{
+					name:      lookupName,
+					optional:  tagValue == OptionalValue,
+					object:    indirectVal.Addr(),
+					field:     fieldVal,
+					fieldName: field.Name,
+				})
 				continue
 			}
 			// if field is Anonymous field and has the tag or has the embed tag, inject the embed field
@@ -63,6 +91,7 @@ func inject[T any](container *Container, indirectVal reflect.Value) {
 					}
 				}
 				// If it's a pointer, we need to get the element it points to.
+				// TODO: Maybe add support for dereferencing multiple pointer levels.
 				if targetForRecursion.Kind() == reflect.Ptr {
 					if targetForRecursion.IsNil() {
 						// This can happen if the DI failed to find an instance,
@@ -72,16 +101,36 @@ func inject[T any](container *Container, indirectVal reflect.Value) {
 					}
 					targetForRecursion = targetForRecursion.Elem()
 				}
-				inject[T](container, targetForRecursion)
+				fields = append(fields, walkInjectionFields(targetForRecursion)...)
 			}
 		}
 	}
-	return
+	return fields
 }
 
-// WithLazyInjection will do delay inject until all interface registered
-// proc is the function register all interface
-// proc must perform registration synchronously, and nested calls panic.
-func WithLazyInjection(proc func()) {
-	defaultContainer.WithLazyInjection(proc)
+func requirementsFromInjectionFields(fields []injectionField) []requirement {
+	requirements := make([]requirement, 0, len(fields))
+	seen := make(map[requirement]struct{}, len(fields))
+	for _, field := range fields {
+		candidate := requirement{
+			name:     field.name,
+			optional: field.optional,
+		}
+		if _, exists := seen[candidate]; exists {
+			continue
+		}
+		seen[candidate] = struct{}{}
+		requirements = append(requirements, candidate)
+	}
+	return requirements
+}
+
+func injectableStruct(value reflect.Value) (reflect.Value, bool) {
+	for value.IsValid() && (value.Kind() == reflect.Interface || value.Kind() == reflect.Ptr) {
+		if value.IsNil() {
+			return reflect.Value{}, false
+		}
+		value = value.Elem()
+	}
+	return value, value.IsValid() && value.Kind() == reflect.Struct
 }

@@ -2,12 +2,12 @@ package factory
 
 import (
 	"github.com/rhine-tech/scene"
+	"github.com/rhine-tech/scene/infrastructure/config"
 	storageApi "github.com/rhine-tech/scene/lens/storage"
 	"github.com/rhine-tech/scene/lens/storage/delivery"
 	"github.com/rhine-tech/scene/lens/storage/repository/meta"
 	"github.com/rhine-tech/scene/lens/storage/service"
 	"github.com/rhine-tech/scene/registry"
-	sgin "github.com/rhine-tech/scene/scenes/gin"
 )
 
 type Service struct {
@@ -17,6 +17,7 @@ type Service struct {
 }
 
 func (a Service) Default() Service {
+	cfg := registry.Use[config.IConfig](nil)
 	providers := []StorageProvider{
 		Local{}.Default(),
 	}
@@ -25,41 +26,41 @@ func (a Service) Default() Service {
 		providers = append(providers, s3)
 	}
 	return Service{
-		DefaultProvider: registry.Config.GetString("storage.default_provider"),
+		DefaultProvider: cfg.GetString("storage.default_provider"),
 		Providers:       providers,
 		SessionTracker:  SessionTrackerMemory{},
 	}
 }
 
-func (a Service) Init() scene.LensInit {
-	return func() {
-		providers := make([]storageApi.IStorageProvider, 0, len(a.Providers))
-		for _, p := range a.Providers {
-			providers = append(providers, p.Provide())
-		}
-		if a.DefaultProvider == "" && len(providers) > 0 {
-			a.DefaultProvider = providers[0].ProviderName()
-		}
-		registry.Register[storageApi.IStorageService](service.NewStorageService(
-			registry.Load(meta.NewGormFileMetaRepository(nil)),
-			a.SessionTracker.Provide(),
-			a.DefaultProvider,
-			providers...))
+func (a Service) Init(container *registry.Container) {
+	providers := make([]storageApi.IStorageProvider, 0, len(a.Providers))
+	for _, providerConfig := range a.Providers {
+		provider := registry.Load(container, providerConfig.Provide())
+		providers = append(providers, provider)
 	}
+	if a.DefaultProvider == "" && len(providers) > 0 {
+		a.DefaultProvider = providers[0].ProviderName()
+	}
+	metaRepository := registry.Load(container, meta.NewGormFileMetaRepository(nil))
+	uploadSessions := registry.Load(container, a.SessionTracker.Provide())
+	registry.Export[storageApi.IStorageService](container, service.NewStorageService(
+		metaRepository,
+		uploadSessions,
+		a.DefaultProvider,
+		providers...,
+	))
 }
 
-func (a Service) Apps() []any {
-	return []any{}
+func (a Service) Apps() []scene.Application {
+	return nil
 }
 
 type App struct {
 	scene.ModuleFactory
 }
 
-func (a App) Apps() []any {
-	return []any{
-		func() sgin.GinApplication {
-			return registry.Load(delivery.GinApp())
-		},
+func (a App) Apps() []scene.Application {
+	return []scene.Application{
+		delivery.GinApp(),
 	}
 }

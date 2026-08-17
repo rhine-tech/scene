@@ -13,10 +13,10 @@ import (
 )
 
 // GinOption configures the Gin engine before applications are mounted.
-type GinOption func(engine *gin.Engine) error
+type GinOption func(scope *registry.Scope, engine *gin.Engine) error
 
 func _ginLogger(log logger.ILogger) gin.HandlerFunc {
-	log = registry.Use(log).WithPrefix(scene.NewSceneImplNameNoVer("gin", "router").Identifier())
+	log = log.WithPrefix(scene.NewSceneImplNameNoVer("gin", "router").Identifier())
 
 	return func(c *gin.Context) {
 		// Start timer
@@ -36,15 +36,15 @@ func _ginLogger(log logger.ILogger) gin.HandlerFunc {
 
 // WithLogger installs Scene's request logger.
 func WithLogger(log logger.ILogger) GinOption {
-	return func(engine *gin.Engine) error {
-		engine.Use(_ginLogger(log))
+	return func(scope *registry.Scope, engine *gin.Engine) error {
+		engine.Use(_ginLogger(registry.UseIn(scope, log)))
 		return nil
 	}
 }
 
 // WithCors allows all origins and request headers.
 func WithCors() GinOption {
-	return func(engine *gin.Engine) error {
+	return func(_ *registry.Scope, engine *gin.Engine) error {
 		corsCfg := ginCors.DefaultConfig()
 		corsCfg.AllowHeaders = []string{"*"}
 		corsCfg.AllowAllOrigins = true
@@ -55,7 +55,7 @@ func WithCors() GinOption {
 
 // WithRecovery installs Gin's recovery middleware.
 func WithRecovery() GinOption {
-	return func(engine *gin.Engine) error {
+	return func(_ *registry.Scope, engine *gin.Engine) error {
 		engine.Use(gin.Recovery())
 		return nil
 	}
@@ -64,7 +64,7 @@ func WithRecovery() GinOption {
 // WithGzip add gzip support for gin engine,
 // default level is -1
 func WithGzip(level int) GinOption {
-	return func(engine *gin.Engine) error {
+	return func(_ *registry.Scope, engine *gin.Engine) error {
 		engine.Use(gzip.Gzip(level))
 		return nil
 	}

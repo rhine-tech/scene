@@ -16,20 +16,16 @@ type ServiceARpc struct {
 	Client sarpc.Client
 }
 
-func (b ServiceARpc) Init() scene.LensInit {
-	return func() {
-		registry.Register[permission.PermissionService](arpcimpl.NewARpcPermissionService(b.Client))
-	}
+func (b ServiceARpc) Init(container *registry.Container) {
+	registry.Export[permission.PermissionService](container, arpcimpl.NewARpcPermissionService(b.Client))
 }
 
 type ServiceGorm struct {
 	scene.ModuleFactory
 }
 
-func (b ServiceGorm) Init() scene.LensInit {
-	return func() {
-		_ = registry.Register(repository.NewGormImpl(nil))
-		baseService := registry.Load(permission.PermissionService(&base.PermissionManagerImpl{}))
-		_ = registry.Register[permission.PermissionService](proxy.NewCachedPermissionService(baseService))
-	}
+func (b ServiceGorm) Init(container *registry.Container) {
+	repositoryImpl := registry.Load(container, repository.NewGormImpl(nil))
+	baseService := registry.Load(container, base.NewPermissionManager(repositoryImpl))
+	registry.Export[permission.PermissionService](container, proxy.NewCachedPermissionService(baseService))
 }

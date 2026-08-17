@@ -23,7 +23,7 @@ func SqliteDatasource(cfg datasource.SqliteConfig) datasource.SqliteDataSource {
 	}
 }
 
-func (s *sqliteImpl) Dispose() error {
+func (s *sqliteImpl) TearDown() error {
 	if s.db == nil {
 		return nil
 	}

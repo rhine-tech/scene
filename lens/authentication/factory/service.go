@@ -17,23 +17,19 @@ type ServiceARpc struct {
 	Client sarpc.Client
 }
 
-func (b ServiceARpc) Init() scene.LensInit {
-	return func() {
-		registry.Register[authentication.IAccessTokenService](arpcimpl.NewARpcIAccessTokenService(b.Client))
-		registry.Register[authentication.IAuthenticationService](arpcimpl.NewARpcIAuthenticationService(b.Client))
-	}
+func (b ServiceARpc) Init(container *registry.Container) {
+	registry.Export[authentication.IAccessTokenService](container, arpcimpl.NewARpcIAccessTokenService(b.Client))
+	registry.Export[authentication.IAuthenticationService](container, arpcimpl.NewARpcIAuthenticationService(b.Client))
 }
 
 type ServiceGorm struct {
 	scene.ModuleFactory
 }
 
-func (b ServiceGorm) Init() scene.LensInit {
-	return func() {
-		repo := registry.Load(repository.NewGormAuthenticationRepository(nil))
-		repo2 := registry.Load(repository.NewGormAccessTokenRepository(nil))
-		srv := registry.Register[authentication.IAccessTokenService](token.NewAccessTokenService(repo2, nil))
-		baseService := registry.Load(base.NewAuthenticationService(nil, repo, srv))
-		registry.Register[authentication.IAuthenticationService](proxy.NewCachedAuthenticationService(baseService))
-	}
+func (b ServiceGorm) Init(container *registry.Container) {
+	authenticationRepository := registry.Load(container, repository.NewGormAuthenticationRepository(nil))
+	tokenRepository := registry.Load(container, repository.NewGormAccessTokenRepository(nil))
+	tokenService := registry.Export[authentication.IAccessTokenService](container, token.NewAccessTokenService(tokenRepository, nil))
+	baseService := registry.Load(container, base.NewAuthenticationService(nil, authenticationRepository, tokenService))
+	registry.Export[authentication.IAuthenticationService](container, proxy.NewCachedAuthenticationService(baseService))
 }

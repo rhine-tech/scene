@@ -74,6 +74,10 @@ func (r *GormFileMetaRepository) Setup() error {
 	return r.db.AutoMigrate(&fileMetaRow{})
 }
 
+func (r *GormFileMetaRepository) TearDown() error {
+	return nil
+}
+
 func (r *GormFileMetaRepository) ImplName() scene.ImplName {
 	return storage.Lens.ImplName("IFileMetaRepository", "gorm")
 }

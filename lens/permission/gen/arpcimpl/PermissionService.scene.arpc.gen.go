@@ -85,10 +85,6 @@ func NewARpcPermissionServiceWithTimeout(client sarpc.Client, timeout time.Durat
 	}
 }
 
-func (r *arpcClientPermissionService) SrvImplName() scene.ImplName {
-	return permission.Lens.ImplName("PermissionService", "arpc")
-}
-
 func (r *arpcClientPermissionService) ImplName() scene.ImplName {
 	return permission.Lens.ImplName("PermissionService", "arpc")
 }

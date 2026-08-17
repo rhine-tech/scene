@@ -2,8 +2,10 @@ package arpc
 
 import (
 	"errors"
-	"github.com/lesismal/arpc"
 	"time"
+
+	"github.com/lesismal/arpc"
+	"github.com/rhine-tech/scene/registry"
 )
 
 const rpcNameBasicPasswordAuth = "scene.arpc.auth.password"
@@ -28,7 +30,7 @@ func WithPassword(password string) ClientOption {
 }
 
 func UsePassword(password string) ServerOption {
-	return func(server *arpc.Server) error {
+	return func(_ *registry.Scope, server *arpc.Server) error {
 		server.Handler.Use(func(ctx *arpc.Context) {
 			method := ctx.Message.Method()
 			if method == rpcNameBasicPasswordAuth {

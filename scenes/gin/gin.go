@@ -3,7 +3,6 @@ package gin
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/rhine-tech/scene"
-	"github.com/rhine-tech/scene/registry"
 )
 
 // GinApplication mounts one module's HTTP routes into a Gin scene.
@@ -19,13 +18,14 @@ type GinApplication interface {
 
 // AppRoutes is the declarative GinApplication used by most modules.
 //
-// Context is injected when Create is called. Middlewares apply to every
-// action, before middleware supplied by an individual MiddlewareProvider.
+// Context is injected by the module loader before Create is called.
+// Middlewares apply to every action, before middleware supplied by an
+// individual MiddlewareProvider.
 type AppRoutes[T any] struct {
 	AppName     scene.ImplName
 	BasePath    string
 	Actions     []Action[*T]
-	Context     T
+	Context     T `aperture:"embed"`
 	Middlewares gin.HandlersChain
 }
 
@@ -38,7 +38,6 @@ func (a *AppRoutes[T]) Prefix() string {
 }
 
 func (a *AppRoutes[T]) Create(engine *gin.Engine, router gin.IRouter) error {
-	registry.Inject(&a.Context)
 	approuter := NewAppRouter(&a.Context, router, a.Middlewares)
 	approuter.HandleActions(a.Actions...)
 	return nil

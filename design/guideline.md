@@ -72,7 +72,7 @@ const Lens scene.ModuleName = "authentication"
    - Declare domain errors with `errcode.NewErrorGroup` so they can travel across layers predictably.
 
 2. **Describe the ports**
-   - Define service interfaces in `<module>/service.go`. They extend `scene.Service` (providing `SrvImplName()`/`Setup()` hooks) and should not expose transport-specific details.
+   - Define service interfaces in `<module>/service.go`. They extend `scene.Named` (providing `ImplName()`) and should not expose transport-specific details.
    - Define repository interfaces (outbound ports) in `<module>/repository.go`. They extend `scene.Named` and only return domain types.
 
 3. **Implement repositories (infrastructure layer)**
@@ -93,11 +93,38 @@ const Lens scene.ModuleName = "authentication"
    - Use module-level middleware to inject contexts (e.g. `authentication.SetAuthContext`).
 
 6. **Wire everything via factories**
-   - Factories live under `factory/` and embed `scene.ModuleFactory`.
-   - `Init()` registers repositories and services inside the global `registry`. Prefer constructor functions (`service.NewAuthenticationService`) so you can call `registry.Load(...)` to resolve dependencies declared with `aperture` tags.
-   - `Apps()` returns delivery initializers per scene. These functions are executed by scene engines (`scenes/gin`, `scenes/arpc`) when building the application container.
+   - Factories live under `factory/` and embed `scene.ModuleFactory` when they only need its no-op defaults.
+   - `Init(container *registry.Container)` declares repositories and services in that module's container. Use `Load` for owned-only objects, `Register` for module-private bindings, and `Export` for public module contracts.
+   - Create values with ordinary Go constructors before declaring them. Wire module-internal dependencies directly, and declare external module dependencies with `aperture` fields. The registry injects those fields only after every module has declared its values.
+   - `Apps()` returns already-created application values. They are loaded as owned objects in the same module container and participate in the same injection pass.
    - Provide `Default()` values for factories that require configuration (e.g. secrets, header names).
-   - Compose multiple factories with `scene.BuildInitArray` and `scene.BuildApps` inside your scene entrypoint.
+   - Create one `scene.ModuleLoader` and declare each delivery with `scene.WithScene`. The engine owns `Init`, `Setup`, Scene construction/startup, reverse shutdown, and `TearDown`.
+   - A `scene.SceneFactory[T]` receives only applications implementing `T`, in module declaration order. Declaring multiple Scenes does not initialize modules or recreate applications again.
+
+   ```go
+   loader := scene.NewModuleLoader(builders)
+   engine := engines.NewEngine(
+       loader,
+       sgin.NewFactory(
+           ":8080",
+           "/api",
+           sgin.WithRecovery(),
+           sgin.WithCors(),
+       ),
+       svoid.NewFactory(),
+   )
+   return engine.Run()
+   ```
+
+   A command entry point uses the same loader without manually selecting apps:
+
+   ```go
+   commands := scmd.NewContainer("service", "service CLI", loader)
+   return commands.Execute()
+   ```
+
+   For a custom delivery, implement `scene.SceneFactory[YourApplication]` and
+   pass it through `scene.WithScene`.
 
 7. **Test and validate**
    - Unit test domain logic without touching the registry. Mock repositories by implementing the interface.
@@ -202,7 +229,7 @@ const Lens scene.ModuleName = "authentication"
 ### Additional rules
 
 - Implement `Setup()` to finalize dependencies (e.g. prefixing loggers, validating configuration).
-- If the application entrypoint has registered `logger.LoggerAddPrefix()`, injected loggers already receive the implementation name automatically. In that case, do not manually call `WithPrefix(...)` again in `Setup()` unless you intentionally want an additional sub-prefix. If the hook is not enabled, explicitly add a prefix in `Setup()` for every `scene.Service` / `scene.Named` implementation that owns logs.
+- If the application entrypoint has registered `logger.LoggerAddPrefix()`, injected loggers already receive the implementation name automatically. In that case, do not manually call `WithPrefix(...)` again in `Setup()` unless you intentionally want an additional sub-prefix. If the hook is not enabled, explicitly add a prefix in `Setup()` for every `scene.Named` implementation that owns logs.
 - When services are context-aware, expose lightweight proxies (`WithSceneContext`) instead of letting delivery mutate the service directly.
 - Prefer constructor functions for services/repositories instead of exporting structs directly. This keeps dependency wiring explicit and testable.
 - A service may expose both:
@@ -301,9 +328,15 @@ const Lens scene.ModuleName = "authentication"
 
 ## Factories, DI, and cross-module access
 
-- All dependencies are managed through `registry.Register`, `registry.Load`, and `aperture` tags. Avoid manual `new()` inside services unless you construct pure domain helpers.
-- Factories own configuration lookup via `registry.Config`. Keep secrets or dynamic values here so services remain deterministic and testable.
+- All module dependencies are declared through `container.Load`, `container.Register`, `container.Export`, and `aperture` tags. Avoid manual dependency lookup inside services.
+- Factories own configuration lookup via `registry.Use[config.IConfig](nil)`. Keep secrets or dynamic values here so services remain deterministic and testable.
 - Cross-module usage must be defined via interfaces and registered implementations. Never import another module’s concrete types from `service/<impl>` or `repository/<impl>`—depend on the exported interfaces from the root package.
+
+### Lifecycle
+
+- Lifecycle is a root framework concern: implement both `Setup() error` and `TearDown() error` to satisfy `scene.Lifecycle`.
+- `registry` does not know about lifecycle. After building the module Scope, `scene.ModuleLoader` discovers lifecycle values, deduplicates objects exported under multiple interfaces, and controls setup, rollback, and reverse teardown.
+- Keep ordinary Go constructors free of external side effects. Acquire resources in `Setup` so a later startup failure can be rolled back consistently.
 
 ### Factory split
 

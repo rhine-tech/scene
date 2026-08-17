@@ -19,22 +19,25 @@ func newRepositoryTestGorm(t *testing.T) *sceneorm.Gorm {
 	t.Helper()
 
 	container := registry.NewContainer()
-	registry.ContainerRegister[logger.ILogger](container, logger.NoopLogger{})
+	registry.Export[logger.ILogger](container, logger.NoopLogger{})
 
 	dsnName := strings.NewReplacer("/", "_", " ", "_").Replace(t.Name())
 	ds := datasources.SqliteDatasource(datasource.SqliteConfig{
 		Path:    "file:" + dsnName,
 		Options: "mode=memory&cache=shared",
 	})
-	registry.ContainerInject(container, ds)
+	db := sceneorm.NewGormWithSQLite(ds)
+	container.Load(ds)
+	container.Load(db)
+	scope := registry.NewScope()
+	require.NoError(t, scope.Build(container))
 	require.NoError(t, ds.Setup())
 	ds.Connection().SetMaxOpenConns(1)
 	t.Cleanup(func() {
-		require.NoError(t, ds.Dispose())
+		require.NoError(t, db.TearDown())
+		require.NoError(t, ds.TearDown())
 	})
 
-	db := sceneorm.NewGormWithSQLite(ds)
-	registry.ContainerInject(container, db)
 	require.NoError(t, db.Setup())
 	return db
 }
@@ -44,7 +47,7 @@ func TestGormAuthenticationRepositories(t *testing.T) {
 	db := newRepositoryTestGorm(t)
 
 	users := NewGormAuthenticationRepository(db)
-	require.NoError(t, users.(scene.Setupable).Setup())
+	require.NoError(t, users.(scene.Lifecycle).Setup())
 
 	alice := authentication.User{
 		UserID:   "user-1",
@@ -84,7 +87,7 @@ func TestGormAuthenticationRepositories(t *testing.T) {
 	require.Equal(t, []authentication.User{alice}, page.Results)
 
 	tokens := NewGormAccessTokenRepository(db)
-	require.NoError(t, tokens.(scene.Setupable).Setup())
+	require.NoError(t, tokens.(scene.Lifecycle).Setup())
 
 	for _, token := range []authentication.AccessToken{
 		{Token: "token-1", UserID: alice.UserID, Name: "first"},

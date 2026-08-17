@@ -10,7 +10,7 @@ import (
 const Lens scene.ModuleName = "permission"
 
 type PermissionService interface {
-	scene.Service
+	scene.Named
 	HasPermission(owner string, perm *Permission) bool
 	HasPermissionStr(owner string, perm string) bool
 	//ListOwners() []string

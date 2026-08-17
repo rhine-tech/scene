@@ -9,8 +9,8 @@ import (
 )
 
 func GinWithPermissionContextFromAuth() sgin.GinOption {
-	return func(engine *gin.Engine) error {
-		engine.Use(permMdw.GinPermContextFromAuth(registry.Use[permission.PermissionService](nil)))
+	return func(scope *registry.Scope, engine *gin.Engine) error {
+		engine.Use(permMdw.GinPermContextFromAuth(registry.UseIn[permission.PermissionService](scope, nil)))
 		return nil
 	}
 }

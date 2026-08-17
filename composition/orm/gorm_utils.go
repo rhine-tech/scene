@@ -14,7 +14,9 @@ func NewGormWithMySQL(ds datasource.MysqlDataSource) *Gorm {
 		return gormMySQL.New(gormMySQL.Config{
 			Conn: ds.Connection(),
 		})
-	}, ds)
+	}, func() datasource.DataSource {
+		return ds
+	})
 }
 
 // NewGormWithSQLite creates a GORM component backed by a SQLite data source.
@@ -23,7 +25,9 @@ func NewGormWithSQLite(ds datasource.SqliteDataSource) *Gorm {
 		return &gormSQLite.Dialector{
 			Conn: ds.Connection(),
 		}
-	}, ds)
+	}, func() datasource.DataSource {
+		return ds
+	})
 }
 
 // NewGormWithPostgreSQL creates a GORM component backed by a PostgreSQL data source.
@@ -32,5 +36,7 @@ func NewGormWithPostgreSQL(ds datasource.PostgresDataSource) *Gorm {
 		return gormPostgres.New(gormPostgres.Config{
 			Conn: ds.Connection(),
 		})
-	}, ds)
+	}, func() datasource.DataSource {
+		return ds
+	})
 }

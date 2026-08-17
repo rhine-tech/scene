@@ -1,8 +1,9 @@
 package registry
 
 import (
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 type IFaceA interface {
@@ -21,10 +22,13 @@ type StructB struct {
 }
 
 func TestInject_Flat(t *testing.T) {
+	container := NewContainer("flat")
 	a := &StructA{}
-	Register[IFaceA](a)
+	Register[IFaceA](container, a)
 	b := StructB{}
-	Load(&b)
+	container.Load(&b)
+	container.Inject()
+
 	require.Nil(t, b.aNil)
 	require.NotNil(t, b.a)
 	require.Equal(t, a.A(), b.a.A())
@@ -37,10 +41,13 @@ type StructC struct {
 }
 
 func TestInject_Anonymous_Embed(t *testing.T) {
+	container := NewContainer("anonymous-embed")
 	a := &StructA{}
-	Register[IFaceA](a)
+	Register[IFaceA](container, a)
 	c := StructC{}
-	Inject(&c)
+	container.Load(&c)
+	container.Inject()
+
 	require.Nil(t, c.aNil)
 	require.NotNil(t, c.a)
 	require.Equal(t, a.A(), c.a.A())
@@ -56,14 +63,18 @@ type StructAnonymousPointerEmbed struct {
 }
 
 func TestInject_Anonymous_Point_Embed(t *testing.T) {
-	a := &StructA{}
-	Register[IFaceA](a)
-	c := StructAnonymousPointerEmbed{}
 	require.Panics(t, func() {
-		Inject(&c)
+		container := NewContainer("nil-anonymous-pointer-embed")
+		container.Load(&StructAnonymousPointerEmbed{})
 	})
-	c = StructAnonymousPointerEmbed{StructB: &StructB{}}
-	Inject(&c)
+
+	container := NewContainer("anonymous-pointer-embed")
+	a := &StructA{}
+	Register[IFaceA](container, a)
+	c := StructAnonymousPointerEmbed{StructB: &StructB{}}
+	container.Load(&c)
+	container.Inject()
+
 	require.Nil(t, c.aNil)
 	require.NotNil(t, c.a)
 	require.Equal(t, a.A(), c.a.A())
@@ -80,14 +91,18 @@ type StructEmbed struct {
 }
 
 func TestInject_Pointer_Embed(t *testing.T) {
-	a := &StructA{}
-	Register[IFaceA](a)
-	c := StructEmbed{}
 	require.Panics(t, func() {
-		Inject(&c)
+		container := NewContainer("nil-pointer-embed")
+		container.Load(&StructEmbed{})
 	})
-	c = StructEmbed{bp: &StructB{}}
-	Inject(&c)
+
+	container := NewContainer("pointer-embed")
+	a := &StructA{}
+	Register[IFaceA](container, a)
+	c := StructEmbed{bp: &StructB{}}
+	container.Load(&c)
+	container.Inject()
+
 	require.Nil(t, c.aNil)
 	require.NotNil(t, c.a)
 	require.Equal(t, a.A(), c.a.A())
@@ -117,14 +132,54 @@ type StructEmbedIFace struct {
 }
 
 func TestInject_Interface_Embed(t *testing.T) {
-	a := &StructA{}
-	Register[IFaceA](a)
-	c := StructEmbedIFace{}
 	require.Panics(t, func() {
-		Inject(&c)
+		container := NewContainer("nil-interface-embed")
+		container.Load(&StructEmbedIFace{})
 	})
-	c = StructEmbedIFace{iface: IFaceB(&StructImplB{Val: "BBB"})}
-	Inject(&c)
+
+	container := NewContainer("interface-embed")
+	a := &StructA{}
+	Register[IFaceA](container, a)
+	c := StructEmbedIFace{iface: IFaceB(&StructImplB{Val: "BBB"})}
+	container.Load(&c)
+	container.Inject()
+
 	require.Equal(t, a.A(), c.iface.B())
 	require.Equal(t, "BBB", c.iface.(*StructImplB).Val)
+}
+
+type directPointerHolder struct {
+	dep *StructA `aperture:""`
+}
+
+func TestInject_DirectPointer(t *testing.T) {
+	container := NewContainer("direct-pointer")
+	dependency := &StructA{}
+	Register[*StructA](container, dependency)
+	holder := directPointerHolder{}
+	container.Load(&holder)
+	container.Inject()
+
+	require.Same(t, dependency, holder.dep)
+}
+
+func TestInject_RequiredDoesNotOverridePreset(t *testing.T) {
+	container := NewContainer("required-preset")
+	preset := &StructA{}
+	holder := StructB{a: preset}
+	Register[IFaceA](container, &StructA{})
+	container.Load(&holder)
+	container.Inject()
+
+	require.Same(t, preset, holder.a)
+}
+
+func TestInject_MissingRequiredDependencyPanics(t *testing.T) {
+	container := NewContainer("required-missing")
+	holder := StructB{}
+	container.Load(&holder)
+
+	require.Panics(t, func() {
+		container.Inject()
+	})
 }

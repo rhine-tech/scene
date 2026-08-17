@@ -2,13 +2,12 @@ package datasource
 
 import "github.com/rhine-tech/scene"
 
-const Lens scene.InfraName = "datasource"
+const Lens scene.ModuleName = "datasource"
 
 const maskedPassword = "REDACTED"
 
 type DataSource interface {
-	scene.Disposable
-	scene.Setupable
+	scene.Lifecycle
 	DataSourceName() scene.ImplName
 	Status() error
 }

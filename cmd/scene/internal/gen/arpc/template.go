@@ -65,10 +65,6 @@ func NewARpc{{ .InterfaceName }}WithTimeout(client sarpc.Client, timeout time.Du
 	}
 }
 
-func (r *arpcClient{{ .InterfaceName }}) SrvImplName() scene.ImplName {
-	return {{ $.PackageName }}.Lens.ImplName("{{ .InterfaceName }}", "arpc")
-}
-
 func (r *arpcClient{{ .InterfaceName }}) ImplName() scene.ImplName {
 	return {{ $.PackageName }}.Lens.ImplName("{{ .InterfaceName }}", "arpc")
 }

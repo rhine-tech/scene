@@ -2,27 +2,18 @@ package factory
 
 import (
 	"github.com/rhine-tech/scene"
-	"github.com/rhine-tech/scene/lens/permission"
 	permcmd "github.com/rhine-tech/scene/lens/permission/cmd"
 	"github.com/rhine-tech/scene/lens/permission/delivery"
 	"github.com/rhine-tech/scene/lens/permission/gen/arpcimpl"
-	"github.com/rhine-tech/scene/registry"
-	sarpc "github.com/rhine-tech/scene/scenes/arpc"
-	scmd "github.com/rhine-tech/scene/scenes/cmd"
-	sgin "github.com/rhine-tech/scene/scenes/gin"
 )
-
-func InitApp() sgin.GinApplication {
-	return delivery.NewGinApp(registry.Use[permission.PermissionService](nil))
-}
 
 type AppGin struct {
 	scene.ModuleFactory
 }
 
-func (b AppGin) Apps() []any {
-	return []any{
-		InitApp,
+func (b AppGin) Apps() []scene.Application {
+	return []scene.Application{
+		delivery.NewGinApp(),
 	}
 }
 
@@ -30,11 +21,9 @@ type AppARpc struct {
 	scene.ModuleFactory
 }
 
-func (b AppARpc) Apps() []any {
-	return []any{
-		func() sarpc.ARpcApp {
-			return registry.Load[sarpc.ARpcApp](new(arpcimpl.ARpcAppPermissionService))
-		},
+func (b AppARpc) Apps() []scene.Application {
+	return []scene.Application{
+		new(arpcimpl.ARpcAppPermissionService),
 	}
 }
 
@@ -42,10 +31,8 @@ type AppCmd struct {
 	scene.ModuleFactory
 }
 
-func (b AppCmd) Apps() []any {
-	return []any{
-		func() scmd.CmdApp {
-			return registry.Load(permcmd.NewCmdApp())
-		},
+func (b AppCmd) Apps() []scene.Application {
+	return []scene.Application{
+		permcmd.NewCmdApp(),
 	}
 }

@@ -2,6 +2,7 @@ package factory
 
 import (
 	"github.com/rhine-tech/scene"
+	"github.com/rhine-tech/scene/infrastructure/config"
 	"github.com/rhine-tech/scene/infrastructure/datasource"
 	"github.com/rhine-tech/scene/infrastructure/datasource/datasources"
 	"github.com/rhine-tech/scene/registry"
@@ -12,22 +13,20 @@ type MongoDB struct {
 	Config datasource.MongoConfig
 }
 
-func (m MongoDB) Init() scene.LensInit {
-	return func() {
-		registry.Register[datasource.MongoDataSource](
-			datasources.NewMongoDataSource(m.Config))
-	}
+func (m MongoDB) Init(container *registry.Container) {
+	registry.Export[datasource.MongoDataSource](container, datasources.NewMongoDataSource(m.Config))
 }
 
 func (m MongoDB) Default() MongoDB {
+	cfg := registry.Use[config.IConfig](nil)
 	return MongoDB{
 		Config: datasource.MongoConfig{
-			Host:          registry.Config.GetString("mongodb.host"),
-			Port:          int(registry.Config.GetInt("mongodb.port")),
-			Username:      registry.Config.GetString("mongodb.username"),
-			Password:      registry.Config.GetString("mongodb.password"),
+			Host:          cfg.GetString("mongodb.host"),
+			Port:          int(cfg.GetInt("mongodb.port")),
+			Username:      cfg.GetString("mongodb.username"),
+			Password:      cfg.GetString("mongodb.password"),
 			Database:      "scene",
-			AuthSource:    registry.Config.GetString("mongodb.auth_source"),
+			AuthSource:    cfg.GetString("mongodb.auth_source"),
 			UseAPIVersion: true,
 		},
 	}

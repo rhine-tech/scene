@@ -2,9 +2,12 @@ package arpc
 
 import (
 	"context"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/lesismal/arpc"
-	"time"
+	"github.com/rhine-tech/scene/infrastructure/logger"
+	"github.com/rhine-tech/scene/registry"
 )
 
 type handlerProxy struct {
@@ -25,8 +28,12 @@ func (h *handlerProxy) HandleStream(method string, handler arpc.StreamHandlerFun
 // UseNexusGateway turns the current server into a nexus gateway for proxy-based discovery mode.
 // If holder pointers are provided, the created gateway will be written back for later use.
 func UseNexusGateway(timeout time.Duration, holders ...**NexusGateway) ServerOption {
-	return func(server *arpc.Server) error {
-		gw := EnableNexus(server, timeout, nil)
+	return func(scope *registry.Scope, server *arpc.Server) error {
+		log, exists := registry.LookupIn[logger.ILogger](scope)
+		if !exists {
+			log = logger.NoopLogger{}
+		}
+		gw := EnableNexus(server, timeout, log)
 		for _, h := range holders {
 			if h != nil {
 				*h = gw

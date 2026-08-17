@@ -69,7 +69,7 @@ func (m *MongoRepo) Setup() error {
 	return nil
 }
 
-func (m *MongoRepo) Dispose() error {
+func (m *MongoRepo) TearDown() error {
 	if m.client == nil {
 		return nil
 	}

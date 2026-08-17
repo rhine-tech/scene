@@ -2,55 +2,26 @@ package scene
 
 import "os"
 
-type Environment uint8
-
 const (
-	EnvDevelopment Environment = iota
-	EnvProduction
-	EnvTest
+	EnvDevelopment = "development"
+	EnvProduction  = "production"
+	EnvTest        = "test"
 )
 
-func (e Environment) String() string {
-	switch e {
-	case EnvDevelopment:
-		return "development"
-	case EnvProduction:
-		return "production"
-	case EnvTest:
-		return "test"
-	default:
-		return "unknown"
-	}
-}
-
-var env Environment = EnvDevelopment
-
-// DEFAULT_ENV is the environment variable that can be set to "production", "test" or "development"
-// this is the default
-var DEFAULT_ENV string = "development"
+var Environment = EnvDevelopment
 
 func init() {
-	// override the default environment setting
-	envStr := DEFAULT_ENV
-	if os.Getenv("SCENE_ENV") != "" {
-		envStr = os.Getenv("SCENE_ENV")
+	Environment = resolveEnvironment(Environment, os.Getenv("SCENE_ENV"))
+}
+
+func resolveEnvironment(defaultValue, override string) string {
+	if override != "" {
+		defaultValue = override
 	}
-	switch envStr {
-	case "production":
-		env = EnvProduction
-	case "development":
-		env = EnvDevelopment
-	case "test":
-		env = EnvTest
+	switch defaultValue {
+	case EnvProduction, EnvDevelopment, EnvTest:
+		return defaultValue
 	default:
-		env = EnvDevelopment
+		return EnvDevelopment
 	}
-}
-
-func SetEnvironment(e Environment) {
-	env = e
-}
-
-func GetEnvironment() Environment {
-	return env
 }

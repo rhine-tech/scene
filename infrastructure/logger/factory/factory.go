@@ -8,27 +8,6 @@ import (
 	"github.com/rhine-tech/scene/registry"
 )
 
-// Init is instance of scene.LensInit
-//func Init() {
-//	cfg := registry.Use[config.IConfig](nil)
-//	l := repository.NewLogrusLogger(
-//		cfg.GetString("scene.log.file"), cfg.GetInt("scene.log.max_size"),
-//		cfg.GetBool("scene.log.panic"),
-//	)
-//	l.SetLogLevel(logger.LogLevel(cfg.GetInt("scene.log.level")))
-//	registry.RegisterLogger(l.WithPrefix(cfg.GetString("scene.name")))
-//}
-
-// LogrusFactory
-// Deprecated: FunctionName is deprecated.
-//type LogrusFactory struct {
-//	scene.ModuleFactory
-//}
-//
-//func (b LogrusFactory) Init() scene.LensInit {
-//	return Init
-//}
-
 type ZapFactory struct {
 	scene.ModuleFactory
 	LogLevel logger.LogLevel
@@ -43,10 +22,10 @@ func (b ZapFactory) Default() ZapFactory {
 	}
 }
 
-func (b ZapFactory) Init() scene.LensInit {
-	return func() {
-		l := repository.NewZapColoredLogger()
-		l.SetLogLevel(b.LogLevel)
-		registry.RegisterLogger(l.WithPrefix(b.Prefix))
-	}
+func (b ZapFactory) Init(container *registry.Container) {
+	baseLogger := repository.NewZapColoredLogger()
+	baseLogger.SetLogLevel(b.LogLevel)
+	container.Load(baseLogger)
+	log := baseLogger.WithPrefix(b.Prefix)
+	registry.Export[logger.ILogger](container, log)
 }

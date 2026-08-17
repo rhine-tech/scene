@@ -18,22 +18,25 @@ func newRepositoryTestGorm(t *testing.T) *sceneorm.Gorm {
 	t.Helper()
 
 	container := registry.NewContainer()
-	registry.ContainerRegister[logger.ILogger](container, logger.NoopLogger{})
+	registry.Export[logger.ILogger](container, logger.NoopLogger{})
 
 	dsnName := strings.NewReplacer("/", "_", " ", "_").Replace(t.Name())
 	ds := datasources.SqliteDatasource(datasource.SqliteConfig{
 		Path:    "file:" + dsnName,
 		Options: "mode=memory&cache=shared",
 	})
-	registry.ContainerInject(container, ds)
+	db := sceneorm.NewGormWithSQLite(ds)
+	container.Load(ds)
+	container.Load(db)
+	scope := registry.NewScope()
+	require.NoError(t, scope.Build(container))
 	require.NoError(t, ds.Setup())
 	ds.Connection().SetMaxOpenConns(1)
 	t.Cleanup(func() {
-		require.NoError(t, ds.Dispose())
+		require.NoError(t, db.TearDown())
+		require.NoError(t, ds.TearDown())
 	})
 
-	db := sceneorm.NewGormWithSQLite(ds)
-	registry.ContainerInject(container, db)
 	require.NoError(t, db.Setup())
 	return db
 }
@@ -41,7 +44,7 @@ func newRepositoryTestGorm(t *testing.T) *sceneorm.Gorm {
 func TestGormPermissionRepositoryAddIsIdempotent(t *testing.T) {
 	ctx := context.Background()
 	repo := NewGormImpl(newRepositoryTestGorm(t))
-	require.NoError(t, repo.(scene.Setupable).Setup())
+	require.NoError(t, repo.(scene.Lifecycle).Setup())
 
 	for range 2 {
 		_, err := repo.AddPermission(ctx, "user-1", "notify:send")

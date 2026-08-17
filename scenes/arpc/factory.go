@@ -14,10 +14,8 @@ type ClientFactory struct {
 	Options []ClientOption
 }
 
-func (c ClientFactory) Init() scene.LensInit {
-	return func() {
-		registry.Register[Client](NewClient(c.Network, c.Addr, c.Options...))
-	}
+func (c ClientFactory) Init(container *registry.Container) {
+	registry.Export[Client](container, NewClient(c.Network, c.Addr, c.Options...))
 }
 
 type NexusClientFactory struct {
@@ -28,12 +26,12 @@ type NexusClientFactory struct {
 	UseApps []scene.AppInit[ARpcApp]
 }
 
-func (c NexusClientFactory) Init() scene.LensInit {
-	return func() {
-		apps := make([]ARpcApp, 0, len(c.UseApps))
-		for _, init := range c.UseApps {
-			apps = append(apps, init())
-		}
-		registry.Register[Client](NewClient(c.Network, c.Addr, append(c.Options, WithNexusGateway(apps...))...))
+func (c NexusClientFactory) Init(container *registry.Container) {
+	apps := make([]ARpcApp, 0, len(c.UseApps))
+	for _, init := range c.UseApps {
+		app := registry.Load(container, init())
+		apps = append(apps, app)
 	}
+	client := NewClient(c.Network, c.Addr, append(c.Options, WithNexusGateway(apps...))...)
+	registry.Export[Client](container, client)
 }

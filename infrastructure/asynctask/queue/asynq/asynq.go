@@ -84,7 +84,7 @@ func (q *Queue) Setup() error {
 	return nil
 }
 
-func (q *Queue) Dispose() error {
+func (q *Queue) TearDown() error {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 	for _, runtime := range q.queues {

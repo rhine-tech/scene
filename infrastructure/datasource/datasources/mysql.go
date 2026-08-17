@@ -22,7 +22,7 @@ func NewMysqlDatasource(cfg datasource.MysqlConfig) datasource.MysqlDataSource {
 	}
 }
 
-func (m *MysqlRepo) Dispose() error {
+func (m *MysqlRepo) TearDown() error {
 	if m.db == nil {
 		return nil
 	}

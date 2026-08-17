@@ -110,7 +110,11 @@ func NewZapColoredLogger() logger.ILogger {
 	return &zapLoggerImpl{SugaredLogger: sugar, skip1: sugar.WithOptions(zap.AddCallerSkip(1)), level: level}
 }
 
-func (z *zapLoggerImpl) Dispose() error {
+func (z *zapLoggerImpl) Setup() error {
+	return nil
+}
+
+func (z *zapLoggerImpl) TearDown() error {
 	_ = z.Sync()
 	return nil
 }

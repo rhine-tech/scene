@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"reflect"
 
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/logger"
@@ -14,28 +13,34 @@ type cmdContainer struct {
 	root    *cobra.Command
 	apps    []CmdApp
 	log     logger.ILogger
+	loader  *scene.ModuleLoader
 	built   bool
 	options []RootOption
 }
 
-func NewRootContainer(root *cobra.Command, apps []CmdApp, options ...RootOption) Container {
+// NewRootContainer creates a command container backed by loader.
+func NewRootContainer(root *cobra.Command, loader *scene.ModuleLoader, options ...RootOption) Container {
 	if root == nil {
 		panic("scene cmd: nil root command")
 	}
+	if loader == nil {
+		panic("scene cmd: module loader is nil")
+	}
 	return &cmdContainer{
 		root:    root,
-		apps:    apps,
-		log:     registry.Logger.WithPrefix((&cmdContainer{}).ImplName().Identifier()),
+		log:     logger.NoopLogger{},
+		loader:  loader,
 		options: options,
 	}
 }
 
-func NewContainer(use, short string, apps []CmdApp, options ...RootOption) Container {
+// NewContainer creates a root command backed by loader.
+func NewContainer(use, short string, loader *scene.ModuleLoader, options ...RootOption) Container {
 	return NewRootContainer(&cobra.Command{
 		Use:          use,
 		Short:        short,
 		SilenceUsage: true,
-	}, apps, options...)
+	}, loader, options...)
 }
 
 func (c *cmdContainer) ImplName() scene.ImplName {
@@ -61,31 +66,41 @@ func (c *cmdContainer) build() error {
 	return nil
 }
 
-func (c *cmdContainer) Execute() error {
-	if err := c.build(); err != nil {
+func (c *cmdContainer) prepare() error {
+	if c.built {
+		return nil
+	}
+	if err := c.loader.Init(); err != nil {
 		return err
 	}
-	registry.Validate()
-	c.log.Info("scene service initialized successfully")
-	c.log.Infof("loaded %d command apps", len(c.apps))
-	for _, setupable := range registry.Setupable.AcquireAll() {
-		if err := setupable.Setup(); err != nil {
-			c.log.Errorf("setup %v error: %v", reflect.TypeOf(setupable), err)
-			return err
-		}
+	c.apps = scene.Applications[CmdApp](c.loader.Applications())
+	if log, exists := registry.LookupIn[logger.ILogger](c.loader.Scope()); exists {
+		c.log = log.WithPrefix(c.ImplName().Identifier())
+	}
+	return c.build()
+}
+
+func (c *cmdContainer) Execute() error {
+	if err := c.prepare(); err != nil {
+		_ = c.loader.TearDown()
+		return err
+	}
+	if err := c.loader.Setup(); err != nil {
+		c.log.Errorf("setup modules error: %v", err)
+		return err
 	}
 	defer func() {
-		for _, disposable := range registry.Disposable.AcquireAll() {
-			if err := disposable.Dispose(); err != nil {
-				c.log.Warnf("dispose %v error: %v", reflect.TypeOf(disposable), err)
-			}
+		if err := c.loader.TearDown(); err != nil {
+			c.log.Warnf("tear down modules error: %v", err)
 		}
 	}()
+	c.log.Info("scene service initialized successfully")
+	c.log.Infof("loaded %d command apps", len(c.apps))
 	return c.root.Execute()
 }
 
 func (c *cmdContainer) RootCommand() *cobra.Command {
-	if err := c.build(); err != nil {
+	if err := c.prepare(); err != nil {
 		panic(err)
 	}
 	return c.root

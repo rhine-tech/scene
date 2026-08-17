@@ -10,7 +10,7 @@ import (
 
 var _eg = errcode.NewErrorGroup(4, "cache")
 
-const Lens scene.InfraName = "cache"
+const Lens scene.ModuleName = "cache"
 
 var (
 	ErrInvalidCacheClient = _eg.CreateError(0, "invalid cache client")

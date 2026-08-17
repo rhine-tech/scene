@@ -3,13 +3,13 @@ package arpc
 import (
 	"context"
 	"errors"
+	"net"
+
 	"github.com/lesismal/arpc"
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/rhine-tech/scene/registry"
 	"github.com/rhine-tech/scene/utils"
-	"net"
-	"time"
 )
 
 type arpcContainer struct {
@@ -17,28 +17,43 @@ type arpcContainer struct {
 	addr     string
 	server   *arpc.Server
 	listener net.Listener
-	stopSig  chan int
+	done     chan error
 	log      logger.ILogger
 }
 
-// NewARpcContainer create a arpc container
-func NewARpcContainer(
-	addr string,
-	apps []ARpcApp,
-	opts ...ServerOption) scene.Scene {
+// Factory builds an ARPC scene from ARPC applications.
+type Factory struct {
+	Addr    string
+	Options []ServerOption
+}
+
+var _ scene.SceneFactory[ARpcApp] = Factory{}
+
+// NewFactory declares an ARPC scene.
+func NewFactory(addr string, options ...ServerOption) scene.SceneDefinition {
+	return scene.WithScene[ARpcApp](Factory{
+		Addr:    addr,
+		Options: options,
+	})
+}
+
+func (f Factory) Build(scope *registry.Scope, apps []ARpcApp) (scene.Scene, error) {
 	server := arpc.NewServer()
-	for _, opt := range opts {
-		if err := opt(server); err != nil {
-			panic(err)
+	for _, option := range f.Options {
+		if err := option(scope, server); err != nil {
+			return nil, err
 		}
 	}
-	return &arpcContainer{
-		addr:    addr,
-		server:  server,
-		apps:    apps,
-		stopSig: make(chan int),
-		log:     registry.Logger.WithPrefix((&arpcContainer{}).ImplName().Identifier()),
+	log, exists := registry.LookupIn[logger.ILogger](scope)
+	if !exists {
+		log = logger.NoopLogger{}
 	}
+	return &arpcContainer{
+		addr:   f.Addr,
+		server: server,
+		apps:   apps,
+		log:    log.WithPrefix((&arpcContainer{}).ImplName().Identifier()),
+	}, nil
 }
 
 func (a *arpcContainer) ImplName() scene.ImplName {
@@ -46,39 +61,49 @@ func (a *arpcContainer) ImplName() scene.ImplName {
 }
 
 func (a *arpcContainer) Start() error {
-	for _, app := range a.apps {
-		// todo: handle register service error
-		_ = app.RegisterService(a.server.Handler)
-	}
-	var err error
 	if !utils.IsValidAddress(a.addr) {
 		a.log.Errorf("invalid address: %s", a.addr)
 		return errors.New("invalid address " + a.addr)
 	}
-	a.listener, err = net.Listen("tcp", a.addr)
+	for _, app := range a.apps {
+		// todo: handle register service error
+		_ = app.RegisterService(a.server.Handler)
+	}
+	listener, err := net.Listen("tcp", a.addr)
 	if err != nil {
-		return nil
+		return err
 	}
+	a.listener = listener
+	a.done = make(chan error, 1)
 	a.server.Handler.SetLogTag("[Server]")
-	errCh := make(chan error, 1)
+	a.log.Infof("arpc server started, listened at %s", a.addr)
 	go func() {
-		serveErr := a.server.Serve(a.listener)
-		if serveErr != nil {
-			errCh <- serveErr
+		err := a.server.Serve(listener)
+		if err != nil && !errors.Is(err, net.ErrClosed) {
+			a.log.Errorf("failed to serve: %v", err)
 		}
+		a.done <- err
 	}()
-	select {
-	case serveErr := <-errCh:
-		a.log.Errorf("failed to serve: %v", serveErr)
-		return serveErr
-	case <-time.After(1 * time.Second):
-		a.log.Infof("arpc server started, listened at %s", a.addr)
-		return nil
-	}
+	return nil
 }
 
 func (a *arpcContainer) Stop(ctx context.Context) error {
-	return a.server.Stop()
+	if a.listener == nil {
+		return nil
+	}
+	closeErr := a.listener.Close()
+	if errors.Is(closeErr, net.ErrClosed) {
+		closeErr = nil
+	}
+	select {
+	case serveErr := <-a.done:
+		if serveErr != nil && !errors.Is(serveErr, net.ErrClosed) {
+			return serveErr
+		}
+		return closeErr
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func (a *arpcContainer) ListAppNames() []string {

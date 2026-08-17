@@ -74,7 +74,7 @@ type ServiceInstance struct {
 // It registers internal handlers for registration/proxy/discovery.
 func EnableNexus(server *arpc.Server, defaultTimeout time.Duration, log logger.ILogger) *NexusGateway {
 	if log == nil {
-		log = registry.Logger
+		log = registry.Use[logger.ILogger](nil)
 	}
 	n := &NexusGateway{
 		routes:      map[string]*routeBucket{},

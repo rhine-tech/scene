@@ -25,7 +25,7 @@ func NewCachedPermissionService(base permission.PermissionService) permission.Pe
 	return &CachedPermissionService{base: base}
 }
 
-func (c *CachedPermissionService) SrvImplName() scene.ImplName {
+func (c *CachedPermissionService) ImplName() scene.ImplName {
 	return permission.Lens.ImplName("PermissionService", "cached")
 }
 
@@ -41,6 +41,11 @@ func (c *CachedPermissionService) Setup() error {
 	if c.log != nil {
 		c.log.Infof("cache.ITaggedCache found, using cache with %s", c.cache.ImplName().Identifier())
 	}
+	return nil
+}
+
+func (c *CachedPermissionService) TearDown() error {
+	c.cacheCli = nil
 	return nil
 }
 

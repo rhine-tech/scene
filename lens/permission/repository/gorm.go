@@ -33,6 +33,10 @@ func (r *gormImpl) Setup() error {
 	return r.db.AutoMigrate(&permissionRow{})
 }
 
+func (r *gormImpl) TearDown() error {
+	return nil
+}
+
 func (r *gormImpl) ImplName() scene.ImplName {
 	return permission.Lens.ImplName("PermissionRepository", "gorm")
 }

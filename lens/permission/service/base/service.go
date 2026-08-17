@@ -13,13 +13,22 @@ type PermissionManagerImpl struct {
 	repo   permission.PermissionRepository `aperture:""`
 }
 
-func (p *PermissionManagerImpl) SrvImplName() scene.ImplName {
+// NewPermissionManager creates a permission service backed by repo.
+func NewPermissionManager(repo permission.PermissionRepository) permission.PermissionService {
+	return &PermissionManagerImpl{repo: repo}
+}
+
+func (p *PermissionManagerImpl) ImplName() scene.ImplName {
 	return permission.Lens.ImplName("PermissionService", "default")
 }
 
 func (p *PermissionManagerImpl) Setup() error {
-	p.logger = p.logger.WithPrefix(p.SrvImplName().Identifier())
+	p.logger = p.logger.WithPrefix(p.ImplName().Identifier())
 	p.logger.Infof("Permission service is ready, using: %s", p.repo.ImplName())
+	return nil
+}
+
+func (p *PermissionManagerImpl) TearDown() error {
 	return nil
 }
 

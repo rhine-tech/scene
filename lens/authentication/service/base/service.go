@@ -29,12 +29,16 @@ func (s *authenticationService) HasUser(userId string) (bool, error) {
 	return false, err
 }
 
-func (s *authenticationService) SrvImplName() scene.ImplName {
+func (s *authenticationService) ImplName() scene.ImplName {
 	return authentication.Lens.ImplName("IAuthenticationService", "default")
 }
 
 func (s *authenticationService) Setup() error {
-	s.logger = s.logger.WithPrefix(s.SrvImplName().Identifier())
+	s.logger = s.logger.WithPrefix(s.ImplName().Identifier())
+	return nil
+}
+
+func (s *authenticationService) TearDown() error {
 	return nil
 }
 

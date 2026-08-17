@@ -33,27 +33,36 @@ type optionalPresetHolder struct {
 }
 
 func TestInject_Optional_WithRegisteredDependency(t *testing.T) {
-	Register[optionalIface](&optionalImpl{})
+	container := NewContainer("optional-registered")
+	Register[optionalIface](container, &optionalImpl{})
 	holder := optionalHolder{}
+	container.Load(&holder)
+
 	require.NotPanics(t, func() {
-		Inject(&holder)
+		container.Inject()
 	})
 	require.NotNil(t, holder.dep)
 	require.Equal(t, "optional", holder.dep.Val())
 }
 
 func TestInject_Optional_MissingDependencyNoPanic(t *testing.T) {
+	container := NewContainer("optional-missing")
 	holder := optionalMissingHolder{}
+	container.Load(&holder)
+
 	require.NotPanics(t, func() {
-		Inject(&holder)
+		container.Inject()
 	})
 	require.Nil(t, holder.dep)
 }
 
 func TestInject_Optional_DoesNotOverridePreset(t *testing.T) {
+	container := NewContainer("optional-preset")
 	preset := &optionalImpl{}
 	holder := optionalPresetHolder{dep: preset}
-	Register[optionalIface](&optionalImpl{})
-	Inject(&holder)
+	Register[optionalIface](container, &optionalImpl{})
+	container.Load(&holder)
+
+	container.Inject()
 	require.Same(t, preset, holder.dep)
 }

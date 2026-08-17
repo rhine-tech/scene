@@ -21,22 +21,25 @@ func newTestGorm(t *testing.T) *Gorm {
 	t.Helper()
 
 	container := registry.NewContainer()
-	registry.ContainerRegister[logger.ILogger](container, logger.NoopLogger{})
+	registry.Export[logger.ILogger](container, logger.NoopLogger{})
 
 	dsnName := strings.NewReplacer("/", "_", " ", "_").Replace(t.Name())
 	ds := datasources.SqliteDatasource(datasource.SqliteConfig{
 		Path:    "file:" + dsnName,
 		Options: "mode=memory&cache=shared",
 	})
-	registry.ContainerInject(container, ds)
+	db := NewGormWithSQLite(ds)
+	container.Load(ds)
+	container.Load(db)
+	scope := registry.NewScope()
+	require.NoError(t, scope.Build(container))
 	require.NoError(t, ds.Setup())
 	ds.Connection().SetMaxOpenConns(1)
 	t.Cleanup(func() {
-		require.NoError(t, ds.Dispose())
+		require.NoError(t, db.TearDown())
+		require.NoError(t, ds.TearDown())
 	})
 
-	db := NewGormWithSQLite(ds)
-	registry.ContainerInject(container, db)
 	require.NoError(t, db.Setup())
 	return db
 }
@@ -57,7 +60,7 @@ func (p *postgresDataSourceStub) Setup() error {
 	return nil
 }
 
-func (p *postgresDataSourceStub) Dispose() error {
+func (p *postgresDataSourceStub) TearDown() error {
 	return p.db.Close()
 }
 
@@ -84,14 +87,14 @@ func TestNewGormWithPostgreSQL(t *testing.T) {
 
 	ds := &postgresDataSourceStub{db: sqlDB}
 	t.Cleanup(func() {
-		require.NoError(t, ds.Dispose())
+		require.NoError(t, ds.TearDown())
 	})
 
 	db := NewGormWithPostgreSQL(ds)
 	dialector, ok := db.dialector().(*gormPostgres.Dialector)
 	require.True(t, ok)
 	require.Same(t, ds.Connection(), dialector.Conn)
-	require.Same(t, ds, db.ds)
+	require.Same(t, ds, db.dataSource())
 }
 
 func TestGormSessionAndTransaction(t *testing.T) {

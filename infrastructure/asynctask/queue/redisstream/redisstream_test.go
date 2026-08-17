@@ -31,7 +31,7 @@ func newTestQueue(t *testing.T) *Queue {
 		if queue.rdb != nil {
 			_ = queue.rdb.FlushDB(context.Background()).Err()
 		}
-		_ = queue.Dispose()
+		_ = queue.TearDown()
 	})
 	return queue
 }

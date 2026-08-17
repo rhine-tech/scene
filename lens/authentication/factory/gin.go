@@ -4,14 +4,15 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/rhine-tech/scene/lens/authentication"
 	authMw "github.com/rhine-tech/scene/lens/authentication/middleware"
+	"github.com/rhine-tech/scene/registry"
 	sgin "github.com/rhine-tech/scene/scenes/gin"
 )
 
 func GinWithAuthContext(verifiers ...HttpVerifier) sgin.GinOption {
-	return func(engine *gin.Engine) error {
+	return func(scope *registry.Scope, engine *gin.Engine) error {
 		HttpVerifiers := make([]authentication.HTTPLoginStatusVerifier, len(verifiers))
 		for i, verifier := range verifiers {
-			HttpVerifiers[i] = verifier.Provide()
+			HttpVerifiers[i] = provideHttpVerifier(scope, verifier)
 		}
 		engine.Use(authMw.GinAuthContext(HttpVerifiers...))
 		return nil

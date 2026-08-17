@@ -1,14 +1,15 @@
 package websocket
 
 import (
+	"net/http"
+
 	"github.com/gorilla/websocket"
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/rhine-tech/scene/registry"
-	"net/http"
 )
 
-type WsOption func(mux *WebSocketMux) error
+type WsOption func(scope *registry.Scope, mux *WebSocketMux) error
 
 type _wsUpgraderWithLogger struct {
 	logger logger.ILogger
@@ -44,19 +45,18 @@ func (v *_wsUpgraderWithLogger) upgraderHandler(upgrader *websocket.Upgrader, ha
 	}
 }
 
-func WithLogger(logger logger.ILogger) WsOption {
-	logger = registry.Use(logger)
-	value := &_wsUpgraderWithLogger{
-		logger: logger.WithPrefix(scene.NewSceneImplNameNoVer("websocket", "router").Identifier()),
-	}
-	return func(mux *WebSocketMux) error {
+func WithLogger(log logger.ILogger) WsOption {
+	return func(scope *registry.Scope, mux *WebSocketMux) error {
+		value := &_wsUpgraderWithLogger{
+			logger: registry.UseIn(scope, log).WithPrefix(scene.NewSceneImplNameNoVer("websocket", "router").Identifier()),
+		}
 		mux.UpgraderHandler = value.upgraderHandler
 		return nil
 	}
 }
 
 func WithCors() WsOption {
-	return func(mux *WebSocketMux) error {
+	return func(_ *registry.Scope, mux *WebSocketMux) error {
 		mux.upgrader.CheckOrigin = func(r *http.Request) bool {
 			return true
 		}

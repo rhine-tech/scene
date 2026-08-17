@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-const Lens scene.InfraName = "ratelimiter"
+const Lens scene.ModuleName = "ratelimiter"
 
 // Limiter is a verbose and implementation-agnostic rate limiter contract.
 type Limiter interface {

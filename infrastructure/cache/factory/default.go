@@ -11,24 +11,20 @@ type RedisCache struct {
 	scene.ModuleFactory
 }
 
-func (r RedisCache) Init() scene.LensInit {
-	return func() {
-		c := repository.NewRedisCache(nil)
-		registry.Register[cache.ICache](c)
-		registry.Register[cache.ITaggedCache](c)
-	}
+func (r RedisCache) Init(container *registry.Container) {
+	cacheImpl := repository.NewRedisCache(nil)
+	registry.Export[cache.ICache](container, cacheImpl)
+	registry.Export[cache.ITaggedCache](container, cacheImpl)
 }
 
 type MemoryCache struct {
 	scene.ModuleFactory
 }
 
-func (m MemoryCache) Init() scene.LensInit {
-	return func() {
-		c := repository.NewMemoryCache()
-		registry.Register[cache.ICache](c)
-		registry.Register[cache.ITaggedCache](c)
-	}
+func (m MemoryCache) Init(container *registry.Container) {
+	cacheImpl := repository.NewMemoryCache()
+	registry.Export[cache.ICache](container, cacheImpl)
+	registry.Export[cache.ITaggedCache](container, cacheImpl)
 }
 
 type LRUCache struct {
@@ -36,15 +32,13 @@ type LRUCache struct {
 	Size int
 }
 
-func (l LRUCache) Init() scene.LensInit {
-	return func() {
-		var c cache.ITaggedCache
-		if l.Size > 0 {
-			c = repository.NewLRUCacheWithSize(l.Size)
-		} else {
-			c = repository.NewLRUCache()
-		}
-		registry.Register[cache.ICache](c)
-		registry.Register[cache.ITaggedCache](c)
+func (l LRUCache) Init(container *registry.Container) {
+	var cacheImpl cache.ITaggedCache
+	if l.Size > 0 {
+		cacheImpl = repository.NewLRUCacheWithSize(l.Size)
+	} else {
+		cacheImpl = repository.NewLRUCache()
 	}
+	registry.Export[cache.ICache](container, cacheImpl)
+	registry.Export[cache.ITaggedCache](container, cacheImpl)
 }

@@ -34,7 +34,11 @@ func (s *StorageService) Setup() error {
 	return nil
 }
 
-func (s *StorageService) SrvImplName() scene.ImplName {
+func (s *StorageService) TearDown() error {
+	return nil
+}
+
+func (s *StorageService) ImplName() scene.ImplName {
 	return storage.Lens.ImplNameNoVer("IStorageService")
 }
 

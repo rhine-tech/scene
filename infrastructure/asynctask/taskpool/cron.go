@@ -21,7 +21,7 @@ type CommonCronTaskDispatcher struct {
 	logger         logger.ILogger `aperture:""`
 }
 
-func (c *CommonCronTaskDispatcher) Dispose() error {
+func (c *CommonCronTaskDispatcher) TearDown() error {
 	c.cron.Stop()
 	return nil
 }

@@ -44,7 +44,7 @@ func newFakePermissionService() *fakePermissionService {
 	}
 }
 
-func (f *fakePermissionService) SrvImplName() scene.ImplName {
+func (f *fakePermissionService) ImplName() scene.ImplName {
 	return permission.Lens.ImplName("PermissionService", "fake")
 }
 

@@ -11,7 +11,7 @@ import (
 	gormlog "gorm.io/gorm/logger"
 )
 
-const Lens scene.CompositionName = "orm"
+const Lens scene.ModuleName = "orm"
 
 // Gorm owns the configured GORM database handle.
 //
@@ -19,20 +19,23 @@ const Lens scene.CompositionName = "orm"
 // the module repository boundary; repositories using GORM should depend on
 // *Gorm and use Session to build native GORM queries.
 type Gorm struct {
-	db        *gorm.DB
-	dialector func() gorm.Dialector
-	ds        datasource.DataSource
-	log       logger.ILogger `aperture:""`
+	db         *gorm.DB
+	dialector  func() gorm.Dialector
+	dataSource func() datasource.DataSource
+	log        logger.ILogger `aperture:""`
 }
 
 var _ scene.Named = (*Gorm)(nil)
 
-// NewGorm creates a GORM component. The dialector factory is evaluated during
-// Setup, after the injected data source has completed its own setup.
-func NewGorm(dialector func() gorm.Dialector, ds datasource.DataSource) *Gorm {
+// NewGorm creates a GORM component. The suppliers are evaluated during Setup,
+// after injected dependencies have completed setup.
+func NewGorm(
+	dialector func() gorm.Dialector,
+	dataSource func() datasource.DataSource,
+) *Gorm {
 	return &Gorm{
-		dialector: dialector,
-		ds:        ds,
+		dialector:  dialector,
+		dataSource: dataSource,
 	}
 }
 
@@ -42,7 +45,7 @@ func (g *Gorm) ImplName() scene.ImplName {
 
 // Setup opens the GORM handle over the configured data source.
 func (g *Gorm) Setup() error {
-	g.log.Infof("setup gorm with datasource %s", g.ds.DataSourceName().Interface)
+	g.log.Infof("setup gorm with datasource %s", g.dataSource().DataSourceName().Interface)
 
 	db, err := gorm.Open(g.dialector(), &gorm.Config{
 		Logger:         &gormLogger{prefix: "GormInternal: ", log: g.log},
@@ -53,6 +56,11 @@ func (g *Gorm) Setup() error {
 		return err
 	}
 	g.db = db
+	return nil
+}
+
+func (g *Gorm) TearDown() error {
+	g.db = nil
 	return nil
 }
 

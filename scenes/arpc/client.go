@@ -38,6 +38,14 @@ func (c *defaultClient) Setup() error {
 	return nil
 }
 
+func (c *defaultClient) TearDown() error {
+	if c.client != nil {
+		c.client.Stop()
+		c.client = nil
+	}
+	return nil
+}
+
 func (c *defaultClient) Logger() logger.ILogger {
 	return c.log
 }

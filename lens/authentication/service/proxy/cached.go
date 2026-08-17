@@ -30,7 +30,7 @@ func NewCachedAuthenticationService(base authentication.IAuthenticationService) 
 	return &CachedAuthenticationService{base: base}
 }
 
-func (c *CachedAuthenticationService) SrvImplName() scene.ImplName {
+func (c *CachedAuthenticationService) ImplName() scene.ImplName {
 	return authentication.Lens.ImplName("IAuthenticationService", "cached")
 }
 
@@ -46,6 +46,11 @@ func (c *CachedAuthenticationService) Setup() error {
 	if c.log != nil {
 		c.log.Infof("cache.ITaggedCache found, using cache with %s", c.cache.ImplName().Identifier())
 	}
+	return nil
+}
+
+func (c *CachedAuthenticationService) TearDown() error {
+	c.cacheCli = nil
 	return nil
 }
 

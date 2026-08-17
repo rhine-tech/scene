@@ -23,5 +23,5 @@ func TestPostgresDataSourceSetupRejectsUnreachableDatabase(t *testing.T) {
 	require.Error(t, ds.Setup())
 	require.Error(t, ds.Status())
 	require.Equal(t, "PostgresDataSource", ds.DataSourceName().Interface)
-	require.NoError(t, ds.Dispose())
+	require.NoError(t, ds.TearDown())
 }

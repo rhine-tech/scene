@@ -22,7 +22,7 @@ func NewPostgresDataSource(cfg datasource.PostgresConfig) datasource.PostgresDat
 	return &postgresImpl{cfg: cfg}
 }
 
-func (p *postgresImpl) Dispose() error {
+func (p *postgresImpl) TearDown() error {
 	if p.db == nil {
 		return nil
 	}

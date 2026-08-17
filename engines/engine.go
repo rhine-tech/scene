@@ -3,61 +3,60 @@ package engines
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
+
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/rhine-tech/scene/registry"
 	"github.com/rhine-tech/scene/utils"
-	"os"
-	"os/signal"
-	"reflect"
-	"strings"
 )
 
-var (
-	errStartEngineFailed = fmt.Errorf("failed to start engine")
-)
+var errStartEngineFailed = fmt.Errorf("failed to start engine")
 
 type BasicEngine struct {
-	logger     logger.ILogger
-	containers map[string]scene.Scene
+	logger      logger.ILogger
+	loader      *scene.ModuleLoader
+	definitions []scene.SceneDefinition
+	containers  []scene.Scene
+	byName      map[string]scene.Scene
+	started     int
+	running     bool
 }
 
-func NewEngine(logger logger.ILogger, containers ...scene.Scene) scene.Engine {
-	e := &BasicEngine{
-		logger:     logger.WithPrefix("scene.engine"),
-		containers: make(map[string]scene.Scene),
+// NewEngine creates an Engine that owns module initialization, lifecycle, and
+// Scene construction. No initialization runs until Start or Run is called.
+func NewEngine(loader *scene.ModuleLoader, definitions ...scene.SceneDefinition) scene.Engine {
+	if loader == nil {
+		panic("scene engine: module loader is nil")
 	}
-	for _, container := range containers {
-		_ = e.AddContainer(container)
+	return &BasicEngine{
+		logger:      logger.NoopLogger{},
+		loader:      loader,
+		definitions: append([]scene.SceneDefinition(nil), definitions...),
+		byName:      make(map[string]scene.Scene),
 	}
-	return e
 }
 
 func (eg *BasicEngine) printContainersInfo() {
 	containers := eg.ListContainers()
-
 	info := make([]string, len(containers))
-	for idx, container := range containers {
-		info[idx] = utils.FormatContainerInfo(idx, container)
+	for index, container := range containers {
+		info[index] = utils.FormatContainerInfo(index, container)
 	}
-
-	eg.logger.Infof("successfully loaded %d containers. \n\n%s",
-		len(containers),
-		strings.Join(info, "\n"))
+	eg.logger.Infof("successfully loaded %d containers. \n\n%s", len(containers), strings.Join(info, "\n"))
 }
 
 func (eg *BasicEngine) Run() error {
-	eg.logger.Info(getBanner())
-	registry.Validate()
-	eg.logger.Info("scene service initialized successfully")
-	eg.printContainersInfo()
-	eg.logger.Info("starting scene engine...")
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(quit)
 	if err := eg.Start(); err != nil {
-		eg.logger.Error("start scene engine encounter an error, please fix error and restart")
-		return errStartEngineFailed
+		eg.logger.Errorf("start scene engine encounter an error, please fix error and restart: %v", err)
+		return fmt.Errorf("%w: %w", errStartEngineFailed, err)
 	}
-	quit := make(chan os.Signal)
-	signal.Notify(quit, os.Interrupt)
 	sig := <-quit
 	eg.logger.Infof("received %v signal, shutting down...", sig)
 	eg.Stop()
@@ -66,71 +65,93 @@ func (eg *BasicEngine) Run() error {
 }
 
 func (eg *BasicEngine) Start() error {
-	for _, setupable := range registry.Setupable.AcquireAll() {
-		err := setupable.Setup()
-		if err != nil {
-			eg.logger.Errorf("setup %v error: %v", reflect.TypeOf(setupable), err)
-			return err
-		}
+	if eg.running {
+		return nil
 	}
+	if err := eg.loader.Init(); err != nil {
+		return err
+	}
+	eg.resolveLogger()
+	eg.logger.Info(getBanner())
+	eg.logger.Info("starting scene engine...")
+	if err := eg.loader.Setup(); err != nil {
+		eg.logger.Errorf("setup modules error: %v", err)
+		return err
+	}
+	if err := eg.buildScenes(); err != nil {
+		eg.logger.Errorf("build scenes error: %v", err)
+		_ = eg.loader.TearDown()
+		return err
+	}
+	eg.printContainersInfo()
 	for _, container := range eg.containers {
 		if err := container.Start(); err != nil {
 			eg.logger.Errorf("start container %s error: %s", container.ImplName(), err)
+			eg.stopContainers()
+			_ = eg.loader.TearDown()
 			return err
 		}
+		eg.started++
 	}
+	eg.running = true
+	eg.logger.Info("scene service initialized successfully")
 	return nil
 }
 
 func (eg *BasicEngine) Stop() {
+	eg.stopContainers()
+	if err := eg.loader.TearDown(); err != nil {
+		eg.logger.Warnf("tear down modules error: %v", err)
+	}
+	eg.running = false
+}
+
+func (eg *BasicEngine) ListContainers() []scene.Scene {
+	return append([]scene.Scene(nil), eg.containers...)
+}
+
+func (eg *BasicEngine) GetContainer(name string) scene.Scene {
+	return eg.byName[name]
+}
+
+func (eg *BasicEngine) resolveLogger() {
+	log, ok := registry.LookupIn[logger.ILogger](eg.loader.Scope())
+	if !ok {
+		log = logger.NoopLogger{}
+	}
+	eg.logger = log.WithPrefix("scene.engine")
+}
+
+func (eg *BasicEngine) buildScenes() error {
+	containers := make([]scene.Scene, 0, len(eg.definitions))
+	byName := make(map[string]scene.Scene, len(eg.definitions))
+	for index, definition := range eg.definitions {
+		container, err := definition.Build(eg.loader)
+		if err != nil {
+			return err
+		}
+		if container == nil {
+			return fmt.Errorf("scene engine: scene %d is nil", index)
+		}
+		name := container.ImplName().Identifier()
+		if _, exists := byName[name]; exists {
+			return fmt.Errorf("scene engine: scene %s already exists", name)
+		}
+		byName[name] = container
+		containers = append(containers, container)
+	}
+	eg.containers = containers
+	eg.byName = byName
+	return nil
+}
+
+func (eg *BasicEngine) stopContainers() {
 	ctx := context.Background()
-	for _, container := range eg.containers {
+	for eg.started > 0 {
+		eg.started--
+		container := eg.containers[eg.started]
 		if err := container.Stop(ctx); err != nil {
 			eg.logger.Errorf("stop container %s error: %s", container.ImplName(), err)
 		}
 	}
-	for _, disposable := range registry.Disposable.AcquireAll() {
-		err := disposable.Dispose()
-		if err != nil {
-			eg.logger.Warnf("dispose %v error: %v", reflect.TypeOf(disposable), err)
-		}
-	}
-	return
 }
-
-func (eg *BasicEngine) ListContainers() []scene.Scene {
-	var containers []scene.Scene
-	for _, container := range eg.containers {
-		containers = append(containers, container)
-	}
-	return containers
-}
-
-func (eg *BasicEngine) GetContainer(name string) scene.Scene {
-	return eg.containers[name]
-}
-
-func (eg *BasicEngine) AddContainer(container scene.Scene) error {
-	if _, exists := eg.containers[container.ImplName().Identifier()]; exists {
-		panic(fmt.Sprintf("container %s already exists", container.ImplName()))
-	}
-	eg.logger.Infof("add container %s", container.ImplName())
-	eg.containers[container.ImplName().Identifier()] = container
-	return nil
-}
-
-//func (eg *BasicEngine) StopContainer(name string) error {
-//	if container, exists := eg.containers[name]; exists {
-//		eg.logger.Infof("stopping builder %s", container.Name())
-//		return container.Stop(context.Background())
-//	}
-//	return errcode.AppContainerNotFound.WithDetailStr(name)
-//}
-//
-//func (eg *BasicEngine) StartContainer(name string) error {
-//	if container, exists := eg.containers[name]; exists {
-//		eg.logger.Infof("starting builder %s", container.Name())
-//		return container.Start()
-//	}
-//	return errcode.AppContainerNotFound.WithDetailStr(name)
-//}

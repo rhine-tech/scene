@@ -75,7 +75,7 @@ type IFileMetaRepository interface {
 // Every non-nil error returned directly by a service method must be a storage errcode;
 // provider and repository errors, including context errors, are mapped at this boundary.
 type IStorageService interface {
-	scene.Service
+	scene.Named
 	ListProviders() []string
 	// ListMeta will list meta from specific provider.
 	ListMeta(ctx context.Context, provider string, offset, limit int64) (model.PaginationResult[FileMeta], error)

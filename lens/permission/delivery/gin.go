@@ -8,19 +8,16 @@ import (
 	authMw "github.com/rhine-tech/scene/lens/authentication/middleware"
 	"github.com/rhine-tech/scene/lens/permission"
 	"github.com/rhine-tech/scene/model"
-	"net/http"
-
 	sgin "github.com/rhine-tech/scene/scenes/gin"
+	"net/http"
 )
 
 type ginApp struct {
-	permSrv permission.PermissionService
+	permSrv permission.PermissionService `aperture:""`
 }
 
-func NewGinApp(permSrv permission.PermissionService) sgin.GinApplication {
-	return &ginApp{
-		permSrv: permSrv,
-	}
+func NewGinApp() sgin.GinApplication {
+	return new(ginApp)
 }
 
 func (g *ginApp) Destroy() error {

@@ -2,6 +2,7 @@ package void
 
 import (
 	"context"
+
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/rhine-tech/scene/registry"
@@ -12,15 +13,31 @@ type voidContainer struct {
 	log  logger.ILogger
 }
 
-// NewVoidContainer creates a container for background-style delivery apps.
+// Factory builds a Void scene from background applications.
+type Factory struct {
+	Options []VoidOption
+}
+
+var _ scene.SceneFactory[VoidApp] = Factory{}
+
+// NewFactory declares a Void scene for background-style delivery apps.
 // Void apps should start background work in Run and return quickly.
-func NewVoidContainer(
-	apps []VoidApp,
-	opts ...VoidOption) scene.Scene {
+func NewFactory(options ...VoidOption) scene.SceneDefinition {
+	return scene.WithScene[VoidApp](Factory{Options: options})
+}
+
+func (f Factory) Build(scope *registry.Scope, apps []VoidApp) (scene.Scene, error) {
+	for _, option := range f.Options {
+		option()
+	}
+	log, exists := registry.LookupIn[logger.ILogger](scope)
+	if !exists {
+		log = logger.NoopLogger{}
+	}
 	return &voidContainer{
 		apps: apps,
-		log:  registry.Logger.WithPrefix((&voidContainer{}).ImplName().Identifier()),
-	}
+		log:  log.WithPrefix((&voidContainer{}).ImplName().Identifier()),
+	}, nil
 }
 
 func (a *voidContainer) ImplName() scene.ImplName {

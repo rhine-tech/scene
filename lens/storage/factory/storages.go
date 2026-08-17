@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/rhine-tech/scene"
+	"github.com/rhine-tech/scene/infrastructure/config"
 	storageApi "github.com/rhine-tech/scene/lens/storage"
 	"github.com/rhine-tech/scene/lens/storage/repository/storage"
 	"github.com/rhine-tech/scene/registry"
@@ -17,13 +18,14 @@ type Local struct {
 }
 
 func (l Local) Default() Local {
+	cfg := registry.Use[config.IConfig](nil)
 	return Local{
-		Root: registry.Config.GetString("storage.local.root"),
+		Root: cfg.GetString("storage.local.root"),
 	}
 }
 
 func (l Local) Provide() storageApi.IStorageProvider {
-	return registry.Load(storage.NewLocalStorage("default", l.Root))
+	return storage.NewLocalStorage("default", l.Root)
 }
 
 type S3 struct {
@@ -40,21 +42,22 @@ type S3 struct {
 }
 
 func (s S3) Default() S3 {
-	presignedURLTTLSeconds := registry.Config.GetInt("storage.s3.presigned_url_ttl_seconds")
+	cfg := registry.Use[config.IConfig](nil)
+	presignedURLTTLSeconds := cfg.GetInt("storage.s3.presigned_url_ttl_seconds")
 	presignedURLTTL := time.Duration(presignedURLTTLSeconds) * time.Second
 	if presignedURLTTL <= 0 {
 		presignedURLTTL = 15 * time.Minute
 	}
 	return S3{
-		Name:            registry.Config.GetString("storage.s3.name"),
-		Endpoint:        registry.Config.GetString("storage.s3.endpoint"),
-		Region:          registry.Config.GetString("storage.s3.region"),
-		AccessKey:       registry.Config.GetString("storage.s3.access_key"),
-		SecretKey:       registry.Config.GetString("storage.s3.secret_key"),
-		Bucket:          registry.Config.GetString("storage.s3.bucket"),
-		TempDir:         registry.Config.GetString("storage.s3.temp_dir"),
-		UseSSL:          registry.Config.GetBool("storage.s3.use_ssl"),
-		ForcePathStyle:  registry.Config.GetBool("storage.s3.force_path_style"),
+		Name:            cfg.GetString("storage.s3.name"),
+		Endpoint:        cfg.GetString("storage.s3.endpoint"),
+		Region:          cfg.GetString("storage.s3.region"),
+		AccessKey:       cfg.GetString("storage.s3.access_key"),
+		SecretKey:       cfg.GetString("storage.s3.secret_key"),
+		Bucket:          cfg.GetString("storage.s3.bucket"),
+		TempDir:         cfg.GetString("storage.s3.temp_dir"),
+		UseSSL:          cfg.GetBool("storage.s3.use_ssl"),
+		ForcePathStyle:  cfg.GetBool("storage.s3.force_path_style"),
 		PresignedURLTTL: presignedURLTTL,
 	}
 }
@@ -63,7 +66,7 @@ func (s S3) Provide() storageApi.IStorageProvider {
 	if s.Name == "" {
 		s.Name = "default"
 	}
-	return registry.Load(must.PMust(storage.NewS3StorageWithPresignedURLTTL(
+	return must.PMust(storage.NewS3StorageWithPresignedURLTTL(
 		s.Endpoint,
 		s.AccessKey,
 		s.SecretKey,
@@ -74,5 +77,5 @@ func (s S3) Provide() storageApi.IStorageProvider {
 		s.Region,
 		s.TempDir,
 		s.PresignedURLTTL,
-	)))
+	))
 }

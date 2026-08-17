@@ -54,7 +54,7 @@ func newFakeAuthenticationService() *fakeAuthenticationService {
 	}
 }
 
-func (f *fakeAuthenticationService) SrvImplName() scene.ImplName {
+func (f *fakeAuthenticationService) ImplName() scene.ImplName {
 	return authentication.Lens.ImplName("IAuthenticationService", "fake")
 }
 

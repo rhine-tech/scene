@@ -47,6 +47,10 @@ func (r *RedisCache) Setup() error {
 	return nil
 }
 
+func (r *RedisCache) TearDown() error {
+	return nil
+}
+
 func (r *RedisCache) Get(ctx context.Context, key string) ([]byte, bool, error) {
 	val, err := r.ds.Get(ctx, key)
 	if err != nil {

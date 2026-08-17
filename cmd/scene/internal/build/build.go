@@ -95,7 +95,7 @@ func executeBuild(goos, packagePath, buildDir, outputName string) {
 		varName("AppBuildTime"), time.Now().Unix(),
 		varName("AppBuildHash"), buildHash,
 		varName("AppBuildVersion"), buildVersion,
-		varName("DEFAULT_ENV"), env,
+		varName("Environment"), env,
 	)
 
 	cmd := exec.Command("go", "generate", "./...")

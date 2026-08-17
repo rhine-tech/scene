@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/rhine-tech/scene/infrastructure/config"
 	"github.com/rhine-tech/scene/registry"
 )
 
@@ -83,8 +84,8 @@ func SaveReader(module string, pattern string, src io.Reader) (string, func(), e
 
 func resolveBaseDir() string {
 	candidate := defaultTempDir
-	if registry.Config != nil {
-		if configured := strings.TrimSpace(registry.Config.GetString(configTempDirKey)); configured != "" {
+	if cfg, ok := registry.Lookup[config.IConfig](); ok {
+		if configured := strings.TrimSpace(cfg.GetString(configTempDirKey)); configured != "" {
 			candidate = configured
 		}
 	}

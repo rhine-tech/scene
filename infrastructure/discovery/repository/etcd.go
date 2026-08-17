@@ -26,10 +26,10 @@ type etcdRegister struct {
 }
 
 func (e *etcdRegister) ImplName() scene.ImplName {
-	return scene.NewSceneImplNameNoVer("discovery", "EtcdRegister")
+	return scene.NewModuleImplNameNoVer("discovery", "EtcdRegister")
 }
 
-func (e *etcdRegister) Dispose() error {
+func (e *etcdRegister) TearDown() error {
 	for _, node := range e.nodes {
 		err := e.Deregister(node)
 		if err != nil {

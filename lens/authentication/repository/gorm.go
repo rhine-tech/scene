@@ -93,6 +93,10 @@ func (r *gormAuthRepo) Setup() error {
 	return r.db.AutoMigrate(&userRow{})
 }
 
+func (r *gormAuthRepo) TearDown() error {
+	return nil
+}
+
 func (r *gormAuthRepo) ImplName() scene.ImplName {
 	return authentication.Lens.ImplName("IAuthenticationRepository", "gorm")
 }
@@ -207,6 +211,10 @@ func NewGormAccessTokenRepository(db *sceneorm.Gorm) authentication.IAccessToken
 
 func (r *gormAccessTokenRepo) Setup() error {
 	return r.db.AutoMigrate(&accessTokenRow{})
+}
+
+func (r *gormAccessTokenRepo) TearDown() error {
+	return nil
 }
 
 func (r *gormAccessTokenRepo) ImplName() scene.ImplName {

@@ -16,8 +16,12 @@ type logDelegate struct {
 }
 
 func (l *logDelegate) setupLogger() bool {
-	if l.log == nil && registry.Logger != nil {
-		l.log = registry.Logger.WithOptions(
+	if l.log == nil {
+		registered, ok := registry.Lookup[logger.ILogger]()
+		if !ok {
+			return false
+		}
+		l.log = registered.WithOptions(
 			logger.WithPrefix(scene.NewSceneImplNameNoVer("arpc", "internal").Identifier()),
 			logger.WithCallerSkip(2),
 		)

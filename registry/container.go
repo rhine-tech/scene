@@ -1,170 +1,109 @@
 package registry
 
 import (
-	"fmt"
-	"reflect"
-	"sync"
-
-	"github.com/rhine-tech/scene"
+	"slices"
 )
 
+// Container declares and owns the objects belonging to one module.
 type Container struct {
-	lock              sync.RWMutex
-	dependencies      map[string]any
-	hooks             map[string][]InjectHookFunc
-	pendingInjections []any
-	disposable        Registry[int, scene.Disposable]
-	setupable         Registry[int, scene.Setupable]
-	registrants       []Registrant
+	name         string
+	declarations []*declaration
+	locals       map[string]*binding
+	imports      map[string]any
+	sealed       bool
+	injected     bool
 }
 
-var defaultContainer = NewContainer()
-
-func NewContainer() *Container {
-	disposable := NewOrderedRegistry(indexedNaming[scene.Disposable]())
-	setupable := NewOrderedRegistry(indexedNaming[scene.Setupable]())
+func NewContainer(name ...string) *Container {
+	if len(name) > 1 {
+		panic("scene registry: container accepts at most one name")
+	}
+	containerName := "module"
+	if len(name) == 1 && name[0] != "" {
+		containerName = name[0]
+	}
 	return &Container{
-		dependencies: make(map[string]any),
-		hooks:        make(map[string][]InjectHookFunc),
-		disposable:   disposable,
-		setupable:    setupable,
-		registrants: []Registrant{
-			registrantWrapper(disposable),
-			registrantWrapper(setupable),
-		},
+		name:    containerName,
+		locals:  make(map[string]*binding),
+		imports: make(map[string]any),
 	}
 }
 
-func ContainerProvide[T any](c *Container, name ...string) T {
-	key := dependencyName[T](name)
-	v, ok := c.lookup(key)
-	if !ok {
-		panic(fmt.Sprintf("no dependency registered for %s", key))
-	}
-	return v.(T)
-}
-
-// ContainerRegister registers and injects a value in c.
-func ContainerRegister[T any](c *Container, val T, name ...string) T {
-	key := dependencyName[T](name)
-	for _, registrant := range c.registrants {
-		registrant(val)
-	}
-	c.lock.Lock()
-	c.dependencies[key] = val
-	c.lock.Unlock()
-	if !c.queuePendingInjection(val) {
-		ContainerInject(c, val)
-	}
-	return val
-}
-
-// ContainerMustRegister registers val in c or panics when err is non-nil.
-func ContainerMustRegister[T any](c *Container, val T, err error, name ...string) T {
-	if err != nil {
-		panic(err)
-	}
-	return ContainerRegister(c, val, name...)
-}
-
-// ContainerUse returns val when it is usable, otherwise it resolves T from c.
-func ContainerUse[T any](c *Container, val T) T {
-	if canUse(val) {
-		return val
-	}
-	return ContainerProvide[T](c)
-}
-
-// ContainerLoad injects val and registers its lifecycle interfaces without
-// registering val as a dependency.
-func ContainerLoad[T any](c *Container, val T) T {
-	for _, registrant := range c.registrants {
-		registrant(val)
-	}
-	if !c.queuePendingInjection(val) {
-		return ContainerInject(c, val)
-	}
-	return val
-}
-
-// ContainerInject injects dependencies from c into injectable.
-func ContainerInject[T any](c *Container, injectable T) T {
-	val := reflect.ValueOf(injectable)
-	indirectVal := reflect.Indirect(val) // In case injectable is a pointer
-	inject[T](c, indirectVal)
-	return injectable
-}
-
-func dependencyName[T any](name []string) string {
-	switch len(name) {
-	case 0:
-		return getInterfaceName[T]()
-	case 1:
-		if name[0] == "" {
-			return getInterfaceName[T]()
+// Requires returns the required or optional dependencies that may be exported
+// by other containers, in declaration order.
+func (c *Container) Requires(optional bool) []string {
+	required := make([]string, 0)
+	seen := make(map[string]struct{})
+	for _, decl := range c.declarations {
+		for _, dependency := range decl.requirements {
+			if dependency.optional != optional {
+				continue
+			}
+			if _, local := c.locals[dependency.name]; local {
+				continue
+			}
+			if _, exists := seen[dependency.name]; exists {
+				continue
+			}
+			seen[dependency.name] = struct{}{}
+			required = append(required, dependency.name)
 		}
-		return name[0]
-	default:
-		panic("scene registry: dependency accepts at most one name")
 	}
+	return required
 }
 
-func (c *Container) lookup(name string) (interface{}, bool) {
-	c.lock.RLock()
-	impl, ok := c.dependencies[name]
-	c.lock.RUnlock()
-	return impl, ok
-}
-
-func (c *Container) queuePendingInjection(val any) bool {
-	c.lock.Lock()
-	if c.pendingInjections == nil {
-		c.lock.Unlock()
-		return false
-	}
-	c.pendingInjections = append(c.pendingInjections, val)
-	c.lock.Unlock()
-	return true
-}
-
-func (c *Container) beginLazyInjection() {
-	c.lock.Lock()
-	if c.pendingInjections != nil {
-		c.lock.Unlock()
-		panic("scene registry: lazy injection is already active for this container")
-	}
-	c.pendingInjections = make([]any, 0)
-	c.lock.Unlock()
-}
-
-func (c *Container) finishLazyInjection() []any {
-	c.lock.Lock()
-	pending := c.pendingInjections
-	c.pendingInjections = nil
-	c.lock.Unlock()
-	return pending
-}
-
-func (c *Container) abortLazyInjection() {
-	c.lock.Lock()
-	c.pendingInjections = nil
-	c.lock.Unlock()
-}
-
-// WithLazyInjection delays injection in c until proc returns.
-// It must not be nested, and proc must perform registration synchronously.
-func (c *Container) WithLazyInjection(proc func()) {
-	c.beginLazyInjection()
-	finished := false
-	defer func() {
-		if !finished {
-			c.abortLazyInjection()
+// Provides returns the dependencies exported by this container, sorted by key.
+func (c *Container) Provides() []string {
+	provided := make([]string, 0, len(c.locals))
+	for key, dependencyBinding := range c.locals {
+		if dependencyBinding.visibility != exported {
+			continue
 		}
-	}()
-	proc()
-	pending := c.finishLazyInjection()
-	finished = true
-	for _, val := range pending {
-		ContainerInject(c, val)
+		provided = append(provided, key)
 	}
+	slices.Sort(provided)
+	return provided
+}
+
+// Inject injects every declared value using this container's local and imported bindings.
+func (c *Container) Inject(hooks ...InjectHookFunc) {
+	if c.injected {
+		return
+	}
+	for _, decl := range c.declarations {
+		inject(c, decl.injections, hooks)
+	}
+	c.injected = true
+}
+
+func (c *Container) lookup(name string) (any, bool) {
+	if local, ok := c.locals[name]; ok {
+		return local.declaration.instance, true
+	}
+	imported, ok := c.imports[name]
+	return imported, ok
+}
+
+// Import adds an external dependency to this container.
+func (c *Container) Import(name string, imported any) {
+	c.imports[name] = imported
+}
+
+// Resolve returns a dependency exported by this container.
+func (c *Container) Resolve(name string) (any, bool) {
+	dependencyBinding, ok := c.locals[name]
+	if !ok || dependencyBinding.visibility != exported || dependencyBinding.declaration.instance == nil {
+		return nil, false
+	}
+	return dependencyBinding.declaration.instance, true
+}
+
+func (c *Container) values() []any {
+	values := make([]any, 0, len(c.declarations))
+	for _, decl := range c.declarations {
+		if decl.instance != nil {
+			values = append(values, decl.instance)
+		}
+	}
+	return values
 }

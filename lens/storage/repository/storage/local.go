@@ -108,6 +108,10 @@ func (l *localStorage) Setup() error {
 	return nil
 }
 
+func (l *localStorage) TearDown() error {
+	return nil
+}
+
 func NewLocalStorage(name string, localPath string) storage.IStorageProvider {
 	return &localStorage{
 		name:      name,

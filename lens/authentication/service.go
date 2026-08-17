@@ -8,7 +8,7 @@ import (
 )
 
 type IAuthenticationService interface {
-	scene.Service
+	scene.Named
 	AddUser(username, password string) (User, error)
 	DeleteUser(userId string) error
 	UpdateUser(user User) error
@@ -22,7 +22,7 @@ type IAuthenticationService interface {
 }
 
 type IAccessTokenService interface {
-	scene.Service
+	scene.Named
 	// Create a new token for user
 	Create(userId, name string, expireAt int64) (AccessToken, error)
 	// ListByUser 分页列出某个用户的所有 AccessToken

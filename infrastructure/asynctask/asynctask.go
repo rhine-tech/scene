@@ -2,4 +2,4 @@ package asynctask
 
 import "github.com/rhine-tech/scene"
 
-const Lens scene.InfraName = "asynctask"
+const Lens scene.ModuleName = "asynctask"

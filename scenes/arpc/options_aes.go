@@ -1,6 +1,7 @@
 package arpc
 
 import (
+	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/rhine-tech/scene/registry"
 	"github.com/rhine-tech/scene/scenes/arpc/helper"
 
@@ -22,8 +23,12 @@ func WithAesEncryption(key []byte) ClientOption {
 
 // UseAesEncryption enables automatic AES decryption for all messages after a successful handshake.
 func UseAesEncryption(key []byte) ServerOption {
-	return func(server *arpc.Server) error {
-		log := registry.Logger.WithPrefix((&arpcContainer{}).ImplName().Identifier())
+	return func(scope *registry.Scope, server *arpc.Server) error {
+		log, exists := registry.LookupIn[logger.ILogger](scope)
+		if !exists {
+			log = logger.NoopLogger{}
+		}
+		log = log.WithPrefix((&arpcContainer{}).ImplName().Identifier())
 		coder := helper.NewAesCoder(key, log)
 		server.Handler.UseCoder(coder)
 		return nil

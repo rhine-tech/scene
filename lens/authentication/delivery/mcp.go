@@ -33,7 +33,7 @@ func (a *app) Register(server *server.MCPServer) error {
 func (a *app) toolLoginByToken() server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool(
-			a.srv.SrvImplName().MethodName("LoginByToken"),
+			a.srv.ImplName().MethodName("LoginByToken"),
 			mcp.WithDescription("使用 access token 进行登录并返回用户信息"),
 			mcp.WithString("token", mcp.Required(), mcp.Description("scene access token")),
 		),
@@ -59,7 +59,7 @@ func (a *app) toolLoginByToken() server.ServerTool {
 func (a *app) toolGetMyInfo() server.ServerTool {
 	return server.ServerTool{
 		Tool: mcp.NewTool(
-			a.srv.SrvImplName().MethodName("GetMyInfo"),
+			a.srv.ImplName().MethodName("GetMyInfo"),
 			mcp.WithDescription("获取当前登录用户信息"),
 		),
 		Handler: func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {

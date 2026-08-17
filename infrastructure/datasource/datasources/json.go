@@ -22,7 +22,7 @@ func NewJsonDataSourceFromPath(path string) datasource.JsonDataSource {
 	return NewJsonDataSource(datasource.JsonConfig{Path: path})
 }
 
-func (j *JsonRepo) Dispose() error {
+func (j *JsonRepo) TearDown() error {
 	err := os.WriteFile(j.cfg.Path, j.data, 0644)
 	if err != nil {
 		j.log.Warnf("fail to write data to %s", j.cfg.Path)

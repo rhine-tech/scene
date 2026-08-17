@@ -17,10 +17,10 @@ import (
 )
 
 type authContext struct {
-	authSrv  authentication.IAuthenticationService `aperture:""`
-	tokenSrv authentication.IAccessTokenService    `aperture:""`
-	storage  storage.IStorageService               `aperture:""`
-	lgStVrf  authentication.HTTPLoginStatusVerifier
+	authSrv  authentication.IAuthenticationService  `aperture:""`
+	tokenSrv authentication.IAccessTokenService     `aperture:""`
+	storage  storage.IStorageService                `aperture:""`
+	lgStVrf  authentication.HTTPLoginStatusVerifier `aperture:"embed"`
 }
 
 func hasUserManagePermission(ctx *sgin.Context[*authContext]) bool {

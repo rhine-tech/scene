@@ -1,48 +1,40 @@
 package factory
 
 import (
+	"github.com/rhine-tech/scene/infrastructure/config"
 	"github.com/rhine-tech/scene/infrastructure/config/repository"
 	"github.com/rhine-tech/scene/registry"
 )
 
 func Init(configFile string) {
-	registry.RegisterConfig(repository.NewDotEnvironmentCfgur(configFile))
-	if err := registry.Config.Init(); err != nil {
-		panic(err)
-	}
+	setConfig(repository.NewDotEnvironmentCfgur(configFile))
 }
 
 func InitDotEnv(configFile string) {
-	registry.RegisterConfig(repository.NewDotEnvironmentCfgur(configFile))
-	if err := registry.Config.Init(); err != nil {
-		panic(err)
-	}
+	setConfig(repository.NewDotEnvironmentCfgur(configFile))
 }
 
 func InitJson(configFile string) {
-	registry.RegisterConfig(repository.NewJsonCfgur(configFile))
-	if err := registry.Config.Init(); err != nil {
-		panic(err)
-	}
+	setConfig(repository.NewJsonCfgur(configFile))
 }
 
 func InitEnv() {
-	registry.RegisterConfig(repository.NewEnvironmentCfgur())
-	if err := registry.Config.Init(); err != nil {
-		panic(err)
-	}
+	setConfig(repository.NewEnvironmentCfgur())
 }
 
 func InitINI(configFile string) {
-	registry.RegisterConfig(repository.NewINICfgur(configFile))
-	if err := registry.Config.Init(); err != nil {
-		panic(err)
-	}
+	setConfig(repository.NewINICfgur(configFile))
 }
 
 func InitToml(configFile string) {
-	registry.RegisterConfig(repository.NewTomlCfgur(configFile))
-	if err := registry.Config.Init(); err != nil {
+	setConfig(repository.NewTomlCfgur(configFile))
+}
+
+func setConfig(cfg config.IConfig) {
+	if err := cfg.Init(); err != nil {
 		panic(err)
 	}
+	registry.Set[config.IConfig](cfg)
+	registry.Set[config.ConfigUnmarshaler](cfg)
+	registry.Set[config.ConfigProviderWithDefault](cfg)
 }

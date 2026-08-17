@@ -2,7 +2,9 @@ package mcp
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
+	"net"
 	"net/http"
 
 	"github.com/mark3labs/mcp-go/server"
@@ -13,12 +15,67 @@ import (
 )
 
 type StreamableHTTPScene struct {
-	addr   string
-	server *server.MCPServer
-	http   *server.StreamableHTTPServer
-	clos   func(ctx context.Context) error
-	apps   []McpApp
-	logger logger.ILogger `aperture:""`
+	addr        string
+	server      *server.MCPServer
+	handler     *server.StreamableHTTPServer
+	httpServer  *http.Server
+	apps        []McpApp
+	logger      logger.ILogger
+	tlsCertFile string
+	tlsKeyFile  string
+}
+
+// StreamableHTTPFactory builds an MCP Streamable HTTP scene from MCP applications.
+type StreamableHTTPFactory struct {
+	Name          string
+	Version       string
+	Addr          string
+	HTTPOptions   []StreamableHTTPOption
+	ServerOptions []ServerOption
+}
+
+var _ scene.SceneFactory[McpApp] = StreamableHTTPFactory{}
+
+// NewStreamableHTTPFactory declares an MCP Streamable HTTP scene.
+func NewStreamableHTTPFactory(
+	name string,
+	version string,
+	addr string,
+	httpOptions []StreamableHTTPOption,
+	serverOptions []ServerOption,
+) scene.SceneDefinition {
+	return scene.WithScene[McpApp](StreamableHTTPFactory{
+		Name:          name,
+		Version:       version,
+		Addr:          addr,
+		HTTPOptions:   httpOptions,
+		ServerOptions: serverOptions,
+	})
+}
+
+func (f StreamableHTTPFactory) Build(scope *registry.Scope, apps []McpApp) (scene.Scene, error) {
+	mcpServer := server.NewMCPServer(f.Name, f.Version, f.ServerOptions...)
+	options := resolveStreamableHTTPOptions(f.HTTPOptions)
+	handler := server.NewStreamableHTTPServer(mcpServer, options.handlerOptions...)
+	routedHandler := routeStreamableHTTP(options.endpointPath, handler)
+	httpServer, err := buildHTTPServer(f.Addr, routedHandler, options.httpServerBuilder)
+	if err != nil {
+		return nil, err
+	}
+	log, exists := registry.LookupIn[logger.ILogger](scope)
+	if !exists {
+		log = logger.NoopLogger{}
+	}
+	return &StreamableHTTPScene{
+		server:      mcpServer,
+		handler:     handler,
+		httpServer:  httpServer,
+		addr:        f.Addr,
+		apps:        apps,
+		logger:      log.WithPrefix((&StreamableHTTPScene{}).ImplName().Identifier()),
+		tlsCertFile: options.tlsCertFile,
+		tlsKeyFile:  options.tlsKeyFile,
+	}, nil
 }
 
 func (m *StreamableHTTPScene) ImplName() scene.ImplName {
@@ -27,7 +84,7 @@ func (m *StreamableHTTPScene) ImplName() scene.ImplName {
 
 func (m *StreamableHTTPScene) Start() error {
 	if !utils.IsValidAddress(m.addr) {
-		registry.Logger.Errorf("invalid address: %s", m.addr)
+		m.logger.Errorf("invalid address: %s", m.addr)
 		return errors.New("invalid address " + m.addr)
 	}
 	for _, app := range m.apps {
@@ -35,12 +92,40 @@ func (m *StreamableHTTPScene) Start() error {
 			return err
 		}
 	}
-	m.clos = func(ctx context.Context) error {
-		return m.http.Shutdown(ctx)
+	if (m.tlsCertFile == "") != (m.tlsKeyFile == "") {
+		return errors.New("both TLS cert and key must be provided")
 	}
+	var tlsConfig *tls.Config
+	if m.tlsCertFile != "" {
+		certificate, err := tls.LoadX509KeyPair(m.tlsCertFile, m.tlsKeyFile)
+		if err != nil {
+			return err
+		}
+		if m.httpServer.TLSConfig == nil {
+			tlsConfig = new(tls.Config)
+		} else {
+			tlsConfig = m.httpServer.TLSConfig.Clone()
+		}
+		tlsConfig.Certificates = append([]tls.Certificate{certificate}, tlsConfig.Certificates...)
+		m.httpServer.TLSConfig = tlsConfig
+	}
+	listener, err := net.Listen("tcp", m.addr)
+	if err != nil {
+		return err
+	}
+	scheme := "http"
+	if tlsConfig != nil {
+		scheme = "https"
+	}
+	m.logger.Infof("mcp streamable http server started, listen on '%s://%s'", scheme, utils.PrettyAddress(m.addr))
 	go func() {
-		m.logger.Infof("mcp streamable http server started, listen on 'http://%s'", utils.PrettyAddress(m.addr))
-		if err := m.http.Start(m.addr); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		var err error
+		if tlsConfig == nil {
+			err = m.httpServer.Serve(listener)
+		} else {
+			err = m.httpServer.ServeTLS(listener, "", "")
+		}
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			m.logger.Errorf("listen failed: %s\n", err)
 		}
 	}()
@@ -48,7 +133,7 @@ func (m *StreamableHTTPScene) Start() error {
 }
 
 func (m *StreamableHTTPScene) Stop(ctx context.Context) error {
-	return m.clos(ctx)
+	return errors.Join(m.handler.Shutdown(ctx), m.httpServer.Shutdown(ctx))
 }
 
 func (m *StreamableHTTPScene) ListAppNames() []string {
@@ -57,24 +142,4 @@ func (m *StreamableHTTPScene) ListAppNames() []string {
 		names = append(names, app.Name().Identifier())
 	}
 	return names
-}
-
-func NewStreamableHTTP(
-	name string,
-	version string,
-	addr string,
-	apps []McpApp,
-	httpOpts []StreamableHTTPOption,
-	serverOpts []ServerOption,
-) scene.Scene {
-	s := server.NewMCPServer(name, version, serverOpts...)
-	httpServer := server.NewStreamableHTTPServer(s, httpOpts...)
-	return &StreamableHTTPScene{
-		server: s,
-		http:   httpServer,
-		addr:   addr,
-		apps:   apps,
-		clos:   func(ctx context.Context) error { return httpServer.Shutdown(ctx) },
-		logger: registry.Logger.WithPrefix((&StreamableHTTPScene{}).ImplName().Identifier()),
-	}
 }
