@@ -1,12 +1,13 @@
-package utils
+package engines
 
 import (
 	"fmt"
-	"github.com/rhine-tech/scene"
 	"strings"
+
+	"github.com/rhine-tech/scene"
 )
 
-func FormatContainerInfo(idx int, container scene.Scene) string {
+func formatContainerInfo(idx int, container scene.Scene) string {
 	appNames := container.ListAppNames()
 	nameStr := ""
 	padding := strings.Repeat(" ", 8)

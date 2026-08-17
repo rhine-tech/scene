@@ -5,13 +5,15 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/rhine-tech/scene/registry"
-	"github.com/rhine-tech/scene/utils"
+	"github.com/rhine-tech/scene/utils/must"
 )
 
 var errStartEngineFailed = fmt.Errorf("failed to start engine")
@@ -44,7 +46,7 @@ func (eg *BasicEngine) printContainersInfo() {
 	containers := eg.ListContainers()
 	info := make([]string, len(containers))
 	for index, container := range containers {
-		info[index] = utils.FormatContainerInfo(index, container)
+		info[index] = formatContainerInfo(index, container)
 	}
 	eg.logger.Infof("successfully loaded %d containers. \n\n%s", len(containers), strings.Join(info, "\n"))
 }
@@ -73,6 +75,11 @@ func (eg *BasicEngine) Start() error {
 	}
 	eg.resolveLogger()
 	eg.logger.Info(getBanner())
+	eg.logger.Infof("App: %s", scene.AppName)
+	eg.logger.Infof("Build: %s (%s) at %s",
+		scene.AppBuildVersion,
+		scene.AppBuildHash[:8],
+		time.Unix(must.Must(strconv.ParseInt(scene.AppBuildTime, 10, 64)), 0).Format("2006-01-02 15:04:05"))
 	eg.logger.Info("starting scene engine...")
 	if err := eg.loader.Setup(); err != nil {
 		eg.logger.Errorf("setup modules error: %v", err)
