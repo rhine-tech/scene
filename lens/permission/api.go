@@ -4,13 +4,10 @@ import (
 	"context"
 )
 
-func HasPermissionInCtx(ctx context.Context, perm *Permission) bool {
+func HasPermissionInCtx(ctx context.Context, perm *Permission) (bool, error) {
 	pctx, ok := GetPermContext(ctx)
 	if !ok {
-		return false
+		return false, nil
 	}
-	if !pctx.HasPermission(perm) {
-		return false
-	}
-	return true
+	return pctx.HasPermission(ctx, perm)
 }

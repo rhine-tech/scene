@@ -52,15 +52,32 @@ func (g *ginApp) handleCheck(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, model.NewErrorCodeResponse(errcode.ParameterError.WithDetail(err)))
 		return
 	}
+	requiredPermission, err := permission.ParsePermission(param.Perm)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, model.NewErrorCodeResponse(errcode.ParameterError.WithDetail(err)))
+		return
+	}
 	actx, _ := authentication.GetAuthContext(c.Request.Context())
+	hasPermission, err := g.permSrv.HasPermission(c.Request.Context(), actx.UserID, requiredPermission)
+	if err != nil {
+		_ = c.Error(err)
+		c.JSON(http.StatusInternalServerError, model.NewErrorCodeResponse(errcode.InternalError.WithDetail(err)))
+		return
+	}
 	c.JSON(200, model.NewDataResponse(gin.H{
 		"permission": param.Perm,
-		"has":        g.permSrv.HasPermissionStr(actx.UserID, param.Perm)}))
+		"has":        hasPermission}))
 }
 
 func (g *ginApp) handleList(c *gin.Context) {
 	actx, _ := authentication.GetAuthContext(c.Request.Context())
-	c.JSON(200, model.NewDataResponse(g.permSrv.ListPermissions(actx.UserID)))
+	permissions, err := g.permSrv.ListPermissions(c.Request.Context(), actx.UserID)
+	if err != nil {
+		_ = c.Error(err)
+		c.JSON(http.StatusInternalServerError, model.NewErrorCodeResponse(errcode.InternalError.WithDetail(err)))
+		return
+	}
+	c.JSON(200, model.NewDataResponse(permissions))
 }
 
 func (g *ginApp) handleAll(c *gin.Context) {
@@ -70,7 +87,12 @@ func (g *ginApp) handleAll(c *gin.Context) {
 		c.JSON(200, model.NewErrorCodeResponse(authentication.ErrNotLogin))
 		return
 	}
-	ok = permission.HasPermissionInCtx(ctx, permission.PermList)
+	ok, err := permission.HasPermissionInCtx(ctx, permission.PermList)
+	if err != nil {
+		_ = c.Error(err)
+		c.JSON(http.StatusInternalServerError, model.NewErrorCodeResponse(errcode.InternalError.WithDetail(err)))
+		return
+	}
 	if !ok {
 		c.JSON(200, model.NewErrorCodeResponse(permission.ErrPermissionDenied))
 		return
@@ -98,11 +120,17 @@ func (g *ginApp) handleManageAdd(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, model.NewErrorCodeResponse(errcode.ParameterError.WithDetail(err)))
 		return
 	}
-	if _, ok := authentication.IsLoginInCtx(ctx); !ok || !permission.HasPermissionInCtx(ctx, permission.PermManage) {
+	hasPermission, err := permission.HasPermissionInCtx(ctx, permission.PermManage)
+	if err != nil {
+		_ = c.Error(err)
+		c.JSON(http.StatusInternalServerError, model.NewErrorCodeResponse(errcode.InternalError.WithDetail(err)))
+		return
+	}
+	if _, ok := authentication.IsLoginInCtx(ctx); !ok || !hasPermission {
 		c.JSON(http.StatusUnauthorized, model.NewErrorCodeResponse(permission.ErrPermissionDenied))
 		return
 	}
-	if err := g.permSrv.AddPermission(param.Owner, param.Perm); err != nil {
+	if err := g.permSrv.AddPermission(ctx, param.Owner, param.Perm); err != nil {
 		_ = c.Error(err)
 		c.JSON(http.StatusOK, model.NewErrorCodeResponse(errcode.InternalError.WithDetail(err)))
 		return
@@ -117,11 +145,17 @@ func (g *ginApp) handleManageDelete(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, model.NewErrorCodeResponse(errcode.ParameterError.WithDetail(err)))
 		return
 	}
-	if _, ok := authentication.IsLoginInCtx(ctx); !ok || !permission.HasPermissionInCtx(ctx, permission.PermManage) {
+	hasPermission, err := permission.HasPermissionInCtx(ctx, permission.PermManage)
+	if err != nil {
+		_ = c.Error(err)
+		c.JSON(http.StatusInternalServerError, model.NewErrorCodeResponse(errcode.InternalError.WithDetail(err)))
+		return
+	}
+	if _, ok := authentication.IsLoginInCtx(ctx); !ok || !hasPermission {
 		c.JSON(http.StatusUnauthorized, model.NewErrorCodeResponse(permission.ErrPermissionDenied))
 		return
 	}
-	if err := g.permSrv.RemovePermission(param.Owner, param.Perm); err != nil {
+	if err := g.permSrv.RemovePermission(ctx, param.Owner, param.Perm); err != nil {
 		_ = c.Error(err)
 		c.JSON(http.StatusOK, model.NewErrorCodeResponse(errcode.InternalError.WithDetail(err)))
 		return
@@ -136,9 +170,21 @@ func (g *ginApp) handleManageList(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, model.NewErrorCodeResponse(errcode.ParameterError.WithDetail(err)))
 		return
 	}
-	if _, ok := authentication.IsLoginInCtx(ctx); !ok || !permission.HasPermissionInCtx(ctx, permission.PermManage) {
+	hasPermission, err := permission.HasPermissionInCtx(ctx, permission.PermManage)
+	if err != nil {
+		_ = c.Error(err)
+		c.JSON(http.StatusInternalServerError, model.NewErrorCodeResponse(errcode.InternalError.WithDetail(err)))
+		return
+	}
+	if _, ok := authentication.IsLoginInCtx(ctx); !ok || !hasPermission {
 		c.JSON(http.StatusUnauthorized, model.NewErrorCodeResponse(permission.ErrPermissionDenied))
 		return
 	}
-	c.JSON(http.StatusOK, model.NewDataResponse(g.permSrv.ListPermissions(param.Owner)))
+	permissions, err := g.permSrv.ListPermissions(ctx, param.Owner)
+	if err != nil {
+		_ = c.Error(err)
+		c.JSON(http.StatusInternalServerError, model.NewErrorCodeResponse(errcode.InternalError.WithDetail(err)))
+		return
+	}
+	c.JSON(http.StatusOK, model.NewDataResponse(permissions))
 }

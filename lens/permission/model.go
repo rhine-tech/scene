@@ -10,6 +10,12 @@ type Permission struct {
 	parts []string
 }
 
+// OwnerPermissions groups the explicit grants selected for an owner.
+type OwnerPermissions struct {
+	Owner       string        `json:"owner"`
+	Permissions []*Permission `json:"permissions"`
+}
+
 func (p *Permission) Parts() []string {
 	if p == nil {
 		return nil
@@ -54,6 +60,7 @@ func MustParsePermission(name string) *Permission {
 }
 
 func ParsePermission(name string) (*Permission, error) {
+	name = strings.ToLower(name)
 	perms := strings.Split(name, ":")
 	if len(perms) == 0 {
 		return nil, errors.New("permission: contains zero length permission string")

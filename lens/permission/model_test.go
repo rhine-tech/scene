@@ -28,6 +28,12 @@ func TestPermission_ParseAndString(t *testing.T) {
 		require.Equal(t, "admin", p.String())
 	})
 
+	t.Run("normalizes uppercase permission", func(t *testing.T) {
+		p, err := ParsePermission("Project:Member:READ")
+		require.NoError(t, err)
+		require.Equal(t, "project:member:read", p.String())
+	})
+
 	t.Run("error cases for ParsePermission", func(t *testing.T) {
 		_, err := ParsePermission("")
 		require.Error(t, err, "should fail on empty string")

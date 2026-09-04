@@ -6,6 +6,7 @@ import (
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/rhine-tech/scene/lens/permission"
+	"github.com/rhine-tech/scene/model"
 )
 
 type PermissionManagerImpl struct {
@@ -32,59 +33,103 @@ func (p *PermissionManagerImpl) TearDown() error {
 	return nil
 }
 
-func (p *PermissionManagerImpl) HasPermission(owner string, perm *permission.Permission) bool {
-	perms, err := p.repo.GetPermissions(context.Background(), owner)
+func (p *PermissionManagerImpl) HasPermission(ctx context.Context, owner string, perm *permission.Permission) (bool, error) {
+	allowed, err := p.repo.HasPermission(ctx, owner, perm)
 	if err != nil {
-		p.logger.ErrorW("failed to get permissions", "owner", owner, "error", err)
-		return false
+		p.logger.ErrorW("failed to check permission", "owner", owner, "permission", perm, "error", err)
+		return false, err
 	}
-	for _, p0 := range perms {
-		if p0.HasPermission(perm) {
-			return true
-		}
-	}
-	return false
+	return allowed, nil
 }
 
-func (p *PermissionManagerImpl) HasPermissionStr(owner string, perm string) bool {
+func (p *PermissionManagerImpl) HasPermissionStr(ctx context.Context, owner string, perm string) (bool, error) {
 	p1, err := permission.ParsePermission(perm)
 	if err != nil {
-		return false
+		return false, err
 	}
-	return p.HasPermission(owner, p1)
+	return p.HasPermission(ctx, owner, p1)
 }
 
-//func (p *PermissionManagerImpl) ListOwners() []string {
-//	owners := p.repo.GetOwners()
-//	names := make([]string, len(owners))
-//	for i, owner := range owners {
-//		names[i] = string(owner)
-//	}
-//	return names
-//}
-
-func (p *PermissionManagerImpl) ListPermissions(role string) []*permission.Permission {
-	perms, err := p.repo.GetPermissions(context.Background(), role)
+func (p *PermissionManagerImpl) ListPermissions(ctx context.Context, role string) ([]*permission.Permission, error) {
+	perms, err := p.repo.GetPermissions(ctx, role)
 	if err != nil {
 		p.logger.ErrorW("failed to list permissions", "owner", role, "error", err)
-		return nil
+		return nil, err
 	}
-	return perms
+	return perms, nil
 }
 
-func (p *PermissionManagerImpl) AddPermission(role string, perm string) error {
-	_, err := p.repo.AddPermission(context.Background(), role, perm)
+func (p *PermissionManagerImpl) AddPermission(ctx context.Context, role string, perm string) error {
+	parsed, err := permission.ParsePermission(perm)
 	if err != nil {
+		p.logger.Errorf("failed to add permission %s: %s", perm, err)
+		return err
+	}
+	if err := p.repo.AddPermission(ctx, role, parsed); err != nil {
 		p.logger.Errorf("failed to add permission %s: %s", perm, err)
 		return err
 	}
 	return nil
 }
 
-func (p *PermissionManagerImpl) RemovePermission(role string, perm string) error {
-	err := p.repo.RemovePermission(context.Background(), role, perm)
+func (p *PermissionManagerImpl) RemovePermission(ctx context.Context, role string, perm string) error {
+	parsed, err := permission.ParsePermission(perm)
 	if err != nil {
 		p.logger.Errorf("failed to remove permission %s: %s", perm, err)
+		return err
+	}
+	if err := p.repo.RemovePermission(ctx, role, parsed); err != nil {
+		p.logger.Errorf("failed to remove permission %s: %s", perm, err)
+		return err
+	}
+	return nil
+}
+
+func (p *PermissionManagerImpl) ReplacePermissions(
+	ctx context.Context,
+	owner string,
+	prefix *permission.Permission,
+	permissions []*permission.Permission,
+) error {
+	if err := p.repo.ReplacePermissions(ctx, owner, prefix, permissions); err != nil {
+		p.logger.ErrorW("failed to replace permissions", "owner", owner, "prefix", prefix, "error", err)
+		return err
+	}
+	return nil
+}
+
+func (p *PermissionManagerImpl) ListOwnersWithPermission(
+	ctx context.Context,
+	perm *permission.Permission,
+	offset, limit int64,
+) (model.PaginationResult[permission.OwnerPermissions], error) {
+	result, err := p.repo.ListOwnersWithPermission(ctx, perm, offset, limit)
+	if err != nil {
+		p.logger.ErrorW("failed to list owners with permission", "permission", perm, "error", err)
+		return result, err
+	}
+	return result, nil
+}
+
+func (p *PermissionManagerImpl) ListOwnersWithGrantsByPrefix(
+	ctx context.Context,
+	prefix *permission.Permission,
+	offset, limit int64,
+) (model.PaginationResult[permission.OwnerPermissions], error) {
+	result, err := p.repo.ListOwnersWithGrantsByPrefix(ctx, prefix, offset, limit)
+	if err != nil {
+		p.logger.ErrorW("failed to list owners by permission prefix", "prefix", prefix, "error", err)
+		return result, err
+	}
+	return result, nil
+}
+
+func (p *PermissionManagerImpl) RemovePermissionsByPrefix(
+	ctx context.Context,
+	prefix *permission.Permission,
+) error {
+	if err := p.repo.RemovePermissionsByPrefix(ctx, prefix); err != nil {
+		p.logger.ErrorW("failed to remove permissions by prefix", "prefix", prefix, "error", err)
 		return err
 	}
 	return nil

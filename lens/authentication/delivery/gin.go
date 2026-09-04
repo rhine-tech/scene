@@ -23,9 +23,12 @@ type authContext struct {
 	lgStVrf  authentication.HTTPLoginStatusVerifier `aperture:"embed"`
 }
 
-func hasUserManagePermission(ctx *sgin.Context[*authContext]) bool {
-	return permission.HasPermissionInCtx(ctx, authentication.PermUserManage) ||
-		permission.HasPermissionInCtx(ctx, authentication.PermAdmin)
+func hasUserManagePermission(ctx *sgin.Context[*authContext]) (bool, error) {
+	hasPermission, err := permission.HasPermissionInCtx(ctx, authentication.PermUserManage)
+	if err != nil || hasPermission {
+		return hasPermission, err
+	}
+	return permission.HasPermissionInCtx(ctx, authentication.PermAdmin)
 }
 
 // AuthGinApp creates the Gin application definition for all authentication-related routes.
@@ -254,7 +257,11 @@ func (l *listUsersRequest) Process(ctx *sgin.Context[*authContext]) (data any, e
 	if _, ok := authentication.IsLoginInCtx(ctx); !ok {
 		return nil, authentication.ErrNotLogin
 	}
-	if !hasUserManagePermission(ctx) {
+	hasPermission, err := hasUserManagePermission(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !hasPermission {
 		return nil, permission.ErrPermissionDenied
 	}
 	result, err := ctx.App.authSrv.ListUsers(l.Offset, l.Limit)
@@ -288,7 +295,11 @@ func (c *createUserRequest) Process(ctx *sgin.Context[*authContext]) (data any, 
 	if _, ok := authentication.IsLoginInCtx(ctx); !ok {
 		return nil, authentication.ErrNotLogin
 	}
-	if !hasUserManagePermission(ctx) {
+	hasPermission, err := hasUserManagePermission(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !hasPermission {
 		return nil, permission.ErrPermissionDenied
 	}
 	user, err := ctx.App.authSrv.AddUser(c.Username, c.Password)
@@ -321,7 +332,11 @@ func (u *updateUserRequest) Process(ctx *sgin.Context[*authContext]) (data any, 
 	if _, ok := authentication.IsLoginInCtx(ctx); !ok {
 		return nil, authentication.ErrNotLogin
 	}
-	if !hasUserManagePermission(ctx) {
+	hasPermission, err := hasUserManagePermission(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !hasPermission {
 		return nil, permission.ErrPermissionDenied
 	}
 
@@ -372,7 +387,11 @@ func (d *deleteUserRequest) Process(ctx *sgin.Context[*authContext]) (data any, 
 	if _, ok := authentication.IsLoginInCtx(ctx); !ok {
 		return nil, authentication.ErrNotLogin
 	}
-	if !hasUserManagePermission(ctx) {
+	hasPermission, err := hasUserManagePermission(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !hasPermission {
 		return nil, permission.ErrPermissionDenied
 	}
 	err = ctx.App.authSrv.DeleteUser(d.UserID)

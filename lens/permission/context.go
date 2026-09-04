@@ -27,23 +27,23 @@ func SetPermContext(ctx context.Context, owner string, srv PermissionService) co
 	return scene.ContextSetValue[PermContext](ctx, permissionContextKey, NewPermContext(owner, srv))
 }
 
-func (c *PermContext) HasPermission(perm *Permission) bool {
+func (c *PermContext) HasPermission(ctx context.Context, perm *Permission) (bool, error) {
 	if c.Owner == "" {
-		return false
+		return false, nil
 	}
-	return c.srv.HasPermission(c.Owner, perm)
+	return c.srv.HasPermission(ctx, c.Owner, perm)
 }
 
-func (c *PermContext) HasPermissionStr(perm string) bool {
+func (c *PermContext) HasPermissionStr(ctx context.Context, perm string) (bool, error) {
 	if c.Owner == "" {
-		return false
+		return false, nil
 	}
-	return c.srv.HasPermissionStr(c.Owner, perm)
+	return c.srv.HasPermissionStr(ctx, c.Owner, perm)
 }
 
-func (c *PermContext) ListPermissions() []*Permission {
+func (c *PermContext) ListPermissions(ctx context.Context) ([]*Permission, error) {
 	if c.Owner == "" {
-		return []*Permission{}
+		return []*Permission{}, nil
 	}
-	return c.srv.ListPermissions(c.Owner)
+	return c.srv.ListPermissions(ctx, c.Owner)
 }

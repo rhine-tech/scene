@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/rhine-tech/scene/errcode"
 	"github.com/rhine-tech/scene/lens/authentication"
 	"github.com/rhine-tech/scene/lens/permission"
 	"github.com/rhine-tech/scene/model"
@@ -32,8 +33,19 @@ func GinRequirePermissionFromStr(perm string) gin.HandlerFunc {
 
 func GinRequirePermission(requiredPerm *permission.Permission) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		permCtx, ok := permission.GetPermContext(c.Request.Context())
-		if !ok || !permCtx.HasPermission(requiredPerm) {
+		ctx := c.Request.Context()
+		permCtx, ok := permission.GetPermContext(ctx)
+		if !ok {
+			c.AbortWithStatusJSON(http.StatusForbidden, model.NewErrorCodeResponse(permission.ErrPermissionDenied.WithDetailStr(requiredPerm.String())))
+			return
+		}
+		hasPermission, err := permCtx.HasPermission(ctx, requiredPerm)
+		if err != nil {
+			_ = c.Error(err)
+			c.AbortWithStatusJSON(http.StatusInternalServerError, model.NewErrorCodeResponse(errcode.InternalError.WithDetail(err)))
+			return
+		}
+		if !hasPermission {
 			c.AbortWithStatusJSON(http.StatusForbidden, model.NewErrorCodeResponse(permission.ErrPermissionDenied.WithDetailStr(requiredPerm.String())))
 			return
 		}

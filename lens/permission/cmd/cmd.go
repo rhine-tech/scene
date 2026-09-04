@@ -33,7 +33,6 @@ func (a *app) Command(rootCmd *cobra.Command) error {
 		newAddCmd(a),
 		newRemoveCmd(a),
 		newListCmd(a),
-		newListPermissionTreeCmd(a),
 		newHasCmd(a),
 	)
 	rootCmd.AddCommand(root)
@@ -46,7 +45,7 @@ func newAddCmd(app *app) *cobra.Command {
 		Short: "Grant a permission to an owner",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := app.srv.AddPermission(args[0], args[1]); err != nil {
+			if err := app.srv.AddPermission(cmd.Context(), args[0], args[1]); err != nil {
 				return err
 			}
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "ok")
@@ -61,7 +60,7 @@ func newRemoveCmd(app *app) *cobra.Command {
 		Short: "Remove a permission from an owner",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := app.srv.RemovePermission(args[0], args[1]); err != nil {
+			if err := app.srv.RemovePermission(cmd.Context(), args[0], args[1]); err != nil {
 				return err
 			}
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "ok")
@@ -71,12 +70,22 @@ func newRemoveCmd(app *app) *cobra.Command {
 }
 
 func newListCmd(app *app) *cobra.Command {
-	return &cobra.Command{
+	var asTree bool
+	cmd := &cobra.Command{
 		Use:   "list <owner>",
 		Short: "List all permissions for an owner",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			perms := app.srv.ListPermissions(args[0])
+			perms, err := app.srv.ListPermissions(cmd.Context(), args[0])
+			if err != nil {
+				return err
+			}
+			if asTree {
+				tree := permission.BuildTree(perms...)
+				rendered := renderPermissionTree(tree)
+				_, err = fmt.Fprint(cmd.OutOrStdout(), rendered)
+				return err
+			}
 			values := make([]string, 0, len(perms))
 			for _, perm := range perms {
 				values = append(values, perm.String())
@@ -84,21 +93,8 @@ func newListCmd(app *app) *cobra.Command {
 			return printJSON(cmd, values)
 		},
 	}
-}
-
-func newListPermissionTreeCmd(app *app) *cobra.Command {
-	return &cobra.Command{
-		Use:     "list_permissiontree <owner>",
-		Aliases: []string{"list-permissiontree", "permissiontree"},
-		Short:   "List permissions as a permission tree for an owner",
-		Args:    cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			tree := permission.BuildTree(app.srv.ListPermissions(args[0])...)
-			rendered := renderPermissionTree(tree)
-			_, err := fmt.Fprint(cmd.OutOrStdout(), rendered)
-			return err
-		},
-	}
+	cmd.Flags().BoolVar(&asTree, "tree", false, "Render permissions as a tree")
+	return cmd
 }
 
 func newHasCmd(app *app) *cobra.Command {
@@ -107,8 +103,12 @@ func newHasCmd(app *app) *cobra.Command {
 		Short: "Check whether an owner has a permission",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			_, _ = fmt.Fprintln(cmd.OutOrStdout(), app.srv.HasPermissionStr(args[0], args[1]))
-			return nil
+			hasPermission, err := app.srv.HasPermissionStr(cmd.Context(), args[0], args[1])
+			if err != nil {
+				return err
+			}
+			_, err = fmt.Fprintln(cmd.OutOrStdout(), hasPermission)
+			return err
 		},
 	}
 }
