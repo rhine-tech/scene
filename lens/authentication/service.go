@@ -1,10 +1,10 @@
-//go:generate scene gen arpc IAuthenticationService IAccessTokenService
 package authentication
 
 import (
+	"net/http"
+
 	"github.com/rhine-tech/scene"
 	"github.com/rhine-tech/scene/model"
-	"net/http"
 )
 
 type IAuthenticationService interface {
@@ -40,5 +40,3 @@ type HTTPLoginStatusVerifier interface {
 	Login(userId string, resp http.ResponseWriter) (status LoginStatus, err error)
 	Logout(resp http.ResponseWriter) (err error)
 }
-
-//type IExternalAccountService interface{}
