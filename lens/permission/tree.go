@@ -72,6 +72,32 @@ func (d *DeclarationTree) AddTemplate(templates ...*Template) {
 	}
 }
 
+// List returns declarations at prefix and below it as independently bindable
+// templates. The prefix is matched literally, including placeholder names;
+// it need not itself be a terminal declaration. Results are unordered.
+func (d *DeclarationTree) List(prefix *Template) []*Template {
+	node := d.Root
+	for _, part := range prefix.parts {
+		child, exists := node.Children[part]
+		if !exists {
+			return nil
+		}
+		node = child
+	}
+
+	var templates []*Template
+	node.walk(prefix.parts, func(path []string) {
+		template := &Template{parts: append([]string(nil), path...)}
+		for i, part := range path {
+			if strings.HasPrefix(part, "{") {
+				template.parameters = append(template.parameters, i)
+			}
+		}
+		templates = append(templates, template)
+	})
+	return templates
+}
+
 // ToList returns declared paths, including unbound template placeholders.
 func (d *DeclarationTree) ToList() []string {
 	var paths []string

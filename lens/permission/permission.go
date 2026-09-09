@@ -12,8 +12,14 @@ const Lens scene.ModuleName = "permission"
 type PermissionService interface {
 	scene.Named
 	HasPermission(ctx context.Context, owner string, perm *Permission) (bool, error)
+	// HasPermissions checks each permission independently, preserving input order
+	// and duplicates. Nil permissions are denied; errors invalidate all results.
+	HasPermissions(ctx context.Context, owner string, permissions []*Permission) ([]bool, error)
 	HasPermissionStr(ctx context.Context, owner string, perm string) (bool, error)
 	ListPermissions(ctx context.Context, owner string) ([]*Permission, error)
+	// ListExplicitGrantsByPrefix lists an owner's explicit grants at prefix and
+	// below it. Grants inherited from ancestors of prefix are not included.
+	ListExplicitGrantsByPrefix(ctx context.Context, owner string, prefix *Permission) ([]*Permission, error)
 	AddPermission(ctx context.Context, owner string, perm string) error
 	RemovePermission(ctx context.Context, owner string, perm string) error
 	// ReplacePermissions atomically replaces an owner's explicit grants at prefix and below it.
@@ -29,9 +35,10 @@ type PermissionService interface {
 
 type PermissionRepository interface {
 	scene.Named
-	HasPermission(ctx context.Context, owner string, perm *Permission) (bool, error)
-	//GetOwners() []string
+	// HasPermissions follows PermissionService.HasPermissions's result contract.
+	HasPermissions(ctx context.Context, owner string, permissions ...*Permission) ([]bool, error)
 	GetPermissions(ctx context.Context, owner string) ([]*Permission, error)
+	ListExplicitGrantsByPrefix(ctx context.Context, owner string, prefix *Permission) ([]*Permission, error)
 	AddPermission(ctx context.Context, owner string, perm *Permission) error
 	RemovePermission(ctx context.Context, owner string, perm *Permission) error
 	ReplacePermissions(ctx context.Context, owner string, prefix *Permission, permissions []*Permission) error

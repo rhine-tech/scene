@@ -77,7 +77,7 @@ func TestGormPermissionRepositoryAddIsIdempotent(t *testing.T) {
 	require.Empty(t, permissions)
 }
 
-func TestGormPermissionRepositoryHasPermission(t *testing.T) {
+func TestGormPermissionRepositoryPermissionInheritance(t *testing.T) {
 	ctx := context.Background()
 	repo := newPermissionRepository(t)
 	for owner, value := range map[string]string{
@@ -92,15 +92,75 @@ func TestGormPermissionRepositoryHasPermission(t *testing.T) {
 
 	requested := permission.MustParsePermission("project:123:read")
 	for _, owner := range []string{"parent", "branch", "exact"} {
-		allowed, err := repo.HasPermission(ctx, owner, requested)
+		allowed, err := repo.HasPermissions(ctx, owner, requested)
 		require.NoError(t, err)
-		require.True(t, allowed, owner)
+		require.Equal(t, []bool{true}, allowed, owner)
 	}
 	for _, owner := range []string{"child", "sibling", "missing"} {
-		allowed, err := repo.HasPermission(ctx, owner, requested)
+		allowed, err := repo.HasPermissions(ctx, owner, requested)
 		require.NoError(t, err)
-		require.False(t, allowed, owner)
+		require.Equal(t, []bool{false}, allowed, owner)
 	}
+}
+
+func TestGormPermissionRepositoryHasPermissions(t *testing.T) {
+	ctx := context.Background()
+	repo := newPermissionRepository(t)
+	for _, value := range []string{"project:123:run", "project:123:read", "project:123:code:read"} {
+		require.NoError(t, repo.AddPermission(ctx, "owner", permission.MustParsePermission(value)))
+	}
+	require.NoError(t, repo.AddPermission(ctx, "other", permission.MustParsePermission("project")))
+
+	requested := []*permission.Permission{
+		permission.MustParsePermission("project:123:run:create"),
+		permission.MustParsePermission("project:123:run"),
+		permission.MustParsePermission("project:123:environment"),
+		permission.MustParsePermission("project:123:read"),
+		permission.MustParsePermission("project:123:code"),
+		permission.MustParsePermission("project:456:run:create"),
+		permission.MustParsePermission("project:123:run:create"),
+		nil,
+	}
+	allowed, err := repo.HasPermissions(ctx, "owner", requested...)
+	require.NoError(t, err)
+	require.Equal(t, []bool{true, true, false, true, false, false, true, false}, allowed)
+
+	allowed, err = repo.HasPermissions(ctx, "missing", requested...)
+	require.NoError(t, err)
+	require.Equal(t, make([]bool, len(requested)), allowed)
+
+	cancelled, cancel := context.WithCancel(ctx)
+	cancel()
+	allowed, err = repo.HasPermissions(cancelled, "owner", requested...)
+	require.ErrorIs(t, err, context.Canceled)
+	require.Nil(t, allowed)
+}
+
+func TestGormPermissionRepositoryListExplicitGrantsByPrefix(t *testing.T) {
+	ctx := context.Background()
+	repo := newPermissionRepository(t)
+	for owner, values := range map[string][]string{
+		"alice": {"project", "project:123", "project:123:run", "project:123:run:create", "project:1234:read", "project:456:read"},
+		"bob":   {"project:123:read"},
+		"root":  {"project"},
+	} {
+		for _, value := range values {
+			require.NoError(t, repo.AddPermission(ctx, owner, permission.MustParsePermission(value)))
+		}
+	}
+
+	prefix := permission.MustParsePermission("project:123")
+	grants, err := repo.ListExplicitGrantsByPrefix(ctx, "alice", prefix)
+	require.NoError(t, err)
+	require.Equal(t, []string{"project:123", "project:123:run", "project:123:run:create"}, permissionStrings(grants))
+
+	// An ancestor grant authorizes access but is not an explicit grant in this subtree.
+	grants, err = repo.ListExplicitGrantsByPrefix(ctx, "root", prefix)
+	require.NoError(t, err)
+	require.Empty(t, grants)
+	allowed, err := repo.HasPermissions(ctx, "root", permission.MustParsePermission("project:123:run:create"))
+	require.NoError(t, err)
+	require.Equal(t, []bool{true}, allowed)
 }
 
 func TestGormPermissionRepositoryReplacePermissions(t *testing.T) {

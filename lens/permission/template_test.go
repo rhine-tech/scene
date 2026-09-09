@@ -22,6 +22,31 @@ func TestTemplateBind(t *testing.T) {
 	require.False(t, grant.HasPermission(other))
 }
 
+func TestTemplateMatch(t *testing.T) {
+	template := MustParseTemplate("project:{project_id}:file:{file_id}:read")
+	perm := MustParsePermission("Project:ABC-123:file:File_2:read")
+	args, matched := template.Match(perm)
+	require.True(t, matched)
+	require.Equal(t, []string{"abc-123", "file_2"}, args)
+	require.True(t, template.MustBind(args...).IsEqual(perm))
+
+	for _, path := range []string{
+		"project:abc-123:file:file_2",
+		"project:abc-123:file:file_2:read:own",
+		"project:abc-123:file:file_2:write",
+		"project:abc-123:revision:file_2:read",
+	} {
+		args, matched := template.Match(MustParsePermission(path))
+		require.False(t, matched, path)
+		require.Nil(t, args, path)
+	}
+
+	static := MustParseTemplate("project:read")
+	args, matched = static.Match(MustParsePermission("project:read"))
+	require.True(t, matched)
+	require.Empty(t, args)
+}
+
 func TestTemplateBindRejectsInvalidArguments(t *testing.T) {
 	template := MustParseTemplate("project:{project_id}:read")
 	for _, args := range [][]string{

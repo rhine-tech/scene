@@ -50,11 +50,23 @@ func (r *gormImpl) GetPermissions(
 	ctx context.Context,
 	owner string,
 ) ([]*permission.Permission, error) {
+	return listPermissions(r.db.Session(ctx).Where("owner = ?", owner))
+}
+
+func (r *gormImpl) ListExplicitGrantsByPrefix(
+	ctx context.Context,
+	owner string,
+	prefix *permission.Permission,
+) ([]*permission.Permission, error) {
+	if prefix == nil {
+		return nil, errors.New("permission prefix is required")
+	}
+	return listPermissions(permissionSubtree(r.db.Session(ctx).Where("owner = ?", owner), prefix.String()))
+}
+
+func listPermissions(query *gorm.DB) ([]*permission.Permission, error) {
 	var rows []permissionRow
-	if err := r.db.Session(ctx).
-		Where("owner = ?", owner).
-		Order("perm ASC").
-		Find(&rows).Error; err != nil {
+	if err := query.Order("perm ASC").Find(&rows).Error; err != nil {
 		return nil, err
 	}
 
@@ -69,28 +81,38 @@ func (r *gormImpl) GetPermissions(
 	return permissions, nil
 }
 
-func (r *gormImpl) HasPermission(
+func (r *gormImpl) HasPermissions(
 	ctx context.Context,
 	owner string,
-	requested *permission.Permission,
-) (bool, error) {
-	ancestors := permissionAncestors(requested)
+	permissions ...*permission.Permission,
+) ([]bool, error) {
+	allowed := make([]bool, len(permissions))
+	indexes := make(map[string][]int)
+	var ancestors []string
+	for i, requested := range permissions {
+		for _, ancestor := range permissionAncestors(requested) {
+			if _, exists := indexes[ancestor]; !exists {
+				ancestors = append(ancestors, ancestor)
+			}
+			indexes[ancestor] = append(indexes[ancestor], i)
+		}
+	}
 	if len(ancestors) == 0 {
-		return false, nil
+		return allowed, nil
 	}
 
-	var row permissionRow
-	err := r.db.Session(ctx).
-		Select("id").
+	var grants []string
+	if err := r.db.Session(ctx).Model(&permissionRow{}).
 		Where("owner = ? AND perm IN ?", owner, ancestors).
-		Take(&row).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return false, nil
+		Pluck("perm", &grants).Error; err != nil {
+		return nil, err
 	}
-	if err != nil {
-		return false, err
+	for _, grant := range grants {
+		for _, index := range indexes[grant] {
+			allowed[index] = true
+		}
 	}
-	return true, nil
+	return allowed, nil
 }
 
 func (r *gormImpl) AddPermission(

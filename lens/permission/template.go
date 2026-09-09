@@ -81,3 +81,23 @@ func (t *Template) MustBind(args ...string) *Permission {
 	}
 	return perm
 }
+
+// Match extracts positional arguments from a concrete permission whose full
+// path matches the template. It does not check permission inheritance.
+// Arguments follow Bind's left-to-right order; a mismatch returns nil, false.
+func (t *Template) Match(perm *Permission) (args []string, matched bool) {
+	if perm == nil || len(t.parts) != len(perm.parts) {
+		return nil, false
+	}
+	args = make([]string, len(t.parameters))
+	parameter := 0
+	for i, part := range t.parts {
+		if parameter < len(t.parameters) && t.parameters[parameter] == i {
+			args[parameter] = perm.parts[i]
+			parameter++
+		} else if part != perm.parts[i] {
+			return nil, false
+		}
+	}
+	return args, true
+}

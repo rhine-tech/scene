@@ -34,10 +34,19 @@ func (p *PermissionManagerImpl) TearDown() error {
 }
 
 func (p *PermissionManagerImpl) HasPermission(ctx context.Context, owner string, perm *permission.Permission) (bool, error) {
-	allowed, err := p.repo.HasPermission(ctx, owner, perm)
+	allowed, err := p.repo.HasPermissions(ctx, owner, perm)
 	if err != nil {
 		p.logger.ErrorW("failed to check permission", "owner", owner, "permission", perm, "error", err)
 		return false, err
+	}
+	return allowed[0], nil
+}
+
+func (p *PermissionManagerImpl) HasPermissions(ctx context.Context, owner string, permissions []*permission.Permission) ([]bool, error) {
+	allowed, err := p.repo.HasPermissions(ctx, owner, permissions...)
+	if err != nil {
+		p.logger.ErrorW("failed to check permissions", "owner", owner, "permissions", permissions, "error", err)
+		return nil, err
 	}
 	return allowed, nil
 }
@@ -57,6 +66,15 @@ func (p *PermissionManagerImpl) ListPermissions(ctx context.Context, role string
 		return nil, err
 	}
 	return perms, nil
+}
+
+func (p *PermissionManagerImpl) ListExplicitGrantsByPrefix(ctx context.Context, owner string, prefix *permission.Permission) ([]*permission.Permission, error) {
+	permissions, err := p.repo.ListExplicitGrantsByPrefix(ctx, owner, prefix)
+	if err != nil {
+		p.logger.ErrorW("failed to list explicit grants by prefix", "owner", owner, "prefix", prefix, "error", err)
+		return nil, err
+	}
+	return permissions, nil
 }
 
 func (p *PermissionManagerImpl) AddPermission(ctx context.Context, role string, perm string) error {

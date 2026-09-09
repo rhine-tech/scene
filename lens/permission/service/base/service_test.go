@@ -27,9 +27,17 @@ func (r *recordingPermissionRepository) GetPermissions(ctx context.Context, _ st
 	return nil, r.err
 }
 
-func (r *recordingPermissionRepository) HasPermission(ctx context.Context, _ string, _ *permission.Permission) (bool, error) {
+func (r *recordingPermissionRepository) ListExplicitGrantsByPrefix(ctx context.Context, _ string, _ *permission.Permission) ([]*permission.Permission, error) {
 	r.contexts = append(r.contexts, ctx)
-	return false, r.err
+	return nil, r.err
+}
+
+func (r *recordingPermissionRepository) HasPermissions(ctx context.Context, _ string, permissions ...*permission.Permission) ([]bool, error) {
+	r.contexts = append(r.contexts, ctx)
+	if r.err != nil {
+		return nil, r.err
+	}
+	return make([]bool, len(permissions)), nil
 }
 
 func (r *recordingPermissionRepository) AddPermission(ctx context.Context, _ string, perm *permission.Permission) error {
@@ -77,7 +85,12 @@ func TestPermissionManagerPropagatesContextAndRepositoryErrors(t *testing.T) {
 
 	_, err := service.HasPermission(ctx, "owner", permission.MustParsePermission("project:read"))
 	require.ErrorIs(t, err, repositoryErr)
+	allowed, err := service.HasPermissions(ctx, "owner", []*permission.Permission{permission.MustParsePermission("project:read")})
+	require.ErrorIs(t, err, repositoryErr)
+	require.Nil(t, allowed)
 	_, err = service.ListPermissions(ctx, "owner")
+	require.ErrorIs(t, err, repositoryErr)
+	_, err = service.ListExplicitGrantsByPrefix(ctx, "owner", permission.MustParsePermission("project"))
 	require.ErrorIs(t, err, repositoryErr)
 	require.ErrorIs(t, service.AddPermission(ctx, "owner", "project:read"), repositoryErr)
 	require.ErrorIs(t, service.RemovePermission(ctx, "owner", "project:read"), repositoryErr)
@@ -88,7 +101,7 @@ func TestPermissionManagerPropagatesContextAndRepositoryErrors(t *testing.T) {
 	require.ErrorIs(t, err, repositoryErr)
 	require.ErrorIs(t, service.RemovePermissionsByPrefix(ctx, permission.MustParsePermission("project")), repositoryErr)
 
-	require.Len(t, repository.contexts, 8)
+	require.Len(t, repository.contexts, 10)
 	for _, repositoryCtx := range repository.contexts {
 		require.Equal(t, "request", repositoryCtx.Value(serviceContextKey{}))
 	}
