@@ -81,7 +81,8 @@ func newListCmd(app *app) *cobra.Command {
 				return err
 			}
 			if asTree {
-				tree := permission.BuildTree(perms...)
+				tree := permission.NewDeclarationTree()
+				tree.Add(perms...)
 				rendered := renderPermissionTree(tree)
 				_, err = fmt.Fprint(cmd.OutOrStdout(), rendered)
 				return err
@@ -119,7 +120,7 @@ func printJSON(cmd *cobra.Command, value any) error {
 	return encoder.Encode(value)
 }
 
-func renderPermissionTree(tree *permission.PermissionTree) string {
+func renderPermissionTree(tree *permission.DeclarationTree) string {
 	if tree == nil || tree.Root == nil || len(tree.Root.Children) == 0 {
 		return "(empty)\n"
 	}

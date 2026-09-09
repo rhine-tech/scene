@@ -2,7 +2,6 @@ package permission
 
 import (
 	"encoding/json"
-	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -29,20 +28,22 @@ func TestPermission_ParseAndString(t *testing.T) {
 	})
 
 	t.Run("normalizes uppercase permission", func(t *testing.T) {
-		p, err := ParsePermission("Project:Member:READ")
+		p, err := ParsePermission("Project:Member_01:READ-ONLY")
 		require.NoError(t, err)
-		require.Equal(t, "project:member:read", p.String())
+		require.Equal(t, "project:member_01:read-only", p.String())
 	})
 
 	t.Run("error cases for ParsePermission", func(t *testing.T) {
-		_, err := ParsePermission("")
-		require.Error(t, err, "should fail on empty string")
-
-		_, err = ParsePermission("user::edit")
-		require.Error(t, err, "should fail on empty part")
-
-		_, err = ParsePermission("user:edit:")
-		require.Error(t, err, "should fail on trailing colon")
+		for _, name := range []string{
+			"", "user::edit", "user:edit:", ":user",
+			"project:read write", "project:read\n", "project:file/read",
+			"project:file.read", "project:*", "project:123%", "project:123!",
+			"project:{project_id}:read", "project:项目:read",
+		} {
+			p, err := ParsePermission(name)
+			require.Error(t, err, name)
+			require.Nil(t, p, name)
+		}
 	})
 
 	t.Run("MustParsePermission panics on error", func(t *testing.T) {
@@ -164,125 +165,44 @@ func TestPermission_JSONMarshaling(t *testing.T) {
 		require.True(t, perms[0].IsEqual(perms2[0]))
 		require.True(t, perms[1].IsEqual(perms2[1]))
 	})
+
+	t.Run("rejects unbound templates", func(t *testing.T) {
+		var perm Permission
+		require.Error(t, json.Unmarshal([]byte(`"project:{project_id}:read"`), &perm))
+	})
 }
 
-// --- PermissionTree (Trie) Tests ---
+// --- DeclarationTree Tests ---
 
-func TestPermissionTree_AddAndHasPermission(t *testing.T) {
-	tree := NewPermissionTree()
-	tree.Add(
-		MustParsePermission("user:view"),
-		MustParsePermission("report:generate:pdf"),
-		MustParsePermission("admin"), // Wildcard admin
-	)
-
-	// --- Test Cases That Should Pass ---
-	// Exact matches
-	require.True(t, tree.HasPermission(MustParsePermission("user:view")), "exact match failed")
-	require.True(t, tree.HasPermissionStr("report:generate:pdf"), "exact match str failed")
-
-	// Prefix/wildcard matches
-	require.True(t, tree.HasPermissionStr("admin:dashboard:view"), "wildcard admin failed")
-	require.True(t, tree.HasPermissionStr("user:view:book"), "wildcard user:view failed")
-	require.True(t, tree.HasPermissionStr("admin:users:delete"), "wildcard admin failed")
-	require.True(t, tree.HasPermission(MustParsePermission("admin")), "exact wildcard match failed")
-
-	// --- Test Cases That Should Fail ---
-	// No match
-	require.False(t, tree.HasPermissionStr("user:delete"), "mismatched action should fail")
-	require.False(t, tree.HasPermissionStr("report:delete"), "mismatched sibling should fail")
-
-	// Specific permission does not grant general
-	require.False(t, tree.HasPermissionStr("user"), "specific should not grant general")
-	require.False(t, tree.HasPermissionStr("report:generate"), "specific should not grant general")
-
-	// Invalid string
-	require.False(t, tree.HasPermissionStr("user::view"), "invalid string should fail safely")
-}
-
-func TestPermissionTree_EdgeCases(t *testing.T) {
+func TestDeclarationTree_ToList(t *testing.T) {
 	t.Run("empty tree", func(t *testing.T) {
-		tree := NewPermissionTree()
-		require.False(t, tree.HasPermissionStr("any:perm"))
-	})
-
-	t.Run("adding parent perm after child", func(t *testing.T) {
-		tree := NewPermissionTree()
-		tree.Add(MustParsePermission("a:b:c"))
-		// Before adding parent, check should fail
-		require.False(t, tree.HasPermissionStr("a:b:d"))
-
-		// Now add the parent, which acts as a wildcard for this level
-		tree.Add(MustParsePermission("a:b"))
-		require.True(t, tree.HasPermissionStr("a:b:d"), "check should pass after parent was added")
-		require.True(t, tree.HasPermissionStr("a:b:c"), "original perm should still pass")
-	})
-
-	t.Run("adding child perm after parent", func(t *testing.T) {
-		tree := NewPermissionTree()
-		tree.Add(MustParsePermission("a:b"))
-		require.True(t, tree.HasPermissionStr("a:b:c")) // Has access due to parent
-
-		// Add a more specific one (should have no negative effect)
-		tree.Add(MustParsePermission("a:b:c"))
-		require.True(t, tree.HasPermissionStr("a:b:c"))
-		require.True(t, tree.HasPermissionStr("a:b:d"))
-	})
-
-	t.Run("adding duplicate permissions", func(t *testing.T) {
-		tree := NewPermissionTree()
-		tree.Add(MustParsePermission("a:b"))
-		tree.Add(MustParsePermission("a:b"))
-		tree.Add(MustParsePermission("a:b"))
-		require.True(t, tree.HasPermissionStr("a:b:c"))
-		// A simple structural check
-		require.Len(t, tree.Root.Children, 1)
-		require.Len(t, tree.Root.Children["a"].Children, 1)
-	})
-
-	t.Run("check against nil permission", func(t *testing.T) {
-		tree := NewPermissionTree()
-		tree.Add(MustParsePermission("a"))
-		require.False(t, tree.HasPermission(nil))
-	})
-}
-
-func permsToStrings(perms []*Permission) []string {
-	strs := make([]string, len(perms))
-	for i, p := range perms {
-		strs[i] = p.String()
-	}
-	sort.Strings(strs)
-	return strs
-}
-
-func TestPermissionTree_ToList(t *testing.T) {
-	t.Run("empty tree", func(t *testing.T) {
-		tree := NewPermissionTree()
+		tree := NewDeclarationTree()
 		list := tree.ToList()
 		require.Empty(t, list, "ToList on an empty tree should return an empty slice")
 	})
 
 	t.Run("single permission", func(t *testing.T) {
-		tree := BuildTree(MustParsePermission("admin"))
+		tree := NewDeclarationTree()
+		tree.Add(MustParsePermission("admin"))
 		list := tree.ToList()
 		require.Len(t, list, 1)
-		require.Equal(t, "admin", list[0].String())
+		require.Equal(t, "admin", list[0])
 	})
 
 	t.Run("multiple simple permissions", func(t *testing.T) {
-		tree := BuildTree(
+		tree := NewDeclarationTree()
+		tree.Add(
 			MustParsePermission("admin"),
 			MustParsePermission("user"),
 			MustParsePermission("guest"),
 		)
 		expected := []string{"admin", "guest", "user"}
-		actual := permsToStrings(tree.ToList())
-		require.Equal(t, expected, actual)
+		require.ElementsMatch(t, expected, tree.ToList())
 	})
 
 	t.Run("complex tree with overlapping paths", func(t *testing.T) {
-		tree := BuildTree(
+		tree := NewDeclarationTree()
+		tree.Add(
 			MustParsePermission("user:view"),
 			MustParsePermission("user:edit:profile"),
 			MustParsePermission("user:edit:avatar"),
@@ -301,17 +221,16 @@ func TestPermissionTree_ToList(t *testing.T) {
 			"user:edit:profile",
 			"user:view",
 		}
-		actual := permsToStrings(tree.ToList())
-		require.Equal(t, expected, actual)
+		require.ElementsMatch(t, expected, tree.ToList())
 	})
 
 	t.Run("tree where a prefix is also a terminal node", func(t *testing.T) {
-		tree := BuildTree(
+		tree := NewDeclarationTree()
+		tree.Add(
 			MustParsePermission("user:edit"),
 			MustParsePermission("user:edit:profile"),
 		)
 		expected := []string{"user:edit", "user:edit:profile"}
-		actual := permsToStrings(tree.ToList())
-		require.Equal(t, expected, actual)
+		require.ElementsMatch(t, expected, tree.ToList())
 	})
 }
