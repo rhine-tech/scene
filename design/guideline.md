@@ -107,9 +107,10 @@ const Lens scene.ModuleName = "authentication"
        loader,
        sgin.NewFactory(
            ":8080",
-           "/api",
-           sgin.WithRecovery(),
-           sgin.WithCors(),
+           sgin.DefaultRouter("/api",
+               sgin.WithRecovery(),
+               sgin.WithCors(),
+           ),
        ),
        svoid.NewFactory(),
    )

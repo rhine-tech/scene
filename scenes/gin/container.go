@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"path"
+	"slices"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -29,50 +31,72 @@ func createGinEngine(scope *registry.Scope) *gin.Engine {
 
 type ginContainer struct {
 	addr    string
-	prefix  string
-	engine  *gin.Engine
-	apps    []GinApplication
+	routers prefixMux
+	apps    []routedApplication
 	logger  logger.ILogger
 	server  *http.Server
 	baseCtx context.Context
 	cancel  context.CancelFunc
 }
 
+type routedApplication struct {
+	GinApplication
+	router *ginRouter
+}
+
 // Factory builds a Gin scene from Gin applications.
 type Factory struct {
 	Addr    string
-	Prefix  string
-	Options []GinOption
+	Routers []RouterDefinition
 }
 
 var _ scene.SceneFactory[GinApplication] = Factory{}
 
 // NewFactory declares a Gin scene.
-func NewFactory(addr, prefix string, options ...GinOption) scene.SceneDefinition {
+func NewFactory(addr string, routers ...RouterDefinition) scene.SceneDefinition {
 	return scene.WithScene[GinApplication](Factory{
 		Addr:    addr,
-		Prefix:  prefix,
-		Options: options,
+		Routers: routers,
 	})
 }
 
 func (f Factory) Build(scope *registry.Scope, apps []GinApplication) (scene.Scene, error) {
-	prefix := f.Prefix
-	if prefix == "" {
-		prefix = "/"
-	}
-	ginEngine := createGinEngine(scope)
-	for _, option := range f.Options {
-		if err := option(scope, ginEngine); err != nil {
-			return nil, err
+	container := &ginContainer{addr: f.Addr}
+	byName := make(map[string]*ginRouter, len(f.Routers))
+	prefixes := make(map[string]string, len(f.Routers))
+	for _, definition := range f.Routers {
+		if _, exists := byName[definition.Name]; exists {
+			return nil, fmt.Errorf("scene-gin: duplicate router name %q", definition.Name)
 		}
+		prefix := path.Clean("/" + definition.Prefix)
+		if previous, exists := prefixes[prefix]; exists {
+			return nil, fmt.Errorf("scene-gin: routers %q and %q use the same prefix %q", previous, definition.Name, prefix)
+		}
+		engine := createGinEngine(scope)
+		for _, option := range definition.Options {
+			if err := option(scope, engine); err != nil {
+				return nil, fmt.Errorf("scene-gin: configure router %q: %w", definition.Name, err)
+			}
+		}
+		router := &ginRouter{name: definition.Name, prefix: prefix, engine: engine}
+		byName[definition.Name] = router
+		prefixes[prefix] = definition.Name
+		container.routers = append(container.routers, router)
 	}
-	container := &ginContainer{
-		addr:   f.Addr,
-		prefix: prefix,
-		engine: ginEngine,
-		apps:   apps,
+	for _, app := range apps {
+		name := ""
+		if selector, ok := app.(RouterSelector); ok {
+			name = selector.RouterName()
+		}
+		router, exists := byName[name]
+		if !exists {
+			return nil, fmt.Errorf("scene-gin: application %s selects unconfigured router %q", app.Name(), name)
+		}
+		container.apps = append(container.apps, routedApplication{GinApplication: app, router: router})
 	}
+	slices.SortStableFunc(container.routers, func(a, b *ginRouter) int {
+		return len(b.prefix) - len(a.prefix)
+	})
 	container.baseCtx, container.cancel = context.WithCancel(context.Background())
 	log, exists := registry.LookupIn[logger.ILogger](scope)
 	if !exists {
@@ -87,10 +111,10 @@ func (c *ginContainer) ImplName() scene.ImplName {
 }
 
 func (c *ginContainer) startApps() error {
-	router := c.engine.Group(c.prefix)
 	created := 0
 	for _, app := range c.apps {
-		if err := app.Create(c.engine, router.Group(app.Prefix())); err != nil {
+		router := app.router.engine.Group(app.router.prefix).Group(app.Prefix())
+		if err := app.Create(app.router.engine, router); err != nil {
 			c.logger.Errorf("failed to create %s: %s", app.Name(), err.Error())
 		} else {
 			c.logger.Infof("%s created", app.Name())
@@ -100,9 +124,12 @@ func (c *ginContainer) startApps() error {
 	c.logger.Infof("created %d apps, failed to create %d app", created, len(c.apps)-created)
 	endpoints := ""
 	endpointsCount := 0
-	for _, route := range c.engine.Routes() {
-		endpoints += fmt.Sprintf("%8s %-8s %s\n", "-", route.Method, route.Path)
-		endpointsCount++
+	for _, router := range c.routers {
+		c.logger.Infof("router %q mounted at %q", router.name, router.prefix)
+		for _, route := range router.engine.Routes() {
+			endpoints += fmt.Sprintf("%8s %-8s %s\n", "-", route.Method, route.Path)
+			endpointsCount++
+		}
 	}
 	c.logger.Infof("registered %d endpoint\n\n%s", endpointsCount, endpoints)
 	return nil
@@ -129,7 +156,7 @@ func (c *ginContainer) Start() error {
 	}
 	c.server = &http.Server{
 		Addr:    c.addr,
-		Handler: c.engine,
+		Handler: c.routers,
 		BaseContext: func(listener net.Listener) context.Context {
 			return c.baseCtx
 		},

@@ -7,13 +7,20 @@ import (
 
 // GinApplication mounts one module's HTTP routes into a Gin scene.
 //
-// Create receives the root Gin engine and a router scoped by the container
-// prefix and Prefix. Most implementations should register routes on router.
+// Create receives the selected Router's Gin engine and a *gin.RouterGroup
+// scoped by the Router prefix and Prefix. Most implementations should register
+// routes on router. Registering on engine cannot escape the selected Router.
 type GinApplication interface {
 	scene.Application
 	Prefix() string
 	Create(engine *gin.Engine, router gin.IRouter) error
 	Destroy() error
+}
+
+// RouterSelector optionally selects the named router an application belongs to.
+// Applications without RouterSelector use DefaultRouter.
+type RouterSelector interface {
+	RouterName() string
 }
 
 // AppRoutes is the declarative GinApplication used by most modules.
@@ -23,6 +30,7 @@ type GinApplication interface {
 // individual MiddlewareProvider.
 type AppRoutes[T any] struct {
 	AppName     scene.ImplName
+	Router      string // Router name; leave unset to use DefaultRouter.
 	BasePath    string
 	Actions     []Action[*T]
 	Context     T `aperture:"embed"`
@@ -35,6 +43,10 @@ func (a *AppRoutes[T]) Name() scene.ImplName {
 
 func (a *AppRoutes[T]) Prefix() string {
 	return a.BasePath
+}
+
+func (a *AppRoutes[T]) RouterName() string {
+	return a.Router
 }
 
 func (a *AppRoutes[T]) Create(engine *gin.Engine, router gin.IRouter) error {

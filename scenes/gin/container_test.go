@@ -1,12 +1,10 @@
 package gin
 
 import (
-	"context"
 	"net"
 	"testing"
 
-	"github.com/gin-gonic/gin"
-	"github.com/rhine-tech/scene/infrastructure/logger"
+	"github.com/rhine-tech/scene/registry"
 	"github.com/stretchr/testify/require"
 )
 
@@ -15,12 +13,12 @@ func TestGinContainerStartReturnsListenError(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = listener.Close() })
 
-	container := &ginContainer{
-		addr:    listener.Addr().String(),
-		engine:  gin.New(),
-		logger:  logger.NoopLogger{},
-		baseCtx: context.Background(),
-	}
+	container, err := (Factory{
+		Addr:    listener.Addr().String(),
+		Routers: []RouterDefinition{DefaultRouter("/")},
+	}).Build(registry.NewScope(), nil)
+	require.NoError(t, err)
+	t.Cleanup(container.(*ginContainer).cancel)
 
 	err = container.Start()
 	require.Error(t, err)

@@ -12,7 +12,7 @@ import (
 	"github.com/rhine-tech/scene/registry"
 )
 
-// GinOption configures the Gin engine before applications are mounted.
+// GinOption configures one Router's Gin engine before applications are mounted.
 type GinOption func(scope *registry.Scope, engine *gin.Engine) error
 
 func _ginLogger(log logger.ILogger) gin.HandlerFunc {

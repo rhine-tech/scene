@@ -1,6 +1,33 @@
 // Package gin integrates Gin HTTP routing with Scene applications, dependency
 // injection, request binding, middleware, and the common response envelope.
 //
+// # Routers
+//
+// A Scene owns one HTTP listener and explicitly configured, independent Gin
+// routing trees. ModuleLoader still owns every application and its dependency
+// injection and module lifecycle:
+//
+//	sgin.NewFactory(":8080",
+//		sgin.DefaultRouter("/api", sgin.WithRecovery()),
+//		sgin.Router("admin", "/spa", sgin.WithRecovery()),
+//		sgin.Router("web", "/", sgin.WithRecovery()),
+//	)
+//
+// Applications without RouterSelector belong to DefaultRouter.
+// AppRoutes.Router and RouterSelector.RouterName select another configured
+// router. Unknown names, duplicate names, and duplicate normalized prefixes
+// are configuration errors. Each router has its own middleware and NoRoute.
+//
+// Requests select the longest prefix at a path-segment boundary: /api matches
+// /api and /api/users, but not /api2. A router's response is final, including
+// 404 and 405; the root router is not a fallback for another router's errors.
+// Dispatch does not clean or rewrite request paths. Application Create/Destroy
+// follow module declaration order, independently of prefix matching order.
+//
+// Replace NewFactory(addr, prefix, options...) with
+// NewFactory(addr, DefaultRouter(prefix, options...)) when migrating a single
+// routing tree. Router options replace the former Scene-wide Gin options.
+//
 // # Applications
 //
 // AppRoutes is the usual entry point. It owns an application context, injects
@@ -37,8 +64,8 @@
 //
 // Implement GinApplication directly when an endpoint should use Gin's native
 // handlers without Action, binding, or Scene's response envelope. Create
-// receives both the root *gin.Engine and a router already scoped by the
-// container prefix and Prefix:
+// receives both the selected Router's *gin.Engine and a *gin.RouterGroup
+// already scoped by that Router's prefix and the application's Prefix:
 //
 //	type rawGinApplication struct{}
 //
@@ -58,9 +85,9 @@
 //			ctx.JSON(http.StatusOK, gin.H{"status": "ok"})
 //		})
 //
-//		// Register on engine only when the route should intentionally bypass
-//		// the container and application prefixes.
-//		engine.GET("/ready", func(ctx *gin.Context) {
+//		// Native engine registration can bypass the application prefix,
+//		// but the path must still belong to this Router (here, /api).
+//		engine.GET("/api/ready", func(ctx *gin.Context) {
 //			ctx.Status(http.StatusNoContent)
 //		})
 //		return nil
@@ -91,7 +118,7 @@
 //
 // AppRoutes.Middlewares apply to every application action. An individual
 // action can implement MiddlewareProvider to append route-specific
-// middleware. Container middleware runs first, followed by application
+// middleware. Router middleware runs first, followed by application
 // middleware, action middleware, and Process.
 //
 // # Context and responses

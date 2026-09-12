@@ -4,7 +4,6 @@ import (
 	"github.com/rhine-tech/scene"
 	authcmd "github.com/rhine-tech/scene/lens/authentication/cmd"
 	"github.com/rhine-tech/scene/lens/authentication/delivery"
-	"github.com/rhine-tech/scene/lens/authentication/gen/arpcimpl"
 )
 
 type AppGin struct {
@@ -21,17 +20,6 @@ func (b AppGin) Default() AppGin {
 func (b AppGin) Apps() []scene.Application {
 	return []scene.Application{
 		delivery.AuthGinApp(b.Verifier.Provide()),
-	}
-}
-
-type AppArpc struct {
-	scene.ModuleFactory
-}
-
-func (b AppArpc) Apps() []scene.Application {
-	return []scene.Application{
-		new(arpcimpl.ARpcAppIAuthenticationService),
-		new(arpcimpl.ARpcAppIAccessTokenService),
 	}
 }
 
