@@ -48,9 +48,12 @@ func (r *gormImpl) ImplName() scene.ImplName {
 
 func (r *gormImpl) GetPermissions(
 	ctx context.Context,
-	owner string,
+	owners []string,
 ) ([]*permission.Permission, error) {
-	return listPermissions(r.db.Session(ctx).Where("owner = ?", owner))
+	if len(owners) == 0 {
+		return []*permission.Permission{}, nil
+	}
+	return listPermissions(r.db.Session(ctx).Where("owner IN ?", owners).Distinct("perm"))
 }
 
 func (r *gormImpl) ListExplicitGrantsByPrefix(
@@ -83,10 +86,13 @@ func listPermissions(query *gorm.DB) ([]*permission.Permission, error) {
 
 func (r *gormImpl) HasPermissions(
 	ctx context.Context,
-	owner string,
+	owners []string,
 	permissions ...*permission.Permission,
 ) ([]bool, error) {
 	allowed := make([]bool, len(permissions))
+	if len(owners) == 0 {
+		return allowed, nil
+	}
 	indexes := make(map[string][]int)
 	var ancestors []string
 	for i, requested := range permissions {
@@ -103,7 +109,8 @@ func (r *gormImpl) HasPermissions(
 
 	var grants []string
 	if err := r.db.Session(ctx).Model(&permissionRow{}).
-		Where("owner = ? AND perm IN ?", owner, ancestors).
+		Where("owner IN ? AND perm IN ?", owners, ancestors).
+		Distinct("perm").
 		Pluck("perm", &grants).Error; err != nil {
 		return nil, err
 	}

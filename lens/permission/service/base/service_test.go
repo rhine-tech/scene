@@ -22,7 +22,7 @@ func (r *recordingPermissionRepository) ImplName() scene.ImplName {
 	return permission.Lens.ImplName("PermissionRepository", "recording")
 }
 
-func (r *recordingPermissionRepository) GetPermissions(ctx context.Context, _ string) ([]*permission.Permission, error) {
+func (r *recordingPermissionRepository) GetPermissions(ctx context.Context, _ []string) ([]*permission.Permission, error) {
 	r.contexts = append(r.contexts, ctx)
 	return nil, r.err
 }
@@ -32,7 +32,7 @@ func (r *recordingPermissionRepository) ListExplicitGrantsByPrefix(ctx context.C
 	return nil, r.err
 }
 
-func (r *recordingPermissionRepository) HasPermissions(ctx context.Context, _ string, permissions ...*permission.Permission) ([]bool, error) {
+func (r *recordingPermissionRepository) HasPermissions(ctx context.Context, _ []string, permissions ...*permission.Permission) ([]bool, error) {
 	r.contexts = append(r.contexts, ctx)
 	if r.err != nil {
 		return nil, r.err
@@ -88,8 +88,14 @@ func TestPermissionManagerPropagatesContextAndRepositoryErrors(t *testing.T) {
 	allowed, err := service.HasPermissions(ctx, "owner", []*permission.Permission{permission.MustParsePermission("project:read")})
 	require.ErrorIs(t, err, repositoryErr)
 	require.Nil(t, allowed)
+	allowed, err = service.HasPermissionsForOwners(ctx, []string{"owner", "other"}, []*permission.Permission{permission.MustParsePermission("project:read")})
+	require.ErrorIs(t, err, repositoryErr)
+	require.Nil(t, allowed)
 	_, err = service.ListPermissions(ctx, "owner")
 	require.ErrorIs(t, err, repositoryErr)
+	permissions, err := service.ListPermissionsForOwners(ctx, []string{"owner", "other"})
+	require.ErrorIs(t, err, repositoryErr)
+	require.Nil(t, permissions)
 	_, err = service.ListExplicitGrantsByPrefix(ctx, "owner", permission.MustParsePermission("project"))
 	require.ErrorIs(t, err, repositoryErr)
 	require.ErrorIs(t, service.AddPermission(ctx, "owner", "project:read"), repositoryErr)
@@ -101,7 +107,7 @@ func TestPermissionManagerPropagatesContextAndRepositoryErrors(t *testing.T) {
 	require.ErrorIs(t, err, repositoryErr)
 	require.ErrorIs(t, service.RemovePermissionsByPrefix(ctx, permission.MustParsePermission("project")), repositoryErr)
 
-	require.Len(t, repository.contexts, 10)
+	require.Len(t, repository.contexts, 12)
 	for _, repositoryCtx := range repository.contexts {
 		require.Equal(t, "request", repositoryCtx.Value(serviceContextKey{}))
 	}

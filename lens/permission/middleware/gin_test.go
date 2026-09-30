@@ -30,11 +30,19 @@ func (f *failingPermissionService) HasPermissions(context.Context, string, []*pe
 	return nil, f.err
 }
 
+func (f *failingPermissionService) HasPermissionsForOwners(context.Context, []string, []*permission.Permission) ([]bool, error) {
+	return nil, f.err
+}
+
 func (f *failingPermissionService) HasPermissionStr(context.Context, string, string) (bool, error) {
 	return false, f.err
 }
 
 func (f *failingPermissionService) ListPermissions(context.Context, string) ([]*permission.Permission, error) {
+	return nil, f.err
+}
+
+func (f *failingPermissionService) ListPermissionsForOwners(context.Context, []string) ([]*permission.Permission, error) {
 	return nil, f.err
 }
 

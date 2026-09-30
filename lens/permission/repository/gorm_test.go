@@ -66,13 +66,13 @@ func TestGormPermissionRepositoryAddIsIdempotent(t *testing.T) {
 		require.NoError(t, repo.AddPermission(ctx, "user-1", perm))
 	}
 
-	permissions, err := repo.GetPermissions(ctx, "user-1")
+	permissions, err := repo.GetPermissions(ctx, []string{"user-1"})
 	require.NoError(t, err)
 	require.Len(t, permissions, 1)
 	require.Equal(t, "notify:send", permissions[0].String())
 
 	require.NoError(t, repo.RemovePermission(ctx, "user-1", perm))
-	permissions, err = repo.GetPermissions(ctx, "user-1")
+	permissions, err = repo.GetPermissions(ctx, []string{"user-1"})
 	require.NoError(t, err)
 	require.Empty(t, permissions)
 }
@@ -92,12 +92,12 @@ func TestGormPermissionRepositoryPermissionInheritance(t *testing.T) {
 
 	requested := permission.MustParsePermission("project:123:read")
 	for _, owner := range []string{"parent", "branch", "exact"} {
-		allowed, err := repo.HasPermissions(ctx, owner, requested)
+		allowed, err := repo.HasPermissions(ctx, []string{owner}, requested)
 		require.NoError(t, err)
 		require.Equal(t, []bool{true}, allowed, owner)
 	}
 	for _, owner := range []string{"child", "sibling", "missing"} {
-		allowed, err := repo.HasPermissions(ctx, owner, requested)
+		allowed, err := repo.HasPermissions(ctx, []string{owner}, requested)
 		require.NoError(t, err)
 		require.Equal(t, []bool{false}, allowed, owner)
 	}
@@ -108,6 +108,9 @@ func TestGormPermissionRepositoryHasPermissions(t *testing.T) {
 	repo := newPermissionRepository(t)
 	for _, value := range []string{"project:123:run", "project:123:read", "project:123:code:read"} {
 		require.NoError(t, repo.AddPermission(ctx, "owner", permission.MustParsePermission(value)))
+	}
+	for _, value := range []string{"project:123:environment", "project:123:run"} {
+		require.NoError(t, repo.AddPermission(ctx, "collaborator", permission.MustParsePermission(value)))
 	}
 	require.NoError(t, repo.AddPermission(ctx, "other", permission.MustParsePermission("project")))
 
@@ -121,19 +124,71 @@ func TestGormPermissionRepositoryHasPermissions(t *testing.T) {
 		permission.MustParsePermission("project:123:run:create"),
 		nil,
 	}
-	allowed, err := repo.HasPermissions(ctx, "owner", requested...)
-	require.NoError(t, err)
-	require.Equal(t, []bool{true, true, false, true, false, false, true, false}, allowed)
+	for _, tc := range []struct {
+		name    string
+		owners  []string
+		allowed []bool
+	}{
+		{"single owner", []string{"owner"}, []bool{true, true, false, true, false, false, true, false}},
+		{"multiple owners", []string{"owner", "collaborator"}, []bool{true, true, true, true, false, false, true, false}},
+		{"duplicate and unknown owners", []string{"collaborator", "owner", "owner", "missing"}, []bool{true, true, true, true, false, false, true, false}},
+		{"unknown owner", []string{"missing"}, make([]bool, len(requested))},
+		{"no owners", nil, make([]bool, len(requested))},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			allowed, err := repo.HasPermissions(ctx, tc.owners, requested...)
+			require.NoError(t, err)
+			require.Equal(t, tc.allowed, allowed)
+		})
+	}
 
-	allowed, err = repo.HasPermissions(ctx, "missing", requested...)
+	allowed, err := repo.HasPermissions(ctx, []string{"owner", "collaborator"})
 	require.NoError(t, err)
-	require.Equal(t, make([]bool, len(requested)), allowed)
+	require.Empty(t, allowed)
 
 	cancelled, cancel := context.WithCancel(ctx)
 	cancel()
-	allowed, err = repo.HasPermissions(cancelled, "owner", requested...)
+	allowed, err = repo.HasPermissions(cancelled, []string{"owner", "collaborator"}, requested...)
 	require.ErrorIs(t, err, context.Canceled)
 	require.Nil(t, allowed)
+}
+
+func TestGormPermissionRepositoryGetPermissions(t *testing.T) {
+	ctx := context.Background()
+	repo := newPermissionRepository(t)
+	for owner, grants := range map[string][]string{
+		"alice": {"project:123:run", "project:123:read"},
+		"bob":   {"project:123:run:create", "project:123:run"},
+		"other": {"project"},
+	} {
+		for _, grant := range grants {
+			require.NoError(t, repo.AddPermission(ctx, owner, permission.MustParsePermission(grant)))
+		}
+	}
+
+	for _, tc := range []struct {
+		name   string
+		owners []string
+		grants []string
+	}{
+		{"single owner", []string{"alice"}, []string{"project:123:read", "project:123:run"}},
+		{"multiple owners", []string{"alice", "bob"}, []string{"project:123:read", "project:123:run", "project:123:run:create"}},
+		{"duplicate and unknown owners", []string{"bob", "alice", "bob", "missing"}, []string{"project:123:read", "project:123:run", "project:123:run:create"}},
+		{"unknown owner", []string{"missing"}, []string{}},
+		{"no owners", nil, []string{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			grants, err := repo.GetPermissions(ctx, tc.owners)
+			require.NoError(t, err)
+			require.Equal(t, tc.grants, permissionStrings(grants))
+		})
+	}
+
+	cancelled, cancel := context.WithCancel(ctx)
+	cancel()
+	grants, err := repo.GetPermissions(cancelled, []string{"alice", "bob"})
+	require.ErrorIs(t, err, context.Canceled)
+	require.Nil(t, grants)
 }
 
 func TestGormPermissionRepositoryListExplicitGrantsByPrefix(t *testing.T) {
@@ -158,7 +213,7 @@ func TestGormPermissionRepositoryListExplicitGrantsByPrefix(t *testing.T) {
 	grants, err = repo.ListExplicitGrantsByPrefix(ctx, "root", prefix)
 	require.NoError(t, err)
 	require.Empty(t, grants)
-	allowed, err := repo.HasPermissions(ctx, "root", permission.MustParsePermission("project:123:run:create"))
+	allowed, err := repo.HasPermissions(ctx, []string{"root"}, permission.MustParsePermission("project:123:run:create"))
 	require.NoError(t, err)
 	require.Equal(t, []bool{true}, allowed)
 }
@@ -182,7 +237,7 @@ func TestGormPermissionRepositoryReplacePermissions(t *testing.T) {
 		replacement,
 		replacement.Copy(),
 	}))
-	permissions, err := repo.GetPermissions(ctx, "owner")
+	permissions, err := repo.GetPermissions(ctx, []string{"owner"})
 	require.NoError(t, err)
 	require.Equal(t, []string{"project", "project:123:write", "project:456:read"}, permissionStrings(permissions))
 
@@ -191,12 +246,12 @@ func TestGormPermissionRepositoryReplacePermissions(t *testing.T) {
 		permission.MustParsePermission("project:456:admin"),
 	})
 	require.Error(t, err)
-	permissions, err = repo.GetPermissions(ctx, "owner")
+	permissions, err = repo.GetPermissions(ctx, []string{"owner"})
 	require.NoError(t, err)
 	require.Equal(t, []string{"project", "project:123:write", "project:456:read"}, permissionStrings(permissions))
 
 	require.NoError(t, repo.ReplacePermissions(ctx, "owner", prefix, nil))
-	permissions, err = repo.GetPermissions(ctx, "owner")
+	permissions, err = repo.GetPermissions(ctx, []string{"owner"})
 	require.NoError(t, err)
 	require.Equal(t, []string{"project", "project:456:read"}, permissionStrings(permissions))
 }
@@ -296,14 +351,14 @@ func TestGormPermissionRepositoryRemovePermissionsByPrefix(t *testing.T) {
 	require.NoError(t, repo.RemovePermissionsByPrefix(ctx, permission.MustParsePermission("project:a_b")))
 
 	for _, owner := range []string{"alice", "bob"} {
-		permissions, err := repo.GetPermissions(ctx, owner)
+		permissions, err := repo.GetPermissions(ctx, []string{owner})
 		require.NoError(t, err)
 		require.Empty(t, permissions)
 	}
-	permissions, err := repo.GetPermissions(ctx, "carol")
+	permissions, err := repo.GetPermissions(ctx, []string{"carol"})
 	require.NoError(t, err)
 	require.Equal(t, []string{"project:axb:read"}, permissionStrings(permissions))
-	permissions, err = repo.GetPermissions(ctx, "dave")
+	permissions, err = repo.GetPermissions(ctx, []string{"dave"})
 	require.NoError(t, err)
 	require.Equal(t, []string{"project", "project:other"}, permissionStrings(permissions))
 }

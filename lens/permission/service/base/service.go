@@ -34,7 +34,7 @@ func (p *PermissionManagerImpl) TearDown() error {
 }
 
 func (p *PermissionManagerImpl) HasPermission(ctx context.Context, owner string, perm *permission.Permission) (bool, error) {
-	allowed, err := p.repo.HasPermissions(ctx, owner, perm)
+	allowed, err := p.repo.HasPermissions(ctx, []string{owner}, perm)
 	if err != nil {
 		p.logger.ErrorW("failed to check permission", "owner", owner, "permission", perm, "error", err)
 		return false, err
@@ -43,9 +43,18 @@ func (p *PermissionManagerImpl) HasPermission(ctx context.Context, owner string,
 }
 
 func (p *PermissionManagerImpl) HasPermissions(ctx context.Context, owner string, permissions []*permission.Permission) ([]bool, error) {
-	allowed, err := p.repo.HasPermissions(ctx, owner, permissions...)
+	allowed, err := p.repo.HasPermissions(ctx, []string{owner}, permissions...)
 	if err != nil {
 		p.logger.ErrorW("failed to check permissions", "owner", owner, "permissions", permissions, "error", err)
+		return nil, err
+	}
+	return allowed, nil
+}
+
+func (p *PermissionManagerImpl) HasPermissionsForOwners(ctx context.Context, owners []string, permissions []*permission.Permission) ([]bool, error) {
+	allowed, err := p.repo.HasPermissions(ctx, owners, permissions...)
+	if err != nil {
+		p.logger.ErrorW("failed to check permissions for owners", "owners", owners, "permissions", permissions, "error", err)
 		return nil, err
 	}
 	return allowed, nil
@@ -60,9 +69,18 @@ func (p *PermissionManagerImpl) HasPermissionStr(ctx context.Context, owner stri
 }
 
 func (p *PermissionManagerImpl) ListPermissions(ctx context.Context, role string) ([]*permission.Permission, error) {
-	perms, err := p.repo.GetPermissions(ctx, role)
+	perms, err := p.repo.GetPermissions(ctx, []string{role})
 	if err != nil {
 		p.logger.ErrorW("failed to list permissions", "owner", role, "error", err)
+		return nil, err
+	}
+	return perms, nil
+}
+
+func (p *PermissionManagerImpl) ListPermissionsForOwners(ctx context.Context, owners []string) ([]*permission.Permission, error) {
+	perms, err := p.repo.GetPermissions(ctx, owners)
+	if err != nil {
+		p.logger.ErrorW("failed to list permissions for owners", "owners", owners, "error", err)
 		return nil, err
 	}
 	return perms, nil
