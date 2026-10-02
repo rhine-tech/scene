@@ -32,6 +32,7 @@ func createGinEngine(scope *registry.Scope) *gin.Engine {
 type ginContainer struct {
 	addr    string
 	routers prefixMux
+	handler http.Handler
 	apps    []routedApplication
 	logger  logger.ILogger
 	server  *http.Server
@@ -46,8 +47,9 @@ type routedApplication struct {
 
 // Factory builds a Gin scene from Gin applications.
 type Factory struct {
-	Addr    string
-	Routers []RouterDefinition
+	Addr            string
+	Routers         []RouterDefinition
+	HTTPMiddlewares []HTTPMiddleware
 }
 
 var _ scene.SceneFactory[GinApplication] = Factory{}
@@ -97,6 +99,15 @@ func (f Factory) Build(scope *registry.Scope, apps []GinApplication) (scene.Scen
 	slices.SortStableFunc(container.routers, func(a, b *ginRouter) int {
 		return len(b.prefix) - len(a.prefix)
 	})
+	container.handler = container.routers
+	// Wrap in reverse so requests enter middleware in declaration order.
+	for i := len(f.HTTPMiddlewares) - 1; i >= 0; i-- {
+		handler, err := f.HTTPMiddlewares[i](scope, container.handler)
+		if err != nil {
+			return nil, fmt.Errorf("scene-gin: configure HTTP middleware %d: %w", i, err)
+		}
+		container.handler = handler
+	}
 	container.baseCtx, container.cancel = context.WithCancel(context.Background())
 	log, exists := registry.LookupIn[logger.ILogger](scope)
 	if !exists {
@@ -156,7 +167,7 @@ func (c *ginContainer) Start() error {
 	}
 	c.server = &http.Server{
 		Addr:    c.addr,
-		Handler: c.routers,
+		Handler: c.handler,
 		BaseContext: func(listener net.Listener) context.Context {
 			return c.baseCtx
 		},

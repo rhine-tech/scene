@@ -1,6 +1,7 @@
 package gin
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -125,7 +126,7 @@ func TestRouterIsolationAndApplicationLifecycle(t *testing.T) {
 		t.Run(test.method+" "+test.path, func(t *testing.T) {
 			request := httptest.NewRequest(test.method, test.path, nil)
 			response := httptest.NewRecorder()
-			container.routers.ServeHTTP(response, request)
+			container.handler.ServeHTTP(response, request)
 			require.Equal(t, test.status, response.Code)
 			require.Equal(t, test.body, response.Body.String())
 			require.Equal(t, test.router, response.Header().Get("X-Router"))
@@ -161,6 +162,97 @@ func TestRouterConfiguration(t *testing.T) {
 			require.ErrorContains(t, err, test.err)
 		})
 	}
+}
+
+func TestHTTPMiddlewareRouting(t *testing.T) {
+	var events []string
+	scope := registry.NewScope()
+	registry.SetIn[http.Handler](scope, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		events = append(events, "site")
+		if r.URL.Path != "/api/users" {
+			http.Error(w, "site not found", http.StatusNotFound)
+			return
+		}
+		_, _ = w.Write([]byte("site"))
+	}))
+	trace := func(name string) HTTPMiddleware {
+		return func(_ *registry.Scope, next http.Handler) (http.Handler, error) {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				events = append(events, name+" before")
+				next.ServeHTTP(w, r)
+				events = append(events, name+" after")
+			}), nil
+		}
+	}
+	router := func(name, route string) GinOption {
+		return func(_ *registry.Scope, engine *gin.Engine) error {
+			engine.Use(func(c *gin.Context) { events = append(events, name) })
+			engine.GET(route, func(c *gin.Context) { c.String(http.StatusOK, name) })
+			return nil
+		}
+	}
+	built, err := (Factory{
+		Routers: []RouterDefinition{
+			Router("web", "/", router("web", "/")),
+			DefaultRouter("/api", router("api", "/api/users")),
+		},
+		HTTPMiddlewares: []HTTPMiddleware{
+			trace("outer"),
+			func(scope *registry.Scope, next http.Handler) (http.Handler, error) {
+				site := registry.UseIn[http.Handler](scope, nil)
+				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if r.Host == "site.example.com" {
+						site.ServeHTTP(w, r)
+						return
+					}
+					next.ServeHTTP(w, r)
+				}), nil
+			},
+			trace("inner"),
+		},
+	}).Build(scope, nil)
+	require.NoError(t, err)
+	container := built.(*ginContainer)
+	t.Cleanup(container.cancel)
+
+	for _, test := range []struct {
+		name   string
+		host   string
+		path   string
+		status int
+		body   string
+		events []string
+	}{
+		{"site before API", "site.example.com", "/api/users", 200, "site", []string{"outer before", "site", "outer after"}},
+		{"site 404 is final", "site.example.com", "/api/missing", 404, "site not found\n", []string{"outer before", "site", "outer after"}},
+		{"API", "app.example.com", "/api/users", 200, "api", []string{"outer before", "inner before", "api", "inner after", "outer after"}},
+		{"API 404 is final", "app.example.com", "/api/missing", 404, "404 page not found", []string{"outer before", "inner before", "api", "inner after", "outer after"}},
+		{"root", "app.example.com", "/", 200, "web", []string{"outer before", "inner before", "web", "inner after", "outer after"}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			events = nil
+			request := httptest.NewRequest(http.MethodGet, test.path, nil)
+			request.Host = test.host
+			response := httptest.NewRecorder()
+			container.handler.ServeHTTP(response, request)
+			require.Equal(t, test.status, response.Code)
+			require.Equal(t, test.body, response.Body.String())
+			require.Equal(t, test.events, events)
+		})
+	}
+}
+
+func TestHTTPMiddlewareBuildError(t *testing.T) {
+	want := errors.New("gateway configuration failed")
+	built, err := (Factory{
+		HTTPMiddlewares: []HTTPMiddleware{
+			func(*registry.Scope, http.Handler) (http.Handler, error) {
+				return nil, want
+			},
+		},
+	}).Build(registry.NewScope(), nil)
+	require.ErrorIs(t, err, want)
+	require.Nil(t, built)
 }
 
 type routerBenchmarkWriter struct {

@@ -2,6 +2,7 @@ package gin
 
 import (
 	"fmt"
+	"net/http"
 	"time"
 
 	ginCors "github.com/gin-contrib/cors"
@@ -11,6 +12,15 @@ import (
 	"github.com/rhine-tech/scene/infrastructure/logger"
 	"github.com/rhine-tech/scene/registry"
 )
+
+// HTTPMiddleware wraps the Scene's HTTP entrypoint during Factory.Build,
+// before requests select a Router. Resolve dependencies from scope here, not
+// per request. Resources requiring Setup/TearDown must remain module-managed.
+// A middleware either handles the request or delegates to next; handled
+// requests do not run any Router's Gin middleware, including recovery and logging.
+// Wrappers are built in reverse order so requests enter in declaration order.
+// Return a non-nil handler on success; errors abort Scene construction.
+type HTTPMiddleware func(scope *registry.Scope, next http.Handler) (http.Handler, error)
 
 // GinOption configures one Router's Gin engine before applications are mounted.
 type GinOption func(scope *registry.Scope, engine *gin.Engine) error

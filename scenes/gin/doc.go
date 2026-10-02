@@ -28,6 +28,48 @@
 // NewFactory(addr, DefaultRouter(prefix, options...)) when migrating a single
 // routing tree. Router options replace the former Scene-wide Gin options.
 //
+// # HTTP entrypoint
+//
+// Factory.HTTPMiddlewares wrap the HTTP handler before path-based Router
+// selection. Use them for Scene-wide concerns or host/header dispatch without
+// installing the same middleware on each Router:
+//
+//	scene.WithScene[sgin.GinApplication](sgin.Factory{
+//		Addr: ":8080",
+//		HTTPMiddlewares: []sgin.HTTPMiddleware{siteGateway},
+//		Routers: []sgin.RouterDefinition{
+//			sgin.DefaultRouter("/api", sgin.WithRecovery()),
+//			sgin.Router("web", "/", sgin.WithRecovery()),
+//		},
+//	})
+//
+// For example, a module can export an http.Handler for a hosted site:
+//
+//	func siteGateway(scope *registry.Scope, next http.Handler) (http.Handler, error) {
+//		site := registry.UseIn[http.Handler](scope, nil)
+//		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+//			if r.Host == "site.example.com" {
+//				site.ServeHTTP(w, r)
+//				return
+//			}
+//			next.ServeHTTP(w, r)
+//		}), nil
+//	}
+//
+// Middleware wrappers are constructed once per Build in reverse order, so
+// requests enter in declaration order and responses unwind in reverse order.
+// Construction errors abort the build. Middleware factories only assemble
+// handlers: resources needing Setup/TearDown remain owned by ModuleLoader.
+//
+// A handled response is final, including 404 and 405; it never falls back to a
+// Router. Requests delegated to next retain the existing longest-prefix routing.
+// Router Gin middleware, including recovery, logging, and authentication, runs
+// only when that Router is reached. To cover the entire entrypoint, install
+// HTTP logging/recovery outside dispatch middleware, before it in the list.
+// Host/header matching and selector precedence belong to the middleware, not
+// the framework. With no HTTPMiddlewares, the original path dispatcher is used
+// directly. NewFactory(addr, routers...) remains the shorthand for that case.
+//
 // # Applications
 //
 // AppRoutes is the usual entry point. It owns an application context, injects
